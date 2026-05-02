@@ -182,8 +182,11 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .cs-minimize-btn svg{width:14px;height:14px;fill:#fff;}
 .cs-minimize-btn:hover{background:rgba(255,255,255,.22);}
 .call-vid-wrap{width:100%;flex:1;position:relative;display:none;background:#000;overflow:hidden;}
-.call-vid-wrap.show{display:block;}
-#remoteVideo{width:100%;height:100%;object-fit:cover;}
+.call-vid-wrap.show{display:flex;align-items:center;justify-content:center;}
+#remoteVideo{width:100%;height:100%;object-fit:contain;touch-action:pinch-zoom;transform-origin:center center;}
+.screen-share-active #remoteVideo{object-fit:contain;}
+.vid-zoom-hint{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;}
+.vid-zoom-hint.show{opacity:1;}
 #localVideo{position:absolute;bottom:12px;right:12px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.3);box-shadow:0 4px 16px rgba(0,0,0,.5);}
 .cs-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:20px;position:relative;z-index:1;}
 .call-av{width:104px;height:104px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:46px;overflow:hidden;border:3px solid rgba(255,255,255,.2);position:relative;}
@@ -689,6 +692,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
     <div class="call-vid-wrap" id="callVidWrap">
       <video id="remoteVideo" autoplay playsinline></video>
       <video id="localVideo" autoplay playsinline muted></video>
+      <div class="vid-zoom-hint" id="vidZoomHint">🤏 Сведите/разведите для зума</div>
     </div>
     <div class="cs-center" id="callAudUI">
       <div class="call-av" id="callAv"><svg><use href="#i-person"/></svg></div>
@@ -1059,6 +1063,8 @@ let hasElephantBadge=false;
 let conns={},activeChat='ai',currentView='chat';
 let chatHist={ai:[]},grpHist={},groups={},peerNames={},peerAvatars={};
 let archivedChats={}; // id->true
+let inMediaBufs={};
+let recChunks=[],recTimer=null,recSecs=0,recMode=null; // 'voice'|'slon'
 let inFiles={},fileStore={};
 let activeCall=null,localStream=null,callTimer=null,callSecs=0;
 let pendingCall=null,isMuted=false,isCamOff=false;
@@ -1400,18 +1406,33 @@ function onData(pid,data){
     case 'group_msg':
       recvGrpMsg(data);
       break;
-    case 'voice_msg':{
-      const msg2={id:data.id,sender:'inc',name:data.nick||('@'+pid),avatar:data.avatar||peerAvatars[pid]||null,time:nowTime(),voiceData:data.data,voiceDur:data.dur||0};
-      if(!chatHist[pid])chatHist[pid]=[];chatHist[pid].push(msg2);
-      if(activeChat===pid){appendMsg(msg2);scrollDown();}
-      else{addUnread(pid);toast('🎙️ '+(peerNames[pid]||('@'+pid))+': голосовое');}
-      updatePreview(pid,'🎙️ Голосовое');saveAll();break;}
-    case 'slon_msg':{
-      const msg3={id:data.id,sender:'inc',name:data.nick||('@'+pid),avatar:data.avatar||peerAvatars[pid]||null,time:nowTime(),slonData:data.data,slonDur:data.dur||0};
-      if(!chatHist[pid])chatHist[pid]=[];chatHist[pid].push(msg3);
-      if(activeChat===pid){appendMsg(msg3);scrollDown();}
-      else{addUnread(pid);toast('🐘 '+(peerNames[pid]||('@'+pid))+': слонкружок');}
-      updatePreview(pid,'🐘 Слонкружок');saveAll();break;}
+    case 'media_start':{
+      inMediaBufs[data.id]={kind:data.kind,dur:data.dur||0,mime:data.mime||'',
+        total:data.chunks,parts:[],nick:data.nick||('@'+pid),avatar:data.avatar||peerAvatars[pid]||null,pid};
+      break;}
+    case 'media_chunk':{
+      const buf=inMediaBufs[data.id];if(buf)buf.parts[data.i]=data.d;
+      break;}
+    case 'media_end':{
+      const buf=inMediaBufs[data.id];if(!buf)break;
+      for(let i=0;i<buf.total;i++)if(buf.parts[i]==null){delete inMediaBufs[data.id];break;}
+      const fullData=buf.parts.join('');
+      delete inMediaBufs[data.id];
+      const spid=buf.pid;
+      if(buf.kind==='voice'){
+        const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,time:nowTime(),voiceData:fullData,voiceDur:buf.dur};
+        if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg2);
+        if(activeChat===spid){appendMsg(msg2);scrollDown();}
+        else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
+        updatePreview(spid,'🎙️ Голосовое');
+      }else if(buf.kind==='slon'){
+        const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,time:nowTime(),slonData:fullData,slonDur:buf.dur};
+        if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg3);
+        if(activeChat===spid){appendMsg(msg3);scrollDown();}
+        else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
+        updatePreview(spid,'🐘 Слонкружок');
+      }
+      saveAll();break;}
     case 'file_start':
       inFiles[data.id]={name:data.name,mime:data.mime,total:data.chunks,parts:[],isImg:data.isImg};
       break;
@@ -1881,29 +1902,33 @@ async function toggleScreenShare(){
   if(!activeCall){toast('Нет активного звонка');return;}
   if(isScreenSharing){stopScreenShare();return;}
 
-  if(!navigator.mediaDevices?.getDisplayMedia){
-    toast('Демонстрация экрана не поддерживается этим браузером');return;
-  }
+  const isMobileDevice=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   try{
-    screenShareStream=await navigator.mediaDevices.getDisplayMedia({
-      video:{cursor:'always',displaySurface:'monitor'},
-      audio:false
-    });
+    if(!navigator.mediaDevices?.getDisplayMedia||isMobileDevice){
+      // На мобильных getDisplayMedia недоступна — включаем заднюю камеру
+      screenShareStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},
+        audio:false
+      });
+      toast('📷 Камера (демонстрация экрана недоступна на мобильных)');
+    }else{
+      screenShareStream=await navigator.mediaDevices.getDisplayMedia({
+        video:{cursor:'always',displaySurface:'monitor'},
+        audio:false
+      });
+    }
+
     const screenTrack=screenShareStream.getVideoTracks()[0];
     if(!screenTrack){screenShareStream=null;return;}
 
     const pc=activeCall.call.peerConnection;
     if(!pc){toast('Нет P2P соединения');screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;return;}
 
-    const senders=pc.getSenders();
-    const videoSender=senders.find(s=>s.track?.kind==='video');
-
+    const videoSender=pc.getSenders().find(s=>s.track?.kind==='video');
     if(videoSender){
-      // Заменяем существующий видеотрек на экран
       await videoSender.replaceTrack(screenTrack);
     }else{
-      // Аудиозвонок — добавляем новый трек экрана + renegotiation
       pc.addTrack(screenTrack,localStream||new MediaStream([screenTrack]));
       try{
         const offer=await pc.createOffer();
@@ -1912,21 +1937,18 @@ async function toggleScreenShare(){
       }catch(re){console.warn('renegotiate offer error (screen):',re);}
     }
 
-    // Локальный превью
     const lv=$('localVideo');lv.srcObject=new MediaStream([screenTrack]);lv.play().catch(()=>{});
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
 
     isScreenSharing=true;
     updateScreenShareBtn();
-    toast('Демонстрация экрана начата 🖥');
-
-    // Когда пользователь сам останавливает через браузер
+    if(!isMobileDevice)toast('Демонстрация экрана начата 🖥');
     screenTrack.onended=()=>stopScreenShare();
 
   }catch(e){
     screenShareStream=null;
-    if(e.name!=='NotAllowedError')toast('Ошибка демонстрации: '+(e.message||e.name));
+    if(e.name!=='NotAllowedError')toast('Ошибка: '+(e.message||e.name));
   }
 }
 
@@ -2672,7 +2694,7 @@ function closeEpicOverlay(){
 // ═══════════════════════════════════════════════════════
 // ── VOICE MESSAGES & SLON CIRCLES ──
 // ═══════════════════════════════════════════════════════
-let mediaRecorder=null,recChunks=[],recTimer=null,recSecs=0,recMode=null; // 'voice'|'slon'
+let mediaRecorder=null; // recorder instance
 
 function startVoiceRec(){
   if(activeChat==='ai'){toast('Голосовые недоступны с ИИ');return;}
@@ -2757,8 +2779,7 @@ function sendVoiceMsg(dataUrl,dur,mimeType){
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
   if(activeChat!=='ai'&&conns[activeChat]?.open)
-    sendData(conns[activeChat],{type:'voice_msg',id:mid,data:dataUrl,dur,mime:mimeType,
-      nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    sendMediaChunked(conns[activeChat],'voice',mid,dataUrl,dur,mimeType);
   saveAll();
 }
 
@@ -2769,9 +2790,19 @@ function sendSlonMsg(dataUrl,dur,mimeType){
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🐘 Слонкружок');
   if(activeChat!=='ai'&&conns[activeChat]?.open)
-    sendData(conns[activeChat],{type:'slon_msg',id:mid,data:dataUrl,dur,mime:mimeType,
-      nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    sendMediaChunked(conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
   saveAll();
+}
+
+// Универсальная чанковая отправка для voice и slon
+function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
+  const chunks=[];
+  for(let i=0;i<dataUrl.length;i+=CHUNK)chunks.push(dataUrl.slice(i,i+CHUNK));
+  const nick=myNick||('@'+myUsername);
+  const avatar=myAvatar||null;
+  sendData(conn,{type:'media_start',kind,id,dur,mime:mimeType,chunks:chunks.length,nick,avatar});
+  chunks.forEach((d,i)=>sendData(conn,{type:'media_chunk',id,i,d}));
+  sendData(conn,{type:'media_end',id});
 }
 
 // ── Voice/Slon rendering ──
@@ -2962,6 +2993,46 @@ document.addEventListener('click',()=>$('chatCtxMenu')?.classList.remove('show')
 // ─────────────────────────────────────────────────────
 // ── REBUILD: поддержка архива ──
 // ─────────────────────────────────────────────────────
+
+
+// ── PINCH-TO-ZOOM для remoteVideo ──
+(function(){
+  let scale=1,lastDist=0,startScale=1;
+  const getvid=()=>$('remoteVideo');
+  function dist(t){
+    const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;
+    return Math.hypot(dx,dy);
+  }
+  document.addEventListener('touchstart',e=>{
+    if(!$('callVidWrap')?.classList.contains('show'))return;
+    if(e.touches.length===2){lastDist=dist(e.touches);startScale=scale;e.preventDefault();}
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{
+    if(!$('callVidWrap')?.classList.contains('show'))return;
+    if(e.touches.length===2){
+      const d=dist(e.touches);
+      scale=Math.min(4,Math.max(1,startScale*(d/lastDist)));
+      const v=getvid();if(v)v.style.transform='scale('+scale+')';
+      e.preventDefault();
+    }
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(e.touches.length<2&&scale>1){
+      // Показываем подсказку первый раз
+      const h=$('vidZoomHint');
+      if(h&&!h._shown){h._shown=true;h.classList.add('show');setTimeout(()=>h.classList.remove('show'),2000);}
+    }
+  });
+  // Double-tap reset
+  let lastTap=0;
+  document.addEventListener('touchend',e=>{
+    if(!$('callVidWrap')?.classList.contains('show'))return;
+    const now=Date.now();
+    if(now-lastTap<300&&e.touches.length===0){scale=1;const v=getrid();if(v)v.style.transform='';} 
+    lastTap=now;
+  });
+  function getrid(){return $('remoteVideo');}
+})();
 
 // ── EXPORT / CLEAR ──
 function exportData(){
