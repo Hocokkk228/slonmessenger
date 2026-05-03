@@ -194,7 +194,16 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .vid-switch-hint{position:absolute;top:36px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap;}
 .vid-switch-hint.show{opacity:1;}
 .vid-zoom-hint.show{opacity:1;}
-#localVideo{position:absolute;bottom:8px;right:8px;width:72px;height:72px;border-radius:8px;object-fit:cover;border:1.5px solid rgba(255,255,255,.22);box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:.88;}
+#localVideo{position:absolute;bottom:8px;right:8px;width:80px;height:80px;border-radius:10px;object-fit:cover;border:1.5px solid rgba(255,255,255,.25);box-shadow:0 2px 10px rgba(0,0,0,.5);opacity:.92;cursor:pointer;z-index:10;transition:all .25s;}
+#localVideo:hover{opacity:1;transform:scale(1.05);}
+#localVideo.main-mode{position:absolute;inset:0;width:100%;height:100%;border-radius:0;border:none;opacity:1;transform:none;cursor:default;}
+#remoteVideo.pip-mode{position:absolute;bottom:8px;right:8px;width:80px;height:80px;border-radius:10px;object-fit:cover;border:1.5px solid rgba(255,255,255,.25);box-shadow:0 2px 10px rgba(0,0,0,.5);z-index:10;}
+/* PiP overlay — shows my nick/avatar when no local video */
+.pip-self-info{position:absolute;bottom:8px;right:8px;width:80px;height:80px;border-radius:10px;background:var(--bg2);border:1.5px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;z-index:10;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);}
+.pip-self-av{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.pip-self-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.pip-self-av svg{width:20px;height:20px;fill:#fff;}
+.pip-self-nm{font-size:8px;color:rgba(255,255,255,.8);text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cs-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:20px;position:relative;z-index:1;}
 .call-av{width:104px;height:104px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:46px;overflow:hidden;border:3px solid rgba(255,255,255,.2);position:relative;}
 .call-av::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(255,255,255,.15);animation:ringPulse 2s ease-in-out infinite;}
@@ -529,6 +538,45 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .sb-archive.open{max-height:40vh;}
 .sb-item.archived{opacity:.6;}
 
+
+/* ════ NEW PROFILE PAGE (Telegram-style) ════ */
+.profile-page{flex:1;overflow-y:auto;display:none;flex-direction:column;background:var(--bg1);}
+.profile-page::-webkit-scrollbar{width:3px;}
+
+.prof-hero2{position:relative;min-height:240px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:0 16px 18px;overflow:hidden;}
+.prof-hero2-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(135deg,var(--accent),var(--accent2));}
+.prof-hero2::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.1) 60%,transparent 100%);z-index:1;}
+
+.prof-av2-wrap{position:absolute;top:18px;left:16px;z-index:3;cursor:pointer;}
+.prof-av2{width:100px;height:100px;border-radius:50%;overflow:hidden;border:3px solid rgba(255,255,255,.35);box-shadow:0 4px 20px rgba(0,0,0,.5);background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;}
+.prof-av2 img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.prof-av2 svg{width:52px;height:52px;fill:rgba(255,255,255,.8);}
+.prof-av2-cam{position:absolute;bottom:3px;right:3px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.65);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.prof-av2-cam svg{width:16px;height:16px;fill:#fff;}
+
+.prof-name2{font-size:24px;font-weight:800;color:#fff;z-index:2;text-shadow:0 2px 8px rgba(0,0,0,.6);line-height:1.2;margin-top:110px;}
+.prof-status2{z-index:2;display:flex;align-items:center;gap:5px;font-size:13px;color:rgba(255,255,255,.8);margin-top:3px;}
+.prof-dot2{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;flex-shrink:0;}
+
+.prof-info-list{background:var(--bg2);margin:0;border-bottom:1px solid var(--border);}
+.prof-info-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.prof-info-row:last-child{border-bottom:none;}
+.prof-info-row:hover,.prof-info-row:active{background:var(--hover);}
+.prof-info-ico{width:22px;height:22px;fill:var(--accent);flex-shrink:0;}
+.prof-info-txt{flex:1;min-width:0;}
+.prof-info-val{font-size:16px;color:var(--text1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.prof-info-lbl{font-size:12px;color:var(--accent);margin-top:1px;}
+
+.prof-colors-section{background:var(--bg2);margin-top:8px;padding:14px 16px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.prof-colors-lbl{font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.prof-colors{display:flex;gap:10px;flex-wrap:wrap;}
+.prof-color{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;}
+.prof-color.sel{border-color:#fff;transform:scale(1.15);box-shadow:0 0 0 2px rgba(255,255,255,.3);}
+.prof-color:hover{transform:scale(1.1);}
+
+.prof-danger-section{margin-top:8px;}
+.danger-row .prof-info-val{color:var(--red)!important;}
+
 </style>
 </head>
 <body data-theme="dark">
@@ -700,6 +748,11 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
     <div class="call-vid-wrap" id="callVidWrap">
       <video id="remoteVideo" autoplay playsinline></video>
       <video id="localVideo" autoplay playsinline muted></video>
+      <!-- PiP self-info when no local video -->
+      <div class="pip-self-info" id="pipSelfInfo" style="display:none" onclick="swapPip()">
+        <div class="pip-self-av" id="pipSelfAv"></div>
+        <div class="pip-self-nm" id="pipSelfNm"></div>
+      </div>
       <div class="vid-zoom-hint" id="vidZoomHint">🤏 Сведите/разведите для зума</div>
       <div class="vid-switch-hint" id="vidSwitchHint">👆👆 Двойной тап — сменить камеру/экран</div>
     </div>
@@ -866,86 +919,61 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
       </div>
 
       <div class="profile-page" id="profilePage">
-        <div class="prof-hero">
-          <div class="prof-hero-bg" id="profHeroBg"></div>
-          <div class="prof-av-wrap" onclick="$('avIn').click()">
-            <div class="prof-av" id="profAvEl"><svg><use href="#i-person"/></svg></div>
-            <div class="prof-av-edit"><svg><use href="#i-edit"/></svg></div>
+        <!-- HERO (аватар + имя) -->
+        <div class="prof-hero2" id="profHero2">
+          <div class="prof-hero2-bg" id="profHeroBg"></div>
+          <!-- Кнопка смены аватара — кружок с иконкой камеры поверх фото -->
+          <div class="prof-av2-wrap" onclick="$('avIn').click()">
+            <div class="prof-av2" id="profAvEl"><svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+            <div class="prof-av2-cam"><svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 1 1 15.2 12 3.2 3.2 0 0 1 12 15.2zm7.2-10.4h-2.136l-1.664-2H8.6l-1.664 2H4.8A2.4 2.4 0 0 0 2.4 7.2v10.4A2.4 2.4 0 0 0 4.8 20h14.4a2.4 2.4 0 0 0 2.4-2.4V7.2a2.4 2.4 0 0 0-2.4-2.4z"/></svg></div>
           </div>
-          <div class="prof-name-disp" id="profNameEl">Без имени</div>
-          <div class="prof-bio-disp" id="profBioEl" style="display:none"></div>
-          <div class="prof-id-pill" id="profIdPill" onclick="copyMyId()">@username</div>
+          <!-- Никнейм -->
+          <div class="prof-name2" id="profNameEl">Без имени</div>
+          <!-- онлайн-статус -->
+          <div class="prof-status2"><span class="prof-dot2"></span>в сети</div>
         </div>
-        <div class="prof-body">
-          <div class="prof-section">
-            <div class="prof-sec-title">Основное</div>
-            <div class="prof-row" onclick="editNick()">
-              <div class="prof-row-ico"><svg><use href="#i-edit"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Имя</div><div class="prof-row-val" id="profNickVal">Не задано</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
-            </div>
-            <div class="prof-row" onclick="changeUsernameFromProfile()">
-              <div class="prof-row-ico"><svg><use href="#i-username"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Юзернейм</div><div class="prof-row-val" id="profIdVal">@—</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
-            </div>
-            <div class="prof-row" onclick="editBio()">
-              <div class="prof-row-ico"><svg><use href="#i-bio"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Биография</div><div class="prof-row-val" id="profBioVal">Не задано</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
+
+        <!-- INFO строки как в Telegram -->
+        <div class="prof-info-list">
+          <div class="prof-info-row" onclick="changeUsernameFromProfile()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" id="profIdPill">@username</div>
+              <div class="prof-info-lbl">Юзернейм · нажми чтобы скопировать</div>
             </div>
           </div>
-          <div class="prof-section">
-            <div class="prof-sec-title">Фото профиля</div>
-            <div class="prof-row" onclick="$('avIn').click()">
-              <div class="prof-row-ico"><svg><use href="#i-image"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Загрузить фото</div><div class="prof-row-val">Видно всем собеседникам</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
-            </div>
-            <div class="prof-row" id="removeAvRow" onclick="removeAvatar()" style="display:none">
-              <div class="prof-row-ico"><svg style="fill:var(--red)"><use href="#i-trash"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label" style="color:var(--red)">Удалить фото</div></div>
+          <div class="prof-info-row" onclick="editBio()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7zm-1 15H8v-2h4v2zm3-4H8v-2h7v2zm0-4H8V7h7v2z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" id="profBioVal2">Добавить описание…</div>
+              <div class="prof-info-lbl">Bio</div>
             </div>
           </div>
-          <div class="prof-section">
-            <div class="prof-sec-title">Цвет фона профиля</div>
-            <div class="prof-colors" id="profColors"></div>
-          </div>
-          <div class="prof-section">
-            <div class="prof-sec-title">Тема оформления</div>
-            <div style="padding:10px 14px 14px"><div class="tp-grid" id="profThemeGrid"></div></div>
-          </div>
-          <div class="prof-section">
-            <div class="prof-sec-title">Мой юзернейм</div>
-            <div class="prof-row" onclick="showMyId()">
-              <div class="prof-row-ico"><svg><use href="#i-username"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Скопировать юзернейм</div><div class="prof-row-val" id="profIdVal" style="font-family:monospace;font-size:13px">—</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-copy"/></svg></div>
+          <div class="prof-info-row" onclick="editNick()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" id="profNickVal">Задать имя</div>
+              <div class="prof-info-lbl">Имя</div>
             </div>
           </div>
-          <div class="prof-section secret-code-section">
-            <div class="prof-sec-title">🔐 Секретный код</div>
-            <div class="secret-inp-wrap">
-              <input class="secret-inp" id="secretCodeInp" type="password" placeholder="Введи секретный код…" maxlength="20" onkeydown="if(event.key==='Enter')checkSecretCode()">
-              <button class="secret-submit" onclick="checkSecretCode()">Ввести</button>
-            </div>
-            <div id="secretCodeStatus" style="padding:0 14px 12px;font-size:11px;color:var(--text2);display:none"></div>
-          </div>
-          <div class="prof-section">
-            <div class="prof-sec-title">Данные</div>
-            <div class="prof-row" onclick="exportData()">
-              <div class="prof-row-ico"><svg><use href="#i-export"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label">Экспорт данных</div><div class="prof-row-val">Контакты и настройки</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
-            </div>
-            <div class="prof-row" onclick="confirmClearAll()">
-              <div class="prof-row-ico"><svg style="fill:var(--red)"><use href="#i-trash"/></svg></div>
-              <div class="prof-row-info"><div class="prof-row-label" style="color:var(--red)">Очистить всё</div><div class="prof-row-val">История, контакты, настройки</div></div>
-              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
-            </div>
-          </div>
-          <div style="height:24px"></div>
         </div>
+
+        <!-- Цвет профиля -->
+        <div class="prof-colors-section">
+          <div class="prof-colors-lbl">Цвет профиля</div>
+          <div class="prof-colors" id="profColors"></div>
+        </div>
+
+        <!-- Опасная зона -->
+        <div class="prof-danger-section">
+          <div class="prof-info-row danger-row" id="removeAvRow" onclick="removeAvatar()" style="display:none">
+            <svg class="prof-info-ico" viewBox="0 0 24 24" style="fill:var(--red)"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" style="color:var(--red)">Удалить фото</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:32px"></div>
       </div>
     </div>
   </div>
@@ -1072,11 +1100,14 @@ function toast(msg,dur=3000){document.querySelector('.toast')?.remove();const t=
 // ── STATE ──
 let peer=null,myId=null;
 let myUsername=''; // ← стабильный PeerJS ID
+let myInternalId=''; // ← скрытый постоянный ID (никогда не меняется)
 let myNick='',myBio='',myAvatar=null,myProfileBg='bg0';
 let hasElephantBadge=false;
 let conns={},activeChat='ai',currentView='chat';
 let chatHist={ai:[]},grpHist={},groups={},peerNames={},peerAvatars={};
 let archivedChats={}; // id->true
+let peerIids={}; // pid->internalId
+let peerProfileBgs={}; // pid->bgId
 let inMediaBufs={};
 let recChunks=[],recTimer=null,recSecs=0,recMode=null; // 'voice'|'slon'
 let inFiles={},fileStore={};
@@ -1167,6 +1198,8 @@ function saveAll(){
   LS.set('sl_mic',selMic);LS.set('sl_spk',selSpk);LS.set('sl_cam',selCam);
   LS.set('sl_elephant',hasElephantBadge);
   LS.set('sl_arch',archivedChats);
+  LS.set('sl_piids',peerIids);
+  LS.set('sl_pbgs2',peerProfileBgs);
 }
 
 function loadStorage(){
@@ -1182,6 +1215,14 @@ function loadStorage(){
   hasElephantBadge=LS.get('sl_elephant',false);
   archivedChats=LS.get('sl_arch',{});
   myUsername=LS.get('sl_username','');
+  // Скрытый постоянный ID — генерируем один раз навсегда
+  myInternalId=LS.get('sl_iid','');
+  peerIids=LS.get('sl_piids',{});
+  peerProfileBgs=LS.get('sl_pbgs2',{});
+  if(!myInternalId){
+    myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    LS.set('sl_iid',myInternalId);
+  }
   if(!chatHist.ai)chatHist.ai=[];
   for(const h of Object.values(chatHist))for(const m of(h||[]))if(m.photoSaved){m.photoId=storePhoto(m.photoSaved);delete m.photoSaved;}
   for(const h of Object.values(grpHist))for(const m of(h||[]))if(m.photoSaved){m.photoId=storePhoto(m.photoSaved);delete m.photoSaved;}
@@ -1323,7 +1364,7 @@ function setupConn(conn,silent=false){
   const onOpen=()=>{
     if(conns[pid]!==conn)return;
     setSbStatus(pid,true);
-    sendData(conn,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername});
+    sendData(conn,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});
     if(!silent)sysMsg(pid,'Соединение установлено');
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
     saveAll();
@@ -1384,8 +1425,14 @@ function onData(pid,data){
       if(data.nick!=null&&data.nick!==''){peerNames[pid]=data.nick;}
       else if(data.username){peerNames[pid]='@'+data.username;}
       if(data.avatar!==undefined){peerAvatars[pid]=data.avatar;updateSbAvatar(pid);}
-      // Auto-dedup: merge duplicate chats with same username
-      if(data.username)mergeByUsername(pid,data.username);
+      if(data.profileBg){peerProfileBgs[pid]=data.profileBg;}
+      // Сохраняем скрытый ID и дедуплицируем по нему
+      if(data.iid){
+        peerIids[pid]=data.iid;
+        mergeByInternalId(pid,data.iid);
+      } else if(data.username){
+        mergeByUsername(pid,data.username);
+      }
       updateSbName(pid);
       if(activeChat===pid)updateChatHeader();
       saveAll();
@@ -1799,6 +1846,11 @@ function setupCallUI(peerId,isVideo){
   // Локальное видео для видеозвонка
   if(isVideo&&localStream){
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
+    $('localVideo').style.display='';
+    $('pipSelfInfo').style.display='none';
+  }else{
+    $('localVideo').style.display='none';
+    updatePipSelfInfo();
   }
 
   // Сбрасываем состояние кнопок
@@ -1812,18 +1864,48 @@ function setupCallUI(peerId,isVideo){
   $('callScreen').classList.add('show');
   $('miniCall').classList.remove('show');
 
-  // Двойной клик/тап на remoteVideo — переключает камера↔экран
-  const vw=$('callVidWrap');
-  if(vw&&!vw._dblClickBound){
-    vw._dblClickBound=true;
-    let _lastTap=0;
-    vw.addEventListener('dblclick',_toggleCamScreen);
-    vw.addEventListener('touchend',e=>{
+  // Клик на localVideo (PiP рамку) — swap или переключение
+  const lv2=$('localVideo');
+  if(lv2&&!lv2._pipClickBound){
+    lv2._pipClickBound=true;
+    let _lastPipTap=0;
+    const doPipClick=()=>{
+      const hasLocal=isScreenSharing||(localStream&&localStream.getVideoTracks().length>0&&!isCamOff);
+      const hasRemote=$('remoteVideo').srcObject&&$('remoteVideo').srcObject.getVideoTracks().length>0;
+      if(hasLocal&&hasRemote){
+        // Обе стороны с видео — swap main↔pip
+        swapPip();
+      }
+      // Если нет видео — ничего (рамка и так показывает ник/аватар)
+    };
+    lv2.addEventListener('click',e=>{e.stopPropagation();doPipClick();});
+    lv2.addEventListener('touchend',e=>{
+      e.stopPropagation();
       const now=Date.now();
-      if(now-_lastTap<350){_toggleCamScreen();}
-      _lastTap=now;
-    });
+      if(now-_lastPipTap<400)return; // ignore double-tap
+      _lastPipTap=now;
+      doPipClick();
+    },{passive:true});
   }
+}
+
+let _pipSwapped=false;
+function swapPip(){
+  _pipSwapped=!_pipSwapped;
+  const rv=$('remoteVideo');
+  const lv=$('localVideo');
+  const wrap=$('callVidWrap');
+  if(_pipSwapped){
+    // local → main, remote → pip
+    rv.classList.add('pip-mode');
+    lv.classList.add('main-mode');
+    wrap.classList.add('pip-swapped');
+  }else{
+    rv.classList.remove('pip-mode');
+    lv.classList.remove('main-mode');
+    wrap.classList.remove('pip-swapped');
+  }
+  toast(_pipSwapped?'Вы на экране':'Собеседник на экране');
 }
 
 async function _toggleCamScreen(){
@@ -1961,15 +2043,17 @@ async function _activateCam(){
     const videoTrack=camStream.getVideoTracks()[0];
     if(!videoTrack)return;
     const pc=activeCall?.call?.peerConnection;
-    const sender=pc?.getSenders().find(s=>s.track?.kind==='video');
-    if(sender){
-      await sender.replaceTrack(videoTrack);
-      // Remove old tracks from localStream, add new
-      localStream?.getVideoTracks().forEach(t=>{t.stop();localStream.removeTrack(t);});
-      localStream?.addTrack(videoTrack);
-    }else if(pc){
-      localStream?.addTrack(videoTrack);
-      pc.addTrack(videoTrack,localStream||new MediaStream([videoTrack]));
+    // Remove old video tracks from localStream
+    localStream?.getVideoTracks().forEach(t=>{t.stop();localStream.removeTrack(t);});
+    localStream?.addTrack(videoTrack);
+    if(pc){
+      const sender=pc.getSenders().find(s=>s.track?.kind==='video'||s.track===null);
+      if(sender){
+        await sender.replaceTrack(videoTrack);
+      }else{
+        pc.addTrack(videoTrack,localStream||new MediaStream([videoTrack]));
+      }
+      // Всегда делаем renegotiation чтобы собеседник увидел видео
       try{
         const offer=await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -1977,6 +2061,8 @@ async function _activateCam(){
       }catch(re){console.warn('renegotiate cam:',re);}
     }
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
+    lv.style.display='';
+    $('pipSelfInfo').style.display='none';
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
     isCamOff=false;updateCamBtn();
@@ -2086,8 +2172,16 @@ async function stopScreenShare(){
     // Blank the remote video so it stops showing last frame
     if(pc){
       const vs=pc.getSenders().find(s=>s.track?.kind==='video');
-      if(vs)vs.replaceTrack(null).catch(()=>{});
+      if(vs)vs.replaceTrack(null).catch(()=>{}).finally(async()=>{
+        // Renegotiate so remote knows video is gone
+        try{
+          const offer=await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
+        }catch(e){}
+      });
     }
+    updatePipSelfInfo();
   }
 
   toast('Демонстрация экрана остановлена');
@@ -2378,9 +2472,17 @@ function updateProfileDisplay(){
   const bioEl=$('profBioEl');
   if(bioEl){bioEl.textContent=myBio||'';bioEl.style.display=myBio?'':'none';}
   const pill=$('profIdPill');if(pill)pill.textContent='@'+myUsername;
-  const nv=$('profNickVal');if(nv)nv.textContent=myNick||'Не задано';
+  const nv=$('profNickVal');if(nv)nv.textContent=myNick||'Задать имя';
   const bv=$('profBioVal');if(bv)bv.textContent=myBio||'Не задано';
   const iv=$('profIdVal');if(iv)iv.textContent='@'+myUsername;
+  // New profile v2 elements
+  const bv2=$('profBioVal2');if(bv2)bv2.textContent=myBio||'Добавить описание…';
+  // Hero bg
+  const hbg=$('profHero2');
+  if(hbg){const bg2=BG_COLORS.find(b=>b.id===myProfileBg)||BG_COLORS[0];const bgEl2=hbg.querySelector('.prof-hero2-bg');if(bgEl2)bgEl2.style.background=bg2.grad;}
+  // Avatar in new design
+  const av2=$('profAvEl');
+  if(av2){av2.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av2.appendChild(i);}else{av2.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>';}}
   const remRow=$('removeAvRow');if(remRow)remRow.style.display=myAvatar?'':'none';
   // Profile button
   const pb=$('profBtnContent');
@@ -2431,7 +2533,7 @@ function editNick(){
 function saveNick(){
   const v=($('nickInp')?.value||'').trim().slice(0,32);
   myNick=v;saveAll();updateProfileDisplay();
-  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername});});
+  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
   closeModal();toast('Имя обновлено');
 }
 
@@ -2461,14 +2563,14 @@ async function handleAvatarUpload(inp){
     const thumb=await makeThumb(e.target.result,200,0.8);
     myAvatar=thumb||e.target.result;
     saveAll();updateProfileDisplay();
-    Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar,bio:myBio||'',username:myUsername});});
+    Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
     toast('Фото профиля обновлено');
   };
   reader.readAsDataURL(file);
 }
 function removeAvatar(){
   myAvatar=null;saveAll();updateProfileDisplay();
-  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:null,bio:myBio||'',username:myUsername});});
+  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
   toast('Фото удалено');
 }
 
@@ -2842,6 +2944,8 @@ function beginRec(stream,mode){
   recMode=mode;recChunks=[];recSecs=0;
   $('recModalTitle').textContent=mode==='slon'?'Запись слонкружка 🐘':'Запись голосового 🎙️';
   $('recAnim').textContent=mode==='slon'?'🐘':'🎙️';
+  const sp=$('slonPreview');
+  if(sp){sp.style.display=mode==='slon'?'block':'none';}
   $('recTimerEl').textContent='0:00';
   $('recModal').classList.add('show');
   const mimeTypes=mode==='slon'
@@ -2858,10 +2962,16 @@ function beginRec(stream,mode){
     if(recSecs>=120)stopAndSendRec(); // авто-стоп 2 мин
   },1000);
   const btn=$('voiceRecBtn');if(btn)btn.classList.add('rec-active');
+  // Показываем живой превью во время записи слонкружка
+  if(mode==='slon'){
+    const preview=$('slonPreview');
+    if(preview){preview.srcObject=stream;preview.play().catch(()=>{});}
+  }
 }
 
 function cancelRec(){
   _stopRec();
+  const preview=$('slonPreview');if(preview){preview.srcObject=null;}
   $('recModal').classList.remove('show');
   const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
 }
@@ -2880,18 +2990,23 @@ function stopAndSendRec(){
   $('recModal').classList.remove('show');
   const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
   if(recTimer){clearInterval(recTimer);recTimer=null;}
+  const _stream=mediaRecorder.stream;
+  const _mode=recMode;
   mediaRecorder.onstop=()=>{
+    // Stop preview
+    const preview=$('slonPreview');
+    if(preview){preview.srcObject=null;}
+    if(_stream)_stream.getTracks().forEach(t=>t.stop());
     const blob=new Blob(recChunks,{type:recChunks[0]?.type||'audio/webm'});
     const dur=recSecs;
     const reader=new FileReader();
     reader.onload=e=>{
       const data=e.target.result;
-      if(recMode==='slon')sendSlonMsg(data,dur,blob.type);
+      if(_mode==='slon')sendSlonMsg(data,dur,blob.type);
       else sendVoiceMsg(data,dur,blob.type);
     };
     reader.readAsDataURL(blob);
   };
-  try{mediaRecorder.stream?.getTracks().forEach(t=>t.stop());}catch(e){}
   try{mediaRecorder.stop();}catch(e){}
   mediaRecorder=null;
 }
@@ -2986,8 +3101,18 @@ function renderSlonBub(msg){
     <div class="slon-circle-dur">🐘 ${durStr}</div>`;
 
   const vid=wrap.querySelector(`#sv-${msg.id}`);
-  // Set src via JS (data URLs on mobile need this)
-  if(msg.slonData) vid.src=msg.slonData;
+  // Convert data URL to Blob URL — fixes black screen on mobile/Chrome
+  if(msg.slonData){
+    try{
+      const arr=msg.slonData.split(',');
+      const mime=arr[0].match(/:(.*?);/)[1];
+      const bytes=atob(arr[1]);
+      const buf=new Uint8Array(bytes.length);
+      for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
+      const blob=new Blob([buf],{type:mime});
+      vid.src=URL.createObjectURL(blob);
+    }catch(e){vid.src=msg.slonData;}
+  }
   let playing=false;
   const overlay=wrap.querySelector('.slon-circle-play-overlay');
   const playSvg='<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg>';
@@ -3380,6 +3505,59 @@ function applyUsernameChange(){
   toast('Юзернейм изменён на @'+raw);
 }
 
+
+function updatePipSelfInfo(){
+  // Show self nik/avatar in PiP when no local video stream
+  const hasLocalVid=(!isCamOff&&localStream&&localStream.getVideoTracks().length>0)||isScreenSharing;
+  const lv=$('localVideo');
+  const pip=$('pipSelfInfo');
+  if(!lv||!pip)return;
+  if(hasLocalVid){
+    lv.style.display='';
+    pip.style.display='none';
+  }else{
+    lv.style.display='none';
+    pip.style.display='flex';
+    // Populate avatar
+    const av=$('pipSelfAv');
+    av.innerHTML='';
+    if(myAvatar){const img=document.createElement('img');img.src=myAvatar;av.appendChild(img);}
+    else{av.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>';}
+    $('pipSelfNm').textContent=myNick||('@'+myUsername)||'Я';
+  }
+}
+
+
+function mergeByInternalId(canonPid, iid){
+  if(!iid)return;
+  // Найти все pid у которых тот же iid, кроме canonPid
+  const dupPids=Object.keys(peerIids).filter(pid=>pid!==canonPid&&peerIids[pid]===iid);
+  // Также ищем в chatHist pid-ы без iid у которых то же имя (legacy dedup)
+  if(dupPids.length===0)return;
+  let merged=false;
+  dupPids.forEach(dupPid=>{
+    const hist=chatHist[dupPid]||[];
+    if(hist.length>0){
+      if(!chatHist[canonPid])chatHist[canonPid]=[];
+      const have=new Set((chatHist[canonPid]||[]).map(m=>m.id));
+      hist.forEach(m=>{if(!have.has(m.id))chatHist[canonPid].push(m);});
+      chatHist[canonPid].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+      delete chatHist[dupPid];
+      merged=true;
+    }
+    const el=document.getElementById('si-'+dupPid);
+    if(el)el.remove();
+    delete peerNames[dupPid];
+    delete peerAvatars[dupPid];
+    delete peerIids[dupPid];
+    delete peerProfileBgs[dupPid];
+    delete archivedChats[dupPid];
+    if(activeChat===dupPid){activeChat=canonPid;if(typeof renderChat==='function')renderChat(canonPid);}
+  });
+  if(merged)toast('Объединили дублирующийся чат');
+  saveAll();
+}
+
 // ── EXPORT / CLEAR ──
 function exportData(){
   const data={username:myUsername,nick:myNick,bio:myBio,contacts:peerNames,groups:Object.keys(groups).map(k=>({id:k,...groups[k]})),theme:LS.get('sl_theme','dark'),exportedAt:new Date().toISOString()};
@@ -3446,6 +3624,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   <div class="rec-modal-bg" onclick="cancelRec()"></div>
   <div class="rec-panel">
     <div class="rec-panel-title" id="recModalTitle">Запись голосового</div>
+    <video id="slonPreview" style="display:none;width:120px;height:120px;border-radius:50%;object-fit:cover;background:#000;transform:scaleX(-1)" autoplay playsinline muted></video>
     <div class="rec-anim" id="recAnim">🎙️</div>
     <div class="rec-timer" id="recTimerEl">0:00</div>
     <div class="rec-hint" id="recHint">Говорите… нажмите ✓ чтобы отправить</div>
