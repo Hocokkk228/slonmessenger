@@ -19,6 +19,11 @@
 
 .ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .ico svg{width:1em;height:1em;fill:currentColor;display:block;}
+button svg{fill:currentColor;}
+.inp-icon-btn svg{fill:var(--accent);}
+.tb-icon-btn svg{fill:var(--text1);}
+.tb-icon-btn:hover svg{fill:var(--accent);}
+.sb-btn svg{fill:var(--text1);}
 
 body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;transition:background .3s,color .3s;}
 .app{display:flex;flex-direction:column;height:100dvh;}
@@ -91,7 +96,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .sb-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
 .sb-badge{background:var(--accent);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700;}
 .sb-bot{padding:7px;border-top:1px solid var(--border);display:flex;gap:5px;}
-.sb-btn{flex:1;padding:7px 5px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;color:var(--text2);cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.sb-btn{flex:1;padding:7px 5px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;color:var(--text1);cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
 .sb-btn:hover{border-color:var(--accent);color:var(--accent);}
 .net-bar{padding:6px 10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;}
 .net-txt{font-size:10px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -156,7 +161,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .inp-wrap{padding:7px 9px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;}
 .inp-row{display:flex;align-items:flex-end;gap:5px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:22px;padding:4px 4px 4px 11px;transition:border .2s;}
 .inp-row:focus-within{border-color:var(--accent);}
-.inp-icon-btn{width:30px;height:30px;border-radius:50%;border:none;background:none;color:var(--text2);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:color .2s;flex-shrink:0;}
+.inp-icon-btn{width:30px;height:30px;border-radius:50%;border:none;background:none;color:var(--accent);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:color .2s;flex-shrink:0;}
 .inp-icon-btn:hover{color:var(--accent);}
 .inp-txt{flex:1;background:none;border:none;outline:none;color:var(--text1);font-size:14px;resize:none;max-height:100px;line-height:1.5;padding:4px 0;}
 .inp-txt::placeholder{color:var(--text2);}
@@ -186,6 +191,8 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 #remoteVideo{width:100%;height:100%;object-fit:contain;touch-action:pinch-zoom;transform-origin:center center;}
 .screen-share-active #remoteVideo{object-fit:contain;}
 .vid-zoom-hint{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;}
+.vid-switch-hint{position:absolute;top:36px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap;}
+.vid-switch-hint.show{opacity:1;}
 .vid-zoom-hint.show{opacity:1;}
 #localVideo{position:absolute;bottom:8px;right:8px;width:72px;height:72px;border-radius:8px;object-fit:cover;border:1.5px solid rgba(255,255,255,.22);box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:.88;}
 .cs-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:20px;position:relative;z-index:1;}
@@ -694,6 +701,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
       <video id="remoteVideo" autoplay playsinline></video>
       <video id="localVideo" autoplay playsinline muted></video>
       <div class="vid-zoom-hint" id="vidZoomHint">🤏 Сведите/разведите для зума</div>
+      <div class="vid-switch-hint" id="vidSwitchHint">👆👆 Двойной тап — сменить камеру/экран</div>
     </div>
     <div class="cs-center" id="callAudUI">
       <div class="call-av" id="callAv"><svg><use href="#i-person"/></svg></div>
@@ -1374,6 +1382,15 @@ function onData(pid,data){
     case 'call_end':
       if(activeCall?.peerId===pid){endCallCleanup();toast('Звонок завершён');}
       break;
+    case 'call_cancel':
+      // Caller cancelled before we answered
+      if(pendingCall?.peerId===pid||pendingCall?.call?.peer===pid){
+        stopRingSound();
+        $('incoming').classList.remove('show');
+        pendingCall=null;
+        toast('Звонок отменён');
+      }
+      break;
     case 'webrtc_offer':
       (async()=>{
         if(!activeCall||activeCall.peerId!==pid)return;
@@ -1479,7 +1496,14 @@ function recvMsg(pid,text,nick,avatar){
   if(avatar!==undefined){peerAvatars[pid]=avatar;updateSbAvatar(pid);}
   const msg={id:'m'+Date.now(),sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,time:nowTime()};
   chatHist[pid].push(msg);
-  if(activeChat===pid){appendMsg(msg);scrollDown();}
+  if(activeChat===pid){
+    appendMsg(msg);scrollDown();
+    // Звук и уведомление даже в открытом чате если вкладка не в фокусе
+    if(document.visibilityState!=='visible'){
+      playNotifSound();
+      showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);
+    }
+  }
   else{addUnread(pid);playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}
   saveAll();
 }
@@ -1717,7 +1741,7 @@ function doStartCall(peerId,isVideo,stream){
   const call=peer.call(peerId,stream,{metadata:{video:isVideo}});
   activeCall={call,peerId,isVideo};
   setupCallUI(peerId,isVideo);
-  call.on('stream',rs=>onRemoteStream(rs,isVideo));
+  call.on('stream',rs=>{activeCall.answered=true;onRemoteStream(rs,isVideo);});
   call.on('close',()=>{if(activeCall)endCallCleanup();});
   call.on('error',e=>{console.error('call error:',e);endCallCleanup();});
 }
@@ -1770,6 +1794,33 @@ function setupCallUI(peerId,isVideo){
   callMinimized=false;
   $('callScreen').classList.add('show');
   $('miniCall').classList.remove('show');
+
+  // Двойной клик/тап на remoteVideo — переключает камера↔экран
+  const vw=$('callVidWrap');
+  if(vw&&!vw._dblClickBound){
+    vw._dblClickBound=true;
+    let _lastTap=0;
+    vw.addEventListener('dblclick',_toggleCamScreen);
+    vw.addEventListener('touchend',e=>{
+      const now=Date.now();
+      if(now-_lastTap<350){_toggleCamScreen();}
+      _lastTap=now;
+    });
+  }
+}
+
+async function _toggleCamScreen(){
+  if(!activeCall)return;
+  const sh=$('vidSwitchHint');
+  if(sh&&!sh._shown){sh._shown=true;sh.classList.add('show');setTimeout(()=>sh.classList.remove('show'),2500);}
+  if(isScreenSharing){
+    // Экран → камера
+    await stopScreenShare();
+    await _activateCam();
+  }else if(localStream?.getVideoTracks().length>0){
+    // Камера → экран
+    await toggleScreenShare();
+  }
 }
 
 function onRemoteStream(rs,isVideo){
@@ -1813,8 +1864,17 @@ function minimizeCall(){callMinimized=true;$('callScreen').classList.remove('sho
 function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show');$('callScreen').classList.add('show');}
 
 function endCall(){
+  if(activeCall?.peerId&&conns[activeCall.peerId]?.open){
+    const msgType=activeCall.answered?'call_end':'call_cancel';
+    try{sendData(conns[activeCall.peerId],{type:msgType});}catch(e){}
+  }
+  endCallCleanup();
+}
+
+function cancelOutgoingCall(){
+  // Called when we hang up before recipient answers
   if(activeCall?.peerId&&conns[activeCall.peerId]?.open)
-    try{sendData(conns[activeCall.peerId],{type:'call_end'});}catch(e){}
+    try{sendData(conns[activeCall.peerId],{type:'call_cancel'});}catch(e){}
   endCallCleanup();
 }
 function endCallCleanup(){playHangupSound();stopRingSound();
@@ -1993,23 +2053,23 @@ async function stopScreenShare(){
 
   if(!activeCall)return;
   const pc=activeCall.call.peerConnection;
+  const camTracks=localStream?.getVideoTracks()||[];
+  const hasActiveCam=camTracks.length>0&&camTracks[0].enabled;
 
-  if(activeCall.isVideo){
-    // Возвращаем оригинальный видеотрек камеры
-    const videoTrack=localStream?.getVideoTracks()[0];
-    if(videoTrack&&pc){
-      const sender=pc.getSenders().find(s=>s.track?.kind==='video');
-      if(sender)await sender.replaceTrack(videoTrack).catch(()=>{});
-    }
-    $('localVideo').srcObject=localStream||null;
+  if(hasActiveCam){
+    // Есть камера — возвращаем её трек в sender
+    const sender=pc?.getSenders().find(s=>s.track?.kind==='video');
+    if(sender)await sender.replaceTrack(camTracks[0]).catch(()=>{});
+    const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
   }else{
-    // Был аудиозвонок — убираем видео-обёртку
-    const hadCam=localStream&&localStream.getVideoTracks().length>0;
-    if(!hadCam){
-      $('callVidWrap').classList.remove('show');
-      $('callAudUI').style.display='';
-    }else{
-      $('localVideo').srcObject=localStream;
+    // Ни камеры ни экрана — показываем аватар/никнейм как в начале звонка
+    $('callVidWrap').classList.remove('show');
+    $('callAudUI').style.display='';
+    $('remoteVideo').srcObject=null;
+    // Blank the remote video so it stops showing last frame
+    if(pc){
+      const vs=pc.getSenders().find(s=>s.track?.kind==='video');
+      if(vs)vs.replaceTrack(null).catch(()=>{});
     }
   }
 
