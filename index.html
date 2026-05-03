@@ -1005,7 +1005,35 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
   <img id="photoImg" src="" alt="">
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<script type="module">
+// ── FIREBASE SIGNALING INIT ──
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, remove, push, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAYV5ZAvFDtkb7UU3PddU8OuCCIi0uHfoM",
+  authDomain: "slon-376b4.firebaseapp.com",
+  databaseURL: "https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "slon-376b4",
+  storageBucket: "slon-376b4.firebasestorage.app",
+  messagingSenderId: "1045440523817",
+  appId: "1:1045440523817:web:c7fd2f599238014f3bb638"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+window._fbDb = db;
+window._fbRef = ref;
+window._fbSet = set;
+window._fbOnValue = onValue;
+window._fbRemove = remove;
+window._fbPush = push;
+window._fbOnChildAdded = onChildAdded;
+window._fbOff = off;
+window._firebaseReady = true;
+window.dispatchEvent(new Event('firebaseReady'));
+</script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -1259,13 +1287,15 @@ function initPeer(){
 
   try{
     // Используем юзернейм как PeerJS ID — стабильные чаты!
+    // Сигналинг через Firebase (обход блокировок РФ)
     peer=new Peer(myUsername,{
       debug:0,
       config:{iceServers:[
+        {urls:'stun:stun.cloudflare.com:3478'},
         {urls:'stun:stun.l.google.com:19302'},
-        {urls:'stun:stun1.l.google.com:19302'},
-        {urls:'stun:stun2.l.google.com:19302'},
-        {urls:'stun:stun3.l.google.com:19302'},
+        {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+        {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+        {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
       ]}
     });
 
@@ -1275,6 +1305,9 @@ function initPeer(){
       setMyLabel();
       setNet(true,'@'+myUsername);
       updateProfileDisplay();
+      // Всегда слушаем Firebase inbox (гибридный режим)
+      if(_fbReady())_fbListen(myUsername);
+      else window.addEventListener('firebaseReady',()=>_fbListen(myUsername),{once:true});
       setTimeout(()=>{
         Object.keys(peerNames).forEach(pid=>{
           if(!conns[pid]?.open)silentConnect(pid);
@@ -1333,7 +1366,9 @@ function initPeer(){
         return;
       }
       if(['network','server-error','socket-error','socket-closed'].includes(e.type)){
-        setNet(false,'⚠ '+e.type);
+        setNet(false,'⚠ Сигнальный сервер недоступен — пробуем Firebase…');
+        // PeerJS сервер заблокирован — переключаемся на Firebase-режим
+        setTimeout(()=>initFirebaseMode(),1500);
       }
     });
   }catch(e){
@@ -1341,9 +1376,88 @@ function initPeer(){
   }
 }
 
+// ════════════════════════════════════════════════════════
+// ── FIREBASE SIGNALING (обход блокировок РФ) ──
+// Используется когда PeerJS сервер недоступен.
+// Firebase выступает только как сигнальный канал для
+// обмена сообщениями (текст, файлы и т.д.) напрямую.
+// ════════════════════════════════════════════════════════
+let _fbMode=false;
+let _fbListeners={}; // pid -> unsubscribe fn
+
+function _fbDb(){return window._fbDb;}
+function _fbReady(){return !!window._firebaseReady;}
+
+function initFirebaseMode(){
+  if(_fbMode)return;
+  if(!_fbReady()){
+    window.addEventListener('firebaseReady',()=>initFirebaseMode(),{once:true});
+    return;
+  }
+  _fbMode=true;
+  setNet(true,'@'+myUsername+' (Firebase)');
+  toast('📡 Работаем через Firebase (обход блокировок)',4000);
+  _fbListen(myUsername);
+  // Переподключаем всех известных пиров через Firebase
+  setTimeout(()=>{
+    Object.keys(peerNames).forEach(pid=>_fbSilentConnect(pid));
+  },500);
+}
+
+// Слушаем входящие сообщения для себя в Firebase
+function _fbListen(username){
+  if(!_fbReady())return;
+  const db=_fbDb();
+  const inbox=window._fbRef(db,'inbox/'+username);
+  window._fbOnChildAdded(inbox,snap=>{
+    const data=snap.val();
+    if(!data)return;
+    // Удаляем сообщение из inbox после прочтения
+    window._fbRemove(snap.ref).catch(()=>{});
+    const pid=data.from;
+    if(!pid||pid===myUsername)return;
+    // Авто-добавляем в контакты если новый
+    if(!peerNames[pid]){
+      peerNames[pid]='@'+pid;
+      if(!chatHist[pid])chatHist[pid]=[];
+      if(!$('si-'+pid))addSbItem(pid);
+      saveAll();
+    }
+    // Помечаем как "онлайн через Firebase"
+    _fbConns[pid]=true;
+    setSbStatus(pid,true);
+    if(activeChat===pid){updateChatHeader();updateReconBanner();}
+    // Обрабатываем данные
+    if(data.payload&&typeof data.payload==='object'){
+      onData(pid,data.payload);
+    }
+  });
+}
+
+// "Виртуальные соединения" через Firebase
+let _fbConns={}; // pid -> true если доступен через Firebase
+
+function _fbSilentConnect(pid){
+  if(!_fbReady()||!pid||pid===myUsername)return;
+  // Отправляем hello через Firebase
+  _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});
+}
+
+function _fbSend(pid,data){
+  if(!_fbReady())return false;
+  try{
+    const db=_fbDb();
+    const inboxRef=window._fbRef(db,'inbox/'+pid);
+    window._fbPush(inboxRef,{from:myUsername,payload:data,ts:Date.now()});
+    return true;
+  }catch(e){console.warn('Firebase send error:',e);return false;}
+}
+
 function silentConnect(pid){
-  if(!peer?.open||pid===myUsername)return;
+  if(pid===myUsername)return;
   if(conns[pid]?.open)return;
+  if(_fbMode){_fbSilentConnect(pid);return;}
+  if(!peer?.open)return;
   try{
     const c=peer.connect(pid,{reliable:true,serialization:'json'});
     setupConn(c,true);
@@ -1395,27 +1509,39 @@ function setupConn(conn,silent=false){
 }
 
 function connectTo(pid,nick){
-  if(!peer?.open)return toast('P2P не готов');
   pid=pid.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   if(!pid)return toast('Введи юзернейм');
   if(pid===myUsername)return toast('Это твой юзернейм!');
-  // Дефолтное имя — юзернейм
   if(!peerNames[pid])peerNames[pid]=nick||('@'+pid);
   else if(nick)peerNames[pid]=nick;
   if(!chatHist[pid])chatHist[pid]=[];
   if(!$('si-'+pid))addSbItem(pid);
   saveAll();
-  if(conns[pid]?.open){openChat(pid);return;}
+  openChat(pid);
+
+  // Firebase режим
+  if(_fbMode){
+    _fbSilentConnect(pid);
+    sysMsg(pid,'Подключение к @'+pid+' через Firebase…');
+    return;
+  }
+
+  if(!peer?.open)return toast('P2P не готов');
+  if(conns[pid]?.open)return;
   try{
     const c=peer.connect(pid,{reliable:true,serialization:'json'});
     setupConn(c,false);
-    openChat(pid);
     sysMsg(pid,'Подключение к @'+pid+'…');
   }catch(e){toast('Ошибка подключения: '+e.message);}
 }
 
 function sendData(conn,data){
-  try{if(conn?.open)conn.send(data);}catch(e){}
+  // Если есть прямое WebRTC соединение — используем его
+  try{if(conn?.open){conn.send(data);return;}}catch(e){}
+  // Иначе — Firebase fallback
+  if(_fbMode&&conn?.peer){
+    _fbSend(conn.peer,data);
+  }
 }
 
 // ── DATA HANDLER ──
@@ -3608,11 +3734,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   rebuildSidebar();
 
   if(!myUsername){
-    // Первый запуск — показываем выбор юзернейма
     showUsernameOverlay();
+    // Когда юзернейм выбран — запускаем Firebase listener сразу
+    window.addEventListener('firebaseReady',()=>{
+      if(myUsername)_fbListen(myUsername);
+    },{once:true});
   }else{
-    // Уже есть юзернейм — подключаемся
     initPeer();
+    // Если PeerJS не поднялся за 8 секунд — переключаемся на Firebase
+    setTimeout(()=>{
+      if(!peer?.open&&!_fbMode){
+        console.warn('PeerJS timeout — switching to Firebase mode');
+        initFirebaseMode();
+      }
+    },8000);
   }
 
   openChat('ai');
