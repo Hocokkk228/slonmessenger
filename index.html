@@ -187,7 +187,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .screen-share-active #remoteVideo{object-fit:contain;}
 .vid-zoom-hint{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;}
 .vid-zoom-hint.show{opacity:1;}
-#localVideo{position:absolute;bottom:12px;right:12px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.3);box-shadow:0 4px 16px rgba(0,0,0,.5);}
+#localVideo{position:absolute;bottom:8px;right:8px;width:72px;height:72px;border-radius:8px;object-fit:cover;border:1.5px solid rgba(255,255,255,.22);box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:.88;}
 .cs-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:20px;position:relative;z-index:1;}
 .call-av{width:104px;height:104px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:46px;overflow:hidden;border:3px solid rgba(255,255,255,.2);position:relative;}
 .call-av::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(255,255,255,.15);animation:ringPulse 2s ease-in-out infinite;}
@@ -1227,7 +1227,7 @@ function initPeer(){
       else el.innerHTML=icoSvg('i-person');
       $('icName').textContent=peerNames[call.peer]||('@'+call.peer);
       $('icType').textContent=pendingCall.isVideo?'Видеозвонок':'Голосовой звонок';
-      $('incoming').classList.add('show');startRingSound();
+      $('incoming').classList.add('show');startRingSound();showDesktopNotif('📞 Входящий звонок',peerNames[call.peer]||('@'+call.peer),null,'call');
       if(navigator.vibrate)navigator.vibrate([300,100,300,100,300]);
     });
 
@@ -1480,7 +1480,7 @@ function recvMsg(pid,text,nick,avatar){
   const msg={id:'m'+Date.now(),sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,time:nowTime()};
   chatHist[pid].push(msg);
   if(activeChat===pid){appendMsg(msg);scrollDown();}
-  else{addUnread(pid);playNotifSound();toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}
+  else{addUnread(pid);playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}
   saveAll();
 }
 
@@ -1855,47 +1855,58 @@ function updateMuteBtn(){
 // В аудиозвонке: добавляет камеру → показывает видео-обёртку.
 async function toggleCam(){
   if(!activeCall)return;
-  const videoTracks=localStream?localStream.getVideoTracks():[];
 
-  if(videoTracks.length===0){
-    // Нет видеотрека — добавляем камеру (работает для аудиозвонка)
-    try{
-      const vc=selCam&&selCam!=='default'?{deviceId:{ideal:selCam},facingMode:{ideal:'user'}}:{facingMode:'user'};
-      const camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
-      const videoTrack=camStream.getVideoTracks()[0];
-      if(!videoTrack)return;
-      localStream.addTrack(videoTrack);
-      const pc=activeCall.call.peerConnection;
-      if(pc){
-        const sender=pc.getSenders().find(s=>s.track?.kind==='video');
-        if(sender){
-          await sender.replaceTrack(videoTrack);
-        }else{
-          pc.addTrack(videoTrack,localStream);
-          // Нужна renegotiation — инициатор создаёт offer
-          try{
-            const offer=await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
-          }catch(re){console.warn('renegotiate offer error:',re);}
-        }
-      }
-      const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
-      $('callVidWrap').classList.add('show');
-      $('callAudUI').style.display='none';
-      isCamOff=false;
-      updateCamBtn();
-      toast('Камера включена');
-    }catch(e){
-      toast('Не удалось включить камеру: '+(e.message||e.name));
-    }
+  // Если идёт демонстрация экрана — переключаемся на камеру (stopScreen→startCam)
+  if(isScreenSharing){
+    await stopScreenShare();
+    await _activateCam();
     return;
   }
 
-  // Есть видеотрек — переключаем
+  const videoTracks=localStream?localStream.getVideoTracks():[];
+
+  if(videoTracks.length===0){
+    // Аудиозвонок — добавляем камеру
+    await _activateCam();
+    return;
+  }
+
+  // Есть видеотрек — вкл/выкл
   isCamOff=!isCamOff;
   videoTracks.forEach(t=>t.enabled=!isCamOff);
   updateCamBtn();
+}
+
+async function _activateCam(){
+  try{
+    const vc=selCam&&selCam!=='default'?{deviceId:{ideal:selCam},facingMode:{ideal:'user'}}:{facingMode:'user'};
+    const camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
+    const videoTrack=camStream.getVideoTracks()[0];
+    if(!videoTrack)return;
+    const pc=activeCall?.call?.peerConnection;
+    const sender=pc?.getSenders().find(s=>s.track?.kind==='video');
+    if(sender){
+      await sender.replaceTrack(videoTrack);
+      // Remove old tracks from localStream, add new
+      localStream?.getVideoTracks().forEach(t=>{t.stop();localStream.removeTrack(t);});
+      localStream?.addTrack(videoTrack);
+    }else if(pc){
+      localStream?.addTrack(videoTrack);
+      pc.addTrack(videoTrack,localStream||new MediaStream([videoTrack]));
+      try{
+        const offer=await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
+      }catch(re){console.warn('renegotiate cam:',re);}
+    }
+    const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
+    $('callVidWrap').classList.add('show');
+    $('callAudUI').style.display='none';
+    isCamOff=false;updateCamBtn();
+    toast('Камера включена');
+  }catch(e){
+    toast('Не удалось включить камеру: '+(e.message||e.name));
+  }
 }
 function updateCamBtn(){
   const btn=$('camBtn'),lbl=$('camLbl');
@@ -1917,8 +1928,25 @@ async function toggleScreenShare(){
     // На Android/iOS просто вызываем getDisplayMedia — система сама покажет выбор экрана
     screenShareStream=await navigator.mediaDevices.getDisplayMedia({
       video:{cursor:'always'},
-      audio:false
+      audio:{
+        echoCancellation:false,
+        noiseSuppression:false,
+        sampleRate:48000,
+        // systemAudio:'include' — захватывает звук системы (Android/Chrome)
+        systemAudio:'include'
+      }
     });
+    // Если браузер дал аудиотрек — добавляем его в PC отдельно
+    const screenAudioTracks=screenShareStream.getAudioTracks();
+    if(screenAudioTracks.length>0){
+      const pc2=activeCall?.call?.peerConnection;
+      if(pc2){
+        const existAudio=pc2.getSenders().find(s=>s.track?.kind==='audio');
+        // Не заменяем микрофон — добавляем screen audio как доп. трек
+        if(!existAudio)pc2.addTrack(screenAudioTracks[0],screenShareStream);
+        // Если микрофон уже есть — браузер сам смешает через getDisplayMedia audio capture
+      }
+    }
 
     const screenTrack=screenShareStream.getVideoTracks()[0];
     if(!screenTrack){screenShareStream=null;return;}
@@ -1960,6 +1988,8 @@ async function stopScreenShare(){
   }
   isScreenSharing=false;
   updateScreenShareBtn();
+  // Hide local preview if switching back
+  const lv=$('localVideo');if(lv)lv.srcObject=null;
 
   if(!activeCall)return;
   const pc=activeCall.call.peerConnection;
@@ -3179,6 +3209,55 @@ async function flipCamera(){
   }
 }
 
+
+// ════════════════════════════════════════════════════════
+// ── DESKTOP NOTIFICATIONS ──
+// ════════════════════════════════════════════════════════
+let _notifPermission='default';
+
+function initDesktopNotif(){
+  if(!('Notification' in window))return;
+  _notifPermission=Notification.permission;
+  if(_notifPermission==='default'){
+    // Запрашиваем разрешение при первом входящем событии, не сразу
+  }
+}
+
+function requestNotifPermission(){
+  if(!('Notification' in window))return;
+  Notification.requestPermission().then(p=>{_notifPermission=p;});
+}
+
+function showDesktopNotif(title, body, iconUrl, tag){
+  // Запрашиваем разрешение если ещё не получили
+  if(!('Notification' in window))return;
+  if(_notifPermission==='default'){
+    Notification.requestPermission().then(p=>{
+      _notifPermission=p;
+      if(p==='granted')_doNotif(title,body,iconUrl,tag);
+    });
+    return;
+  }
+  if(_notifPermission!=='granted')return;
+  // Показываем только если вкладка не активна
+  if(document.visibilityState==='visible')return;
+  _doNotif(title,body,iconUrl,tag);
+}
+
+function _doNotif(title,body,iconUrl,tag){
+  try{
+    const n=new Notification('SLON · '+title,{
+      body:body,
+      icon:iconUrl||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>',
+      tag:tag||'msg',
+      silent:false,
+      requireInteraction:tag==='call',
+    });
+    n.onclick=()=>{window.focus();n.close();};
+    if(tag!=='call')setTimeout(()=>n.close(),5000);
+  }catch(e){}
+}
+
 // ── EXPORT / CLEAR ──
 function exportData(){
   const data={username:myUsername,nick:myNick,bio:myBio,contacts:peerNames,groups:Object.keys(groups).map(k=>({id:k,...groups[k]})),theme:LS.get('sl_theme','dark'),exportedAt:new Date().toISOString()};
@@ -3222,6 +3301,7 @@ window.addEventListener('resize',()=>{
 
 document.addEventListener('DOMContentLoaded',()=>{
   loadStorage();
+  initDesktopNotif();
   setupMobile();
   buildThemeGrids();
   updateProfileDisplay();
