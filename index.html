@@ -884,6 +884,11 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
               <div class="prof-row-info"><div class="prof-row-label">Имя</div><div class="prof-row-val" id="profNickVal">Не задано</div></div>
               <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
             </div>
+            <div class="prof-row" onclick="changeUsernameFromProfile()">
+              <div class="prof-row-ico"><svg><use href="#i-username"/></svg></div>
+              <div class="prof-row-info"><div class="prof-row-label">Юзернейм</div><div class="prof-row-val" id="profIdVal">@—</div></div>
+              <div class="prof-row-arr"><svg><use href="#i-arrow-right"/></svg></div>
+            </div>
             <div class="prof-row" onclick="editBio()">
               <div class="prof-row-ico"><svg><use href="#i-bio"/></svg></div>
               <div class="prof-row-info"><div class="prof-row-label">Биография</div><div class="prof-row-val" id="profBioVal">Не задано</div></div>
@@ -1128,9 +1133,21 @@ function saveUsername(){
     return;
   }
 
+  // Тот же username — просто переподключаемся без сброса
+  if(raw===myUsername){
+    $('usernameOverlay').classList.remove('show');
+    if(!peer?.open)initPeer();
+    return;
+  }
+
+  const oldUsername=myUsername;
   myUsername=raw;
   LS.set('sl_username',raw);
   $('usernameOverlay').classList.remove('show');
+  // Уничтожаем старое соединение и создаём новое с новым ID
+  if(peer&&!peer.destroyed){try{peer.destroy();}catch(e){}}
+  peer=null;
+  initPeer._retries=0;
   initPeer();
 }
 
@@ -1213,6 +1230,7 @@ function initPeer(){
 
     peer.on('open',id=>{
       myId=id; // id === myUsername
+      initPeer._retries=0;
       setMyLabel();
       setNet(true,'@'+myUsername);
       updateProfileDisplay();
@@ -1249,18 +1267,17 @@ function initPeer(){
     peer.on('error',e=>{
       // Юзернейм занят — просим выбрать другой
       if(e.type==='unavailable-id'){
-        LS.del('sl_username');
-        myUsername='';
+        // ID занят — показываем оверлей, не стираем username из LS
         if(peer&&!peer.destroyed){try{peer.destroy();}catch(err){}}
         peer=null;
         const errEl=$('usernameError');
         const takenEl=$('usernameTakenHint');
         showUsernameOverlay();
-        if(errEl){errEl.textContent='Юзернейм @'+LS.get('sl_username','?')+' уже занят!';errEl.style.display='block';}
+        if(errEl){errEl.textContent='Юзернейм @'+myUsername+' уже занят!';errEl.style.display='block';}
         if(takenEl)takenEl.style.display='block';
         return;
       }
-      if(e.type==='peer-unavailable'){
+            if(e.type==='peer-unavailable'){
         const m=String(e.message||'').match(/Could not connect to peer ([^\s]+)/i);
         const pid=m?m[1]:null;
         if(pid){
@@ -3160,37 +3177,43 @@ document.addEventListener('click',()=>$('chatCtxMenu')?.classList.remove('show')
 // ── CHAT DEDUP by username ──
 // ════════════════════════════════════════════════════════
 function mergeByUsername(canonPid, username){
-  // Find any other pids whose stored name == @username or who map to same user
-  const dupPids=Object.keys(peerNames).filter(pid=>{
+  // Ищем дубли везде: peerNames, chatHist, по совпадению pid===username
+  const allPids=new Set([
+    ...Object.keys(peerNames),
+    ...Object.keys(chatHist).filter(k=>k!=='ai'&&!k.startsWith('g_'))
+  ]);
+
+  const dupPids=[...allPids].filter(pid=>{
     if(pid===canonPid)return false;
-    const n=peerNames[pid]||'';
-    return n==='@'+username||pid===username;
+    const storedName=peerNames[pid]||'';
+    // Дубль если: pid совпадает с username, или имя совпадает, или pid это старый username
+    return pid===username
+      || storedName==='@'+username
+      || storedName===username;
   });
+
   if(dupPids.length===0)return;
 
+  let merged=false;
   dupPids.forEach(dupPid=>{
-    // Merge chat history
     const dupHist=chatHist[dupPid]||[];
     if(dupHist.length>0){
       if(!chatHist[canonPid])chatHist[canonPid]=[];
-      // Append dup history, avoid exact duplicates by id
       const existIds=new Set((chatHist[canonPid]||[]).map(m=>m.id));
       dupHist.forEach(m=>{if(!existIds.has(m.id))chatHist[canonPid].push(m);});
-      // Sort by time string
       chatHist[canonPid].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
       delete chatHist[dupPid];
+      merged=true;
     }
-    // Remove dup from sidebar
     const el=document.getElementById('si-'+dupPid);
     if(el)el.remove();
-    // Remove from peerNames (keep canonical)
     delete peerNames[dupPid];
     delete peerAvatars[dupPid];
     delete archivedChats[dupPid];
-    // If user was in dup chat, switch to canonical
     if(activeChat===dupPid){activeChat=canonPid;renderChat(canonPid);}
-    toast('Объединили дублирующийся чат с @'+username);
   });
+
+  if(merged)toast('Объединили дублирующийся чат с @'+username);
   saveAll();
 }
 
@@ -3316,6 +3339,45 @@ function _doNotif(title,body,iconUrl,tag){
     n.onclick=()=>{window.focus();n.close();};
     if(tag!=='call')setTimeout(()=>n.close(),5000);
   }catch(e){}
+}
+
+
+// Смена username из профиля
+function changeUsernameFromProfile(){
+  showModal(`
+    <div class="m-title">Сменить юзернейм</div>
+    <div class="m-info">Юзернейм — это твой постоянный ID в сети SLON. Смена приведёт к переподключению.<br><br>Все контакты смогут найти тебя только по новому юзернейму.</div>
+    <input class="m-inp" id="newUsernameInp" placeholder="новый_юзернейм" value="${esc(myUsername)}" maxlength="20" autocomplete="off" spellcheck="false">
+    <div class="m-err" id="newUsernameErr" style="display:none"></div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="applyUsernameChange()">Сменить</button>
+    </div>
+  `);
+  setTimeout(()=>{
+    const inp=document.getElementById('newUsernameInp');
+    if(inp){inp.focus();inp.select();}
+  },100);
+}
+
+function applyUsernameChange(){
+  const inp=document.getElementById('newUsernameInp');
+  const errEl=document.getElementById('newUsernameErr');
+  if(!inp)return;
+  const raw=inp.value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  if(raw.length<3){errEl.textContent='Минимум 3 символа';errEl.style.display='block';return;}
+  if(raw.length>20){errEl.textContent='Максимум 20 символов';errEl.style.display='block';return;}
+  closeModal();
+  if(raw===myUsername){toast('Юзернейм не изменился');return;}
+  myUsername=raw;
+  LS.set('sl_username',raw);
+  updateProfileDisplay();
+  // Переподключаемся с новым ID
+  if(peer&&!peer.destroyed){try{peer.destroy();}catch(e){}}
+  peer=null;
+  initPeer._retries=0;
+  initPeer();
+  toast('Юзернейм изменён на @'+raw);
 }
 
 // ── EXPORT / CLEAR ──
