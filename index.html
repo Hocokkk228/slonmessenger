@@ -89,7 +89,8 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .sb-av-inner{width:44px;height:44px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;}
 .sb-av-inner img{width:100%;height:100%;object-fit:cover;}
 .sb-av-dot{position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg2);background:#444;transition:background .3s,box-shadow .3s;}
-.sb-av-dot.on{background:var(--online);box-shadow:0 0 0 1px rgba(63,185,80,.3);}
+.sb-av-dot.on{background:var(--online);box-shadow:0 0 0 1px rgba(63,185,80,.3);animation:sbDotPing 2s ease infinite;}
+@keyframes sbDotPing{0%,100%{box-shadow:0 0 0 1px rgba(63,185,80,.3);}50%{box-shadow:0 0 0 4px rgba(63,185,80,.15),0 0 0 1px rgba(63,185,80,.5);}}
 .sb-info{flex:1;min-width:0;}
 .sb-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sb-prev{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
@@ -506,9 +507,24 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .slon-circle-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 .slon-circle-vid{width:144px;height:144px;border-radius:50%;object-fit:cover;position:absolute;top:10px;left:18px;background:#000;}
 .slon-circle-dur{font-size:11px;color:var(--text2);text-align:center;}
+.ticks{color:var(--text2);font-size:11px;}
+.ticks.read{color:#4fc3f7;}
+.msg-menu-btn{opacity:0;background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:6px;transition:opacity .15s;align-self:flex-start;margin-top:2px;flex-shrink:0;}
+.msg:hover .msg-menu-btn{opacity:1;}
+.msg-pin-badge{font-size:11px;margin-bottom:2px;}
+.msg-menu-popup{position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);min-width:160px;overflow:hidden;}
+.msg-menu-popup button{display:block;width:100%;background:none;border:none;color:var(--text);padding:10px 16px;text-align:left;cursor:pointer;font-size:14px;}
+.msg-menu-popup button:hover{background:var(--hover);}
+.msg-menu-popup button.danger{color:#f44;}
+.pinned-bar{padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);cursor:pointer;display:none;}
+.pinned-bar.show{display:block;}
 .slon-circle-play-overlay{position:absolute;top:10px;left:18px;width:144px;height:144px;border-radius:50%;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;}
 .slon-circle-wrap:hover .slon-circle-play-overlay{opacity:1;}
 .slon-circle-play-overlay svg{width:32px;height:32px;fill:#fff;}
+
+.ticks{color:var(--text2);font-size:11px;}
+.ticks.read{color:var(--accent);}
+.ticks.sent{color:var(--text2);opacity:.7;}
 
 /* ── RECORD MODAL ── */
 .rec-modal{position:fixed;inset:0;z-index:900;display:none;align-items:flex-end;justify-content:center;padding:0 0 70px;}
@@ -860,7 +876,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
           <div class="ch-status" id="chStatus">AI Ассистент</div>
         </div>
         <div class="ch-acts" id="chActs">
-          <button class="ch-act" onclick="clearChat()"><svg><use href="#i-trash"/></svg></button>
+          <button class="ch-act" onclick="showChatDeleteMenu()"><svg><use href="#i-trash"/></svg></button>
         </div>
       </div>
 
@@ -869,6 +885,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
         <button class="recon-btn" onclick="reconnectCurrent()">Подключиться</button>
       </div>
 
+      <div class="pinned-bar" id="pinnedBar" onclick="scrollToPinned()">📌 <span id="pinnedText"></span></div>
       <div class="msgs" id="msgs">
         <div class="sys">Добро пожаловать в SLON 🐘</div>
         <div class="msg inc">
@@ -1010,6 +1027,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 // ── FIREBASE SIGNALING INIT ──
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, remove, push, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getStorage, ref as sref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAYV5ZAvFDtkb7UU3PddU8OuCCIi0uHfoM",
@@ -1023,6 +1041,7 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getDatabase(fbApp);
+const fbStorage = getStorage(fbApp);
 window._fbDb = db;
 window._fbRef = ref;
 window._fbSet = set;
@@ -1031,6 +1050,10 @@ window._fbRemove = remove;
 window._fbPush = push;
 window._fbOnChildAdded = onChildAdded;
 window._fbOff = off;
+window._fbStorage = fbStorage;
+window._fbSref = sref;
+window._fbUploadString = uploadString;
+window._fbGetDownloadURL = getDownloadURL;
 window._firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -1135,7 +1158,8 @@ let conns={},activeChat='ai',currentView='chat';
 let chatHist={ai:[]},grpHist={},groups={},peerNames={},peerAvatars={};
 let archivedChats={}; // id->true
 let peerIids={}; // pid->internalId
-let peerProfileBgs={}; // pid->bgId
+let peerProfileBgs={};
+let peerBios={}; // pid->bio // pid->bgId
 let inMediaBufs={};
 let recChunks=[],recTimer=null,recSecs=0,recMode=null; // 'voice'|'slon'
 let inFiles={},fileStore={};
@@ -1203,6 +1227,22 @@ function saveUsername(){
   myUsername=raw;
   LS.set('sl_username',raw);
   $('usernameOverlay').classList.remove('show');
+  // Обновляем Firebase профиль с новым юзернеймом немедленно
+  if(_fbMode||_fbReady()){
+    _publishMyProfile();
+    // Уведомляем всех контактов о смене юзернейма
+    Object.keys(peerNames).forEach(pid=>{
+      _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
+        username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',oldUsername});
+    });
+    setMyLabel();
+    updateProfileDisplay();
+    // Переподключаем Firebase listener на новый username
+    _fbListen(myUsername);
+    _startMyPresence();
+    toast('Юзернейм изменён: @'+myUsername);
+    return;
+  }
   // Уничтожаем старое соединение и создаём новое с новым ID
   if(peer&&!peer.destroyed){try{peer.destroy();}catch(e){}}
   peer=null;
@@ -1371,13 +1411,17 @@ function _watchPresence(pid){
   const unsub=window._fbOnValue(r,snap=>{
     const data=snap.val();
     const online=!!(data&&data.online&&(Date.now()-data.ts)<60000);
+    _fbConns[pid]=online;
     setSbStatus(pid,online);
+    if(activeChat===pid){updateChatHeader();updateReconBanner();}
   });
   _presenceWatchers[pid]=unsub;
 }
 
 function _startMyPresence(){
   if(!window._fbDb||!myUsername)return;
+  // Публикуем профиль публично (чтобы контакты читали без hello)
+  _publishMyProfile();
   const presRef=window._fbRef(window._fbDb,'presence/'+myUsername);
   window._fbSet(presRef,{online:true,ts:Date.now()});
   // Обновляем каждые 25 секунд
@@ -1391,11 +1435,43 @@ function _startMyPresence(){
   });
 }
 
+function _publishMyProfile(){
+  if(!window._fbDb||!myUsername)return;
+  const r=window._fbRef(window._fbDb,'profiles/'+myUsername);
+  window._fbSet(r,{nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
+    username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',ts:Date.now()});
+}
+
 function _fbSilentConnect(pid){
   if(!_fbReady()||!pid||pid===myUsername)return;
   // Отправляем hello через Firebase
   _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});
+  // Сразу читаем публичный профиль собеседника
+  _fetchProfile(pid);
 }
+
+function _fetchProfile(pid){
+  if(!window._fbDb||!pid)return;
+  // Отписываемся от старой подписки если есть
+  if(_profileWatchers[pid])_profileWatchers[pid]();
+  const r=window._fbRef(window._fbDb,'profiles/'+pid);
+  const unsub=window._fbOnValue(r,snap=>{
+    const d=snap.val();
+    if(!d)return;
+    // Обновляем имя в реальном времени
+    const newName=d.nick&&d.nick!==''?d.nick:(d.username?'@'+d.username:null);
+    if(newName){peerNames[pid]=newName;}
+    if(d.avatar!==undefined){peerAvatars[pid]=d.avatar||null;updateSbAvatar(pid);}
+    if(d.bio!==undefined)peerBios[pid]=d.bio||'';
+    if(d.profileBg)peerProfileBgs[pid]=d.profileBg;
+    if(d.iid){peerIids[pid]=d.iid;mergeByInternalId(pid,d.iid);}
+    updateSbName(pid);
+    if(activeChat===pid)updateChatHeader();
+    saveAll();
+  });
+  _profileWatchers[pid]=unsub;
+}
+let _profileWatchers={}; // pid -> unsubscribe
 
 function _fbSend(pid,data){
   if(!_fbReady()||!window._fbDb)return false;
@@ -1403,6 +1479,14 @@ function _fbSend(pid,data){
     const db=window._fbDb;
     const inboxRef=window._fbRef(db,'inbox/'+pid);
     window._fbPush(inboxRef,{from:myUsername,payload:data,ts:Date.now()});
+    // Помечаем как доставлено если это обычное сообщение
+    if(data.type==='msg'&&data.id){
+      const hist=chatHist[pid];
+      if(hist){
+        const m=hist.find(x=>x.id===data.id);
+        if(m&&m.status==='sent'){m.status='delivered';_updateMsgStatus(data.id,'delivered');}
+      }
+    }
     return true;
   }catch(e){console.warn('Firebase send error:',e);return false;}
 }
@@ -1506,6 +1590,24 @@ function onData(pid,data){
       else if(data.username){peerNames[pid]='@'+data.username;}
       if(data.avatar!==undefined){peerAvatars[pid]=data.avatar;updateSbAvatar(pid);}
       if(data.profileBg){peerProfileBgs[pid]=data.profileBg;}
+      // Если собеседник сменил юзернейм — перепривязываем по oldUsername
+      if(data.oldUsername&&data.oldUsername!==pid){
+        // Мигрируем историю со старого username на новый
+        if(chatHist[data.oldUsername]&&!chatHist[pid]){
+          chatHist[pid]=chatHist[data.oldUsername];
+          delete chatHist[data.oldUsername];
+        } else if(chatHist[data.oldUsername]){
+          const existIds=new Set((chatHist[pid]||[]).map(m=>m.id));
+          (chatHist[data.oldUsername]||[]).forEach(m=>{if(!existIds.has(m.id))chatHist[pid].push(m);});
+          chatHist[pid].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+          delete chatHist[data.oldUsername];
+        }
+        const oldEl=document.getElementById('si-'+data.oldUsername);
+        if(oldEl)oldEl.remove();
+        delete peerNames[data.oldUsername];
+        delete peerAvatars[data.oldUsername];
+        if(activeChat===data.oldUsername){activeChat=pid;renderChat(pid);}
+      }
       // Сохраняем скрытый ID и дедуплицируем по нему
       if(data.iid){
         peerIids[pid]=data.iid;
@@ -1518,20 +1620,52 @@ function onData(pid,data){
       saveAll();
       break;
     case 'msg':
-      recvMsg(pid,data.text,data.nick,data.avatar);
+      recvMsg(pid,data.text,data.nick,data.avatar,data.id);
+      break;
+    case 'read':
+      // Собеседник прочитал наши сообщения
+      if(Array.isArray(data.ids)){
+        data.ids.forEach(mid=>{
+          const hist=chatHist[pid];
+          if(!hist)return;
+          const m=hist.find(x=>x.id===mid&&x.sender==='me');
+          if(m&&m.status!=='read'){m.status='read';_updateMsgStatus(mid,'read');}
+        });
+        saveAll();
+      }
+      break;
+    case 'msg_delete':
+      _handleMsgDelete(pid,data);
+      break;
+    case 'msg_edit':
+      _handleMsgEdit(pid,data);
+      break;
+    case 'msg_pin':
+      _handleMsgPin(pid,data);
+      break;
+    case 'chat_delete':
+      _handleChatDelete(pid,data);
       break;
     case 'typing':
       showRemoteTyping(pid);
       break;
     case 'call_end':
-      if(activeCall?.peerId===pid){endCallCleanup();toast('Звонок завершён');}
+      if(pendingCall?.peerId===pid){
+        // Caller cancelled before we answered
+        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;toast('Звонок отменён');
+      } else if(activeCall?.peerId===pid){
+        endCallCleanup();toast('Звонок завершён');
+      }
       break;
     case 'call_cancel':
     case 'call_reject':
+      // Always hide incoming notification if it's from this peer
       if(pendingCall?.peerId===pid){
-        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;toast('Звонок отменён');
+        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;
+        toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
       }
       if(data.type==='call_reject'&&activeCall?.peerId===pid){endCallCleanup();toast('Звонок отклонён');}
+      if(data.type==='call_cancel'&&activeCall?.peerId===pid){endCallCleanup();toast('Звонок отменён');}
       break;
     case 'call_incoming':
       // Входящий звонок — показываем UI, ждём offer
@@ -1575,6 +1709,38 @@ function onData(pid,data){
         catch(e){console.warn('ice candidate error:',e);}
       })();
       break;
+    case 'webrtc_offer':
+      // Renegotiation offer (camera/screen added mid-call)
+      (async()=>{
+        if(!_callPC||!data.sdp)return;
+        try{
+          await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          const answer=await _callPC.createAnswer();
+          await _callPC.setLocalDescription(answer);
+          _callSend(pid,{type:'webrtc_answer',sdp:_callPC.localDescription.toJSON()});
+          // После renegotiation обновляем remote video если появился видео трек
+          const receivers=_callPC.getReceivers();
+          const videoReceiver=receivers.find(r=>r.track?.kind==='video'&&r.track.readyState==='live');
+          if(videoReceiver){
+            const rv=$('remoteVideo');
+            // Собираем все активные remote треки
+            const remoteStream=new MediaStream(receivers.map(r=>r.track).filter(t=>t&&t.readyState==='live'));
+            rv.srcObject=remoteStream;
+            rv.play().catch(()=>{});
+            $('callVidWrap').classList.add('show');
+            $('callAudUI').style.display='none';
+          }
+        }catch(e){console.warn('webrtc_offer renegotiate error:',e);}
+      })();
+      break;
+    case 'webrtc_answer':
+      // Renegotiation answer
+      (async()=>{
+        if(!_callPC||!data.sdp)return;
+        try{await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));}
+        catch(e){console.warn('webrtc_answer renegotiate error:',e);}
+      })();
+      break;
     case 'group_invite':
       recvGrpInvite(data);
       break;
@@ -1588,6 +1754,25 @@ function onData(pid,data){
     case 'media_chunk':{
       const buf=inMediaBufs[data.id];if(buf)buf.parts[data.i]=data.d;
       break;}
+    case 'media_url':{
+      // Firebase Storage URL — сразу рендерим
+      const spid2=pid;
+      const dn=data.nick||(peerNames[spid2]||('@'+spid2));
+      const dav=data.avatar||peerAvatars[spid2]||null;
+      if(data.kind==='voice'){
+        const mv={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),voiceData:data.url,voiceDur:data.dur,isUrl:true};
+        if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(mv);
+        if(activeChat===spid2){appendMsg(mv);scrollDown();}
+        else{addUnread(spid2);toast('🎙️ '+(peerNames[spid2]||('@'+spid2))+': голосовое');}
+        updatePreview(spid2,'🎙️ Голосовое');
+      }else if(data.kind==='slon'){
+        const ms={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),slonData:data.url,slonDur:data.dur,isUrl:true};
+        if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(ms);
+        if(activeChat===spid2){appendMsg(ms);scrollDown();}
+        else{addUnread(spid2);toast('🐘 '+(peerNames[spid2]||('@'+spid2))+': слонкружок');}
+        updatePreview(spid2,'🐘 Слонкружок');
+      }
+      saveAll();break;}
     case 'media_end':{
       const buf=inMediaBufs[data.id];if(!buf)break;
       for(let i=0;i<buf.total;i++)if(buf.parts[i]==null){delete inMediaBufs[data.id];break;}
@@ -1623,9 +1808,25 @@ function onData(pid,data){
 // ── MESSAGES ──
 function sendMsg(){
   const inp=$('msgInp'),txt=inp.value.trim();if(!txt)return;
+  // Режим редактирования
+  if(inp.dataset.editId){
+    const mid=inp.dataset.editId;
+    const found=_getMsgFromHist(mid);
+    if(found){
+      found.m.text=txt;found.m.edited=true;
+      const bub=document.querySelector('[data-msg-id="'+mid+'"] .msg-bub');
+      if(bub)bub.innerHTML=esc(txt)+'<span style="font-size:10px;opacity:.5;margin-left:4px">ред.</span>';
+      saveAll();
+      if(activeChat&&activeChat!=='ai')
+        sendData(conns[activeChat]||activeChat,{type:'msg_edit',id:mid,text:txt});
+    }
+    cancelEdit();
+    return;
+  }
   inp.value='';resizeInp(inp);
   if(activeChat.startsWith('g_')){sendGrpMsg(activeChat,txt);return;}
-  const msg={id:'m'+Date.now(),sender:'me',text:txt,time:nowTime()};
+  const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const msg={id:mid,sender:'me',text:txt,time:nowTime(),status:'sent'};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: '+txt.slice(0,28));saveAll();
@@ -1640,20 +1841,26 @@ function sendMsg(){
     },delay);
   }else{
     const c=conns[activeChat];
-    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',text:txt,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',id:mid,text:txt,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
     else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
   }
 }
 
-function recvMsg(pid,text,nick,avatar){
+function recvMsg(pid,text,nick,avatar,mid){
   if(!chatHist[pid])chatHist[pid]=[];
   if(nick&&nick!=='')peerNames[pid]=nick;
   if(avatar!==undefined){peerAvatars[pid]=avatar;updateSbAvatar(pid);}
-  const msg={id:'m'+Date.now(),sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,time:nowTime()};
+  const msgId=mid||('m'+Date.now());
+  // Дедупликация
+  if(mid&&chatHist[pid].some(m=>m.id===mid))return;
+  const msg={id:msgId,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,time:nowTime()};
   chatHist[pid].push(msg);
+  // Отправляем read receipt если чат открыт
+  if(activeChat===pid&&document.visibilityState==='visible'){
+    sendData(conns[pid]||pid,{type:'read',ids:[msgId]});
+  }
   if(activeChat===pid){
     appendMsg(msg);scrollDown();
-    // Звук и уведомление даже в открытом чате если вкладка не в фокусе
     if(document.visibilityState!=='visible'){
       playNotifSound();
       showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);
@@ -1692,8 +1899,23 @@ function appendMsg(msg,container){
   }else{
     const bub=document.createElement('div');bub.className='msg-bub';bub.textContent=msg.text||'';body.appendChild(bub);
   }
-  const t=document.createElement('div');t.className='msg-time';t.textContent=msg.time+(isOut?' ✓✓':'');
-  body.appendChild(t);wrap.appendChild(av);wrap.appendChild(body);c.appendChild(wrap);
+  const t=document.createElement('div');t.className='msg-time';
+  let statusIcon='';
+  if(isOut){
+    if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
+    else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
+    else statusIcon=' <span class="ticks sent">✓</span>';
+  }
+  t.innerHTML=esc(msg.time)+statusIcon;
+  // Кнопка меню сообщения
+  const menuBtn=document.createElement('button');
+  menuBtn.className='msg-menu-btn';menuBtn.innerHTML='&#8942;';
+  menuBtn.title='Действия';
+  menuBtn.onclick=e=>{e.stopPropagation();showMsgMenu(e,msg,isOut);};
+  body.appendChild(t);
+  if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';body.insertBefore(pin,body.firstChild);}
+  wrap.dataset.msgId=msg.id;
+  wrap.appendChild(av);wrap.appendChild(body);wrap.appendChild(menuBtn);c.appendChild(wrap);
 }
 
 function sysMsg(id,text){
@@ -1706,16 +1928,241 @@ function sysMsg(id,text){
   }
 }
 
+
+// ══════════════════════════════════════════════
+// ── СООБЩЕНИЯ: меню, удаление, ред., закрепление ──
+// ══════════════════════════════════════════════
+
+let _msgMenuEl=null;
+function showMsgMenu(e,msg,isOut){
+  closeMsgMenu();
+  const div=document.createElement('div');
+  div.className='msg-menu-popup';
+  const items=[];
+  // Только для текстовых — редактирование
+  if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
+  items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
+  if(isOut){
+    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
+    items.push(['🗑 Удалить у всех',()=>deleteMsg(msg,true),'danger']);
+  }else{
+    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
+  }
+  items.forEach(([label,fn,cls])=>{
+    const btn=document.createElement('button');
+    btn.textContent=label;if(cls)btn.className=cls;
+    btn.onclick=()=>{fn();closeMsgMenu();};
+    div.appendChild(btn);
+  });
+  document.body.appendChild(div);
+  _msgMenuEl=div;
+  // Позиция
+  const r=e.target.getBoundingClientRect();
+  let top=r.bottom+4,left=r.left-120;
+  if(left<8)left=8;
+  if(top+200>window.innerHeight)top=r.top-div.offsetHeight-4;
+  div.style.cssText='top:'+top+'px;left:'+left+'px;';
+  setTimeout(()=>document.addEventListener('click',closeMsgMenu,{once:true}),10);
+}
+function closeMsgMenu(){if(_msgMenuEl){_msgMenuEl.remove();_msgMenuEl=null;}}
+
+function _getMsgFromHist(mid){
+  for(const hist of [chatHist,grpHist]){
+    for(const pid of Object.keys(hist||{})){
+      const m=hist[pid].find(x=>x.id===mid);
+      if(m)return{m,pid,hist};
+    }
+  }
+  return null;
+}
+
+function _updateMsgStatus(mid,status){
+  const el=document.querySelector('[data-msg-id="'+mid+'"] .ticks');
+  if(el){
+    if(status==='read'){el.textContent='✓✓';el.className='ticks read';}
+    else if(status==='delivered'){el.textContent='✓✓';el.className='ticks';}
+    else{el.textContent='✓';el.className='ticks sent';}
+  }
+}
+
+function deleteMsg(msg,forAll){
+  const mid=msg.id;
+  // Удаляем из локальной истории
+  const found=_getMsgFromHist(mid);
+  if(found){
+    found.hist[found.pid]=found.hist[found.pid].filter(m=>m.id!==mid);
+    // Удаляем из DOM
+    const el=document.querySelector('[data-msg-id="'+mid+'"]');
+    if(el)el.remove();
+    saveAll();
+  }
+  if(forAll&&activeChat&&activeChat!=='ai'){
+    sendData(conns[activeChat]||activeChat,{type:'msg_delete',id:mid,forAll:true});
+  }
+  toast(forAll?'Удалено у всех':'Удалено у себя');
+}
+
+function _handleMsgDelete(pid,data){
+  if(!data.forAll)return;
+  const mid=data.id;
+  if(chatHist[pid]){
+    chatHist[pid]=chatHist[pid].filter(m=>m.id!==mid);
+    const el=document.querySelector('[data-msg-id="'+mid+'"]');
+    if(el){
+      // Для текстовых — показываем "удалено", для медиа — убираем совсем
+      const bub=el.querySelector('.msg-bub');
+      if(bub){
+        bub.innerHTML='<i style="opacity:.5">Сообщение удалено</i>';
+        el.querySelector('.msg-menu-btn')?.remove();
+      }else{
+        el.remove();
+      }
+    }
+    saveAll();
+  }
+}
+
+function startEditMsg(msg){
+  const inp=$('msgInp');
+  inp.value=msg.text||'';inp.focus();
+  inp.dataset.editId=msg.id;
+  const hint=document.createElement('div');
+  hint.id='editHint';hint.style.cssText='padding:4px 12px;font-size:12px;color:var(--text2);background:var(--bg2);border-top:1px solid var(--border);';
+  hint.innerHTML='✏️ Редактирование · <button onclick="cancelEdit()" style="background:none;border:none;color:var(--accent);cursor:pointer;">Отмена</button>';
+  const bar=$('editHint');if(bar)bar.remove();
+  inp.parentNode.insertBefore(hint,inp);
+}
+
+function cancelEdit(){
+  const inp=$('msgInp');
+  delete inp.dataset.editId;
+  const hint=$('editHint');if(hint)hint.remove();
+  inp.value='';
+}
+
+function _handleMsgEdit(pid,data){
+  if(!data.id||!data.text)return;
+  const hist=chatHist[pid];if(!hist)return;
+  const m=hist.find(x=>x.id===data.id);
+  if(m){
+    m.text=data.text;m.edited=true;
+    const bub=document.querySelector('[data-msg-id="'+data.id+'"] .msg-bub');
+    if(bub)bub.innerHTML=esc(data.text)+'<span style="font-size:10px;opacity:.5;margin-left:4px">ред.</span>';
+    saveAll();
+  }
+}
+
+function togglePinMsg(msg){
+  msg.pinned=!msg.pinned;
+  // Обновляем DOM
+  const wrap=document.querySelector('[data-msg-id="'+msg.id+'"]');
+  if(wrap){
+    const old=wrap.querySelector('.msg-pin-badge');if(old)old.remove();
+    if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
+  }
+  _updatePinnedBar();
+  saveAll();
+  // Сообщаем собеседнику
+  if(activeChat&&activeChat!=='ai'){
+    sendData(conns[activeChat]||activeChat,{type:'msg_pin',id:msg.id,pinned:msg.pinned,text:msg.text?.slice(0,60)||''});
+  }
+}
+
+function _handleMsgPin(pid,data){
+  const hist=chatHist[pid];if(!hist)return;
+  const m=hist.find(x=>x.id===data.id);
+  if(m){
+    m.pinned=data.pinned;
+    const wrap=document.querySelector('[data-msg-id="'+data.id+'"]');
+    if(wrap){
+      const old=wrap.querySelector('.msg-pin-badge');if(old)old.remove();
+      if(data.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
+    }
+    _updatePinnedBar();saveAll();
+  }
+}
+
+function _updatePinnedBar(){
+  if(!activeChat)return;
+  const hist=chatHist[activeChat]||grpHist[activeChat]||[];
+  const pinned=hist.filter(m=>m.pinned);
+  const bar=$('pinnedBar');const txt=$('pinnedText');
+  if(!bar||!txt)return;
+  if(pinned.length>0){
+    bar.classList.add('show');
+    txt.textContent=(pinned[pinned.length-1].text||'Медиа').slice(0,50);
+  }else{
+    bar.classList.remove('show');
+  }
+}
+
+function scrollToPinned(){
+  if(!activeChat)return;
+  const hist=chatHist[activeChat]||grpHist[activeChat]||[];
+  const pinned=hist.filter(m=>m.pinned);
+  if(!pinned.length)return;
+  const last=pinned[pinned.length-1];
+  const el=document.querySelector('[data-msg-id="'+last.id+'"]');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function deleteChatFor(forAll){
+  if(!activeChat||activeChat==='ai')return;
+  if(forAll){
+    // Чистим у обоих
+    chatHist[activeChat]=[];
+    renderChat(activeChat);
+    sendData(conns[activeChat]||activeChat,{type:'chat_delete',forAll:true});
+    toast('Чат удалён у всех');
+  }else{
+    // Только у себя — удаляем контакт из сайдбара
+    delete chatHist[activeChat];
+    delete peerNames[activeChat];
+    delete peerAvatars[activeChat];
+    const si=$('si-'+activeChat);if(si)si.remove();
+    $('chatPanel').classList.remove('open');
+    activeChat=null;
+    saveAll();
+    toast('Чат удалён');
+  }
+}
+
+function _handleChatDelete(pid,data){
+  if(!data.forAll)return;
+  chatHist[pid]=[];
+  if(activeChat===pid)renderChat(pid);
+  saveAll();
+  toast((peerNames[pid]||('@'+pid))+' удалил историю чата');
+}
+
 function renderChat(id){
   const c=$('msgs');c.innerHTML='<div class="sys">Начало чата</div>';
   const hist=id.startsWith('g_')?grpHist[id]:chatHist[id];
   if(hist?.length)hist.forEach(m=>appendMsg(m,c));
   scrollDown();
+  _updatePinnedBar();
+  // Send read receipts for unread incoming messages
+  if(id!=='ai'&&!id.startsWith('g_')){
+    const unreadIds=(chatHist[id]||[]).filter(m=>m.sender==='inc'&&!m.readSent).map(m=>m.id);
+    if(unreadIds.length){
+      sendData(conns[id]||id,{type:'read',ids:unreadIds});
+      (chatHist[id]||[]).forEach(m=>{if(m.sender==='inc')m.readSent=true;});
+    }
+  }
 }
 
 function clearChat(){
   if(activeChat.startsWith('g_'))grpHist[activeChat]=[];else chatHist[activeChat]=[];
   renderChat(activeChat);saveAll();toast('Чат очищен');
+}
+
+function showChatDeleteMenu(){
+  if(!activeChat||activeChat==='ai')return;
+  if(confirm('Удалить чат у всех участников?')){
+    deleteChatFor(true);
+  }else if(confirm('Удалить только у себя?')){
+    deleteChatFor(false);
+  }
 }
 
 function showRemoteTyping(pid){
@@ -1886,7 +2333,6 @@ async function getMediaStream(isVideo){
 let _callPC=null; // RTCPeerConnection для активного звонка
 const ICE_SERVERS=[
   {urls:'stun:stun.cloudflare.com:3478'},
-  {urls:'stun:stun.l.google.com:19302'},
   {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
@@ -1918,7 +2364,7 @@ async function doStartCall(peerId,isVideo,stream){
   };
   _callPC.ontrack=e=>{
     if(activeCall)activeCall.answered=true;
-    onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo);
+    onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo||e.track.kind==='video');
   };
   _callPC.onconnectionstatechange=()=>{
     if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
@@ -1950,7 +2396,7 @@ async function answerCall(){
       if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
     };
     _callPC.ontrack=e=>{
-      onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo);
+      onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo||e.track.kind==='video');
     };
     _callPC.onconnectionstatechange=()=>{
       if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
@@ -2074,22 +2520,10 @@ async function _toggleCamScreen(){
 
 function onRemoteStream(rs,isVideo){
   $('callSub').textContent='';
-  if(isVideo){const rv=$('remoteVideo');rv.srcObject=rs;rv.play().catch(()=>{});}
+  const rv=$('remoteVideo');
+  rv.srcObject=rs;
+  if(isVideo){rv.play().catch(()=>{});$('callVidWrap').classList.add('show');$('callAudUI').style.display='none';}
   const a=$('remAudio');a.srcObject=rs;a.volume=1.0;
-  // Вешаем постоянный ontrack для renegotiation (камера/экран добавляются позже)
-  const pc=activeCall?.call?.peerConnection;
-  if(pc&&!pc._slonTrackListenerAdded){
-    pc._slonTrackListenerAdded=true;
-    pc.addEventListener('track',e=>{
-      if(e.track.kind==='video'){
-        const rv=$('remoteVideo');
-        rv.srcObject=e.streams[0]||new MediaStream([e.track]);
-        rv.play().catch(()=>{});
-        $('callVidWrap').classList.add('show');
-        $('callAudUI').style.display='none';
-      }
-    });
-  }
   if(selSpk&&selSpk!=='default'&&typeof a.setSinkId==='function')
     a.setSinkId(selSpk).catch(()=>{});
   const pp=a.play();
@@ -2113,17 +2547,15 @@ function minimizeCall(){callMinimized=true;$('callScreen').classList.remove('sho
 function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show');$('callScreen').classList.add('show');}
 
 function endCall(){
-  if(activeCall?.peerId&&conns[activeCall.peerId]?.open){
+  if(activeCall?.peerId){
     const msgType=activeCall.answered?'call_end':'call_cancel';
-    try{sendData(conns[activeCall.peerId],{type:msgType});}catch(e){}
+    _callSend(activeCall.peerId,{type:msgType});
   }
   endCallCleanup();
 }
 
 function cancelOutgoingCall(){
-  // Called when we hang up before recipient answers
-  if(activeCall?.peerId&&conns[activeCall.peerId]?.open)
-    try{sendData(conns[activeCall.peerId],{type:'call_cancel'});}catch(e){}
+  if(activeCall?.peerId)_callSend(activeCall.peerId,{type:'call_cancel'});
   endCallCleanup();
 }
 function endCallCleanup(){playHangupSound();stopRingSound();
@@ -2208,7 +2640,7 @@ async function _activateCam(){
       try{
         const offer=await pc.createOffer();
         await pc.setLocalDescription(offer);
-        sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
+        _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:pc.localDescription});
       }catch(re){console.warn('renegotiate cam:',re);}
     }
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
@@ -2276,7 +2708,7 @@ async function toggleScreenShare(){
       try{
         const offer=await pc.createOffer();
         await pc.setLocalDescription(offer);
-        sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
+        _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:pc.localDescription});
       }catch(re){console.warn('renegotiate offer error (screen):',re);}
     }
 
@@ -2328,7 +2760,7 @@ async function stopScreenShare(){
         try{
           const offer=await pc.createOffer();
           await pc.setLocalDescription(offer);
-          sendData(conns[activeCall.peerId],{type:'webrtc_offer',sdp:pc.localDescription});
+          _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:pc.localDescription});
         }catch(e){}
       });
     }
@@ -2420,47 +2852,64 @@ function onChatHeaderClick(){
 function showPeerProfile(pid){
   const name=peerNames[pid]||('@'+pid);
   const av=peerAvatars[pid];
-  const isOnline=conns[pid]?.open;
-  const bg=BG_COLORS[Math.abs(pid.split('').reduce((a,c)=>a+c.charCodeAt(0),0))%BG_COLORS.length];
+  const isOnline=_fbMode?!!_fbConns[pid]:(conns[pid]?.open);
+  const bio=peerBios[pid]||'';
+  const bgId=peerProfileBgs[pid]||'bg0';
+  const bg=BG_COLORS.find(b=>b.id===bgId)||BG_COLORS[0];
+
   const avHtml=av
-    ?`<div class="peer-prof-av"><img src="${av}"></div>`
-    :`<div class="peer-prof-av">${icoSvg('i-person')}</div>`;
+    ?`<img src="${av}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+    :`<svg style="width:52px;height:52px;fill:rgba(255,255,255,.8)"><use href="#i-person"/></svg>`;
+
   showModal(`
-    <div class="peer-prof-hero" style="background:${bg.grad}">
-      ${avHtml}
-      <div class="peer-prof-name">${esc(name)}</div>
-      <div class="peer-prof-status">${isOnline?'🟢 В сети':'⚫ Не в сети'}</div>
-      <div class="peer-prof-id">@${esc(pid)}</div>
-      <div class="peer-prof-actions">
-        <button class="peer-prof-btn peer-prof-btn-call" onclick="closeModal();startCallWithPerm('${pid}',false)">
-          ${icoSvg('i-phone')} Позвонить
-        </button>
-        <button class="peer-prof-btn peer-prof-btn-vid" onclick="closeModal();startCallWithPerm('${pid}',true)">
-          ${icoSvg('i-video')} Видео
-        </button>
-        <button class="peer-prof-btn peer-prof-btn-msg" onclick="closeModal();openChat('${pid}')">
-          ${icoSvg('i-chat')} Чат
-        </button>
+    <div style="margin:-16px -16px 0;border-radius:16px 16px 0 0;overflow:hidden;">
+      <div class="prof-hero2" style="min-height:200px;">
+        <div class="prof-hero2-bg" style="background:${bg.grad}"></div>
+        <div class="prof-av2-wrap" style="cursor:default;">
+          <div class="prof-av2">${avHtml}</div>
+        </div>
+        <div class="prof-name2">${esc(name)}</div>
+        <div class="prof-status2">
+          ${isOnline?`<div class="prof-dot2"></div> В сети`:`<div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex-shrink:0;"></div> Не в сети`}
+        </div>
       </div>
     </div>
-    <div style="background:var(--bg2);border-radius:0 0 12px 12px;">
-      <div class="peer-prof-info-row">
-        <div class="peer-prof-info-ico">${icoSvg('i-person')}</div>
-        <div><div class="peer-prof-info-lbl">Имя</div><div class="peer-prof-info-val">${esc(name)}</div></div>
+    <div class="prof-info-list" style="margin:0 -16px;border-radius:0;">
+      <div class="prof-info-row" style="cursor:default;">
+        <svg class="prof-info-ico"><use href="#i-person"/></svg>
+        <div class="prof-info-txt">
+          <div class="prof-info-val">${esc(name)}</div>
+          <div class="prof-info-lbl">Имя</div>
+        </div>
       </div>
-      <div class="peer-prof-info-row">
-        <div class="peer-prof-info-ico">${icoSvg('i-username')}</div>
-        <div><div class="peer-prof-info-lbl">Юзернейм</div><div class="peer-prof-info-val" style="font-family:monospace">@${esc(pid)}</div></div>
+      <div class="prof-info-row" onclick="navigator.clipboard.writeText('@${pid}').then(()=>toast('Скопировано!'))" title="Нажми для копирования">
+        <svg class="prof-info-ico"><use href="#i-username"/></svg>
+        <div class="prof-info-txt">
+          <div class="prof-info-val" style="font-family:monospace">@${esc(pid)}</div>
+          <div class="prof-info-lbl">Юзернейм</div>
+        </div>
+        <svg style="width:16px;height:16px;fill:var(--text2);flex-shrink:0"><use href="#i-copy"/></svg>
       </div>
-      <div class="peer-prof-info-row">
-        <div class="peer-prof-info-ico">${icoSvg('i-info')}</div>
-        <div><div class="peer-prof-info-lbl">Статус</div><div class="peer-prof-info-val">${isOnline?'В сети':'Не в сети'}</div></div>
-      </div>
+      ${bio?`<div class="prof-info-row" style="cursor:default;">
+        <svg class="prof-info-ico"><use href="#i-info"/></svg>
+        <div class="prof-info-txt">
+          <div class="prof-info-val">${esc(bio)}</div>
+          <div class="prof-info-lbl">О себе</div>
+        </div>
+      </div>`:''}
     </div>
-    <div class="m-btns" style="margin-top:12px">
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn-ok" style="flex:1;" onclick="closeModal();startCallWithPerm('${pid}',false)">
+        ${icoSvg('i-phone')} Позвонить
+      </button>
+      <button class="btn-ok" style="flex:1;background:linear-gradient(135deg,#0369a1,#4338ca);" onclick="closeModal();startCallWithPerm('${pid}',true)">
+        ${icoSvg('i-video')} Видео
+      </button>
+    </div>
+    <div class="m-btns" style="margin-top:8px;">
       <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
-      <button class="btn-ok" onclick="navigator.clipboard.writeText('@${pid}').then(()=>toast('Юзернейм скопирован!'))">
-        ${icoSvg('i-copy')} Скопировать
+      <button class="btn-ok" onclick="closeModal();openChat('${pid}')">
+        ${icoSvg('i-chat')} Написать
       </button>
     </div>
   `);
@@ -2473,17 +2922,17 @@ function updateChatHeader(){
     $('chAv').textContent='🐘';$('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
     $('chName').textContent='🐘 СЛОН AI';$('chStatus').textContent='AI Ассистент';
     $('chStatus').className='ch-status';
-    $('chActs').innerHTML=`<button class="ch-act" onclick="clearChat()">${icoSvg('i-trash')}</button>`;
+    $('chActs').innerHTML=`<button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
     mob.style.display='none';
   }else if(id.startsWith('g_')){
     const g=groups[id]||{};
     $('chAv').innerHTML='';$('chAv').textContent='👥';
     $('chName').textContent=g.name||'Группа';
     $('chStatus').textContent=(g.members?.length||0)+' участников';$('chStatus').className='ch-status';
-    $('chActs').innerHTML=`<button class="ch-act" onclick="showGroupInfo('${id}')">${icoSvg('i-group')}</button><button class="ch-act" onclick="clearChat()">${icoSvg('i-trash')}</button>`;
+    $('chActs').innerHTML=`<button class="ch-act" onclick="showGroupInfo('${id}')">${icoSvg('i-group')}</button><button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
     mob.style.display='none';
   }else{
-    const ok=conns[id]?.open,av=peerAvatars[id];
+    const ok=_fbMode?!!_fbConns[id]:(conns[id]?.open),av=peerAvatars[id];
     $('chAv').innerHTML='';$('chAv').style.background='';
     if(av){
       const i=document.createElement('img');i.src=av;i.style.cssText='width:38px;height:38px;object-fit:cover;border-radius:50%';
@@ -2501,7 +2950,7 @@ function updateChatHeader(){
       <button class="ch-act" onclick="showPeerProfile('${id}')" title="Профиль">${icoSvg('i-person')}</button>
       <button class="ch-act call" onclick="startCallWithPerm('${id}',false)">${icoSvg('i-phone')}</button>
       <button class="ch-act vcall" onclick="startCallWithPerm('${id}',true)">${icoSvg('i-video')}</button>
-      <button class="ch-act" onclick="clearChat()">${icoSvg('i-trash')}</button>`;
+      <button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
     if(window.innerWidth<=640)mob.style.display='flex';else mob.style.display='none';
   }
 }
@@ -2686,6 +3135,7 @@ function saveNick(){
   const v=($('nickInp')?.value||'').trim().slice(0,32);
   myNick=v;saveAll();updateProfileDisplay();
   Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+  if(_fbMode)_publishMyProfile();
   closeModal();toast('Имя обновлено');
 }
 
@@ -3169,8 +3619,8 @@ function sendVoiceMsg(dataUrl,dur,mimeType){
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
-  if(activeChat!=='ai'&&conns[activeChat]?.open)
-    sendMediaChunked(conns[activeChat],'voice',mid,dataUrl,dur,mimeType);
+  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open))
+    sendMediaChunked(_fbMode?activeChat:conns[activeChat],'voice',mid,dataUrl,dur,mimeType);
   saveAll();
 }
 
@@ -3180,17 +3630,31 @@ function sendSlonMsg(dataUrl,dur,mimeType){
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🐘 Слонкружок');
-  if(activeChat!=='ai'&&conns[activeChat]?.open)
-    sendMediaChunked(conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
+  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open))
+    sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
   saveAll();
 }
 
-// Универсальная чанковая отправка для voice и slon
-function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
-  const chunks=[];
-  for(let i=0;i<dataUrl.length;i+=CHUNK)chunks.push(dataUrl.slice(i,i+CHUNK));
+// Отправка voice/slon через Firebase Storage (один URL вместо чанков)
+async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
   const nick=myNick||('@'+myUsername);
   const avatar=myAvatar||null;
+  const pid=typeof conn==='string'?conn:(conn?.peer||conn?.pid||null);
+  if(!pid)return;
+
+  // Если Firebase Storage доступен — загружаем туда
+  if(window._fbStorage&&window._fbSref&&window._fbUploadString&&window._fbGetDownloadURL){
+    try{
+      const storRef=window._fbSref(window._fbStorage,'media/'+id+'_'+kind);
+      await window._fbUploadString(storRef,dataUrl,'data_url');
+      const url=await window._fbGetDownloadURL(storRef);
+      sendData(conn,{type:'media_url',kind,id,dur,mime:mimeType,url,nick,avatar});
+      return;
+    }catch(e){console.warn('Storage upload failed, falling back to chunks:',e);}
+  }
+  // Fallback: чанки (для P2P режима)
+  const chunks=[];
+  for(let i=0;i<dataUrl.length;i+=CHUNK)chunks.push(dataUrl.slice(i,i+CHUNK));
   sendData(conn,{type:'media_start',kind,id,dur,mime:mimeType,chunks:chunks.length,nick,avatar});
   chunks.forEach((d,i)=>sendData(conn,{type:'media_chunk',id,i,d}));
   sendData(conn,{type:'media_end',id});
