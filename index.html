@@ -1282,97 +1282,18 @@ function rebuildSidebar(){
 // ════════════════════════════════════════
 
 function initPeer(){
-  if(!window.Peer){setNet(false,'PeerJS не загружен');return;}
   if(!myUsername){showUsernameOverlay();return;}
-
-  try{
-    // Используем юзернейм как PeerJS ID — стабильные чаты!
-    // Сигналинг через Firebase (обход блокировок РФ)
-    peer=new Peer(myUsername,{
-      debug:0,
-      config:{iceServers:[
-        {urls:'stun:stun.cloudflare.com:3478'},
-        {urls:'stun:stun.l.google.com:19302'},
-        {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
-        {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-        {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
-      ]}
-    });
-
-    peer.on('open',id=>{
-      myId=id; // id === myUsername
-      initPeer._retries=0;
-      setMyLabel();
-      setNet(true,'@'+myUsername);
-      updateProfileDisplay();
-      // Всегда слушаем Firebase inbox (гибридный режим)
-      if(_fbReady())_fbListen(myUsername);
-      else window.addEventListener('firebaseReady',()=>_fbListen(myUsername),{once:true});
-      setTimeout(()=>{
-        Object.keys(peerNames).forEach(pid=>{
-          if(!conns[pid]?.open)silentConnect(pid);
-        });
-      },1200);
-    });
-
-    peer.on('connection',conn=>{
-      setupConn(conn,true);
-    });
-
-    peer.on('call',call=>{
-      pendingCall={call,peerId:call.peer,isVideo:!!(call.metadata?.video)};
-      const av=peerAvatars[call.peer],el=$('icAv');
-      el.innerHTML='';
-      if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';el.appendChild(i);}
-      else el.innerHTML=icoSvg('i-person');
-      $('icName').textContent=peerNames[call.peer]||('@'+call.peer);
-      $('icType').textContent=pendingCall.isVideo?'Видеозвонок':'Голосовой звонок';
-      $('incoming').classList.add('show');startRingSound();showDesktopNotif('📞 Входящий звонок',peerNames[call.peer]||('@'+call.peer),null,'call');
-      if(navigator.vibrate)navigator.vibrate([300,100,300,100,300]);
-    });
-
-    peer.on('disconnected',()=>{
-      setNet(false,'Переподключение…');
-      setTimeout(()=>{
-        try{if(peer&&!peer.destroyed)peer.reconnect();}catch(e){}
-      },2500);
-    });
-
-    peer.on('error',e=>{
-      // Юзернейм занят — просим выбрать другой
-      if(e.type==='unavailable-id'){
-        // ID занят — показываем оверлей, не стираем username из LS
-        if(peer&&!peer.destroyed){try{peer.destroy();}catch(err){}}
-        peer=null;
-        const errEl=$('usernameError');
-        const takenEl=$('usernameTakenHint');
-        showUsernameOverlay();
-        if(errEl){errEl.textContent='Юзернейм @'+myUsername+' уже занят!';errEl.style.display='block';}
-        if(takenEl)takenEl.style.display='block';
-        return;
-      }
-            if(e.type==='peer-unavailable'){
-        const m=String(e.message||'').match(/Could not connect to peer ([^\s]+)/i);
-        const pid=m?m[1]:null;
-        if(pid){
-          if(chatHist[pid]!==undefined)sysMsg(pid,'⚠ Пользователь @'+pid+' недоступен или офлайн');
-          else toast('Пользователь недоступен',3000);
-          delete conns[pid];
-          setSbStatus(pid,false);
-          if(activeChat===pid){updateChatHeader();updateReconBanner();}
-        }else{
-          toast('Пользователь недоступен',3000);
-        }
-        return;
-      }
-      if(['network','server-error','socket-error','socket-closed'].includes(e.type)){
-        setNet(false,'⚠ Сигнальный сервер недоступен — пробуем Firebase…');
-        // PeerJS сервер заблокирован — переключаемся на Firebase-режим
-        setTimeout(()=>initFirebaseMode(),1500);
-      }
-    });
-  }catch(e){
-    setNet(false,'WebRTC недоступен');
+  // Сразу запускаем Firebase-режим — без PeerJS сервера.
+  // Так работает везде включая РФ, не зависит от внешних серверов.
+  myId=myUsername;
+  setMyLabel();
+  updateProfileDisplay();
+  if(_fbReady()){
+    initFirebaseMode();
+  } else {
+    setNet(false,'Подключение…');
+    window.addEventListener('firebaseReady',()=>initFirebaseMode(),{once:true});
+    setTimeout(()=>{if(!_fbMode)setNet(false,'⚠ Firebase не загрузился — проверь интернет');},8000);
   }
 }
 
@@ -1395,19 +1316,21 @@ function initFirebaseMode(){
     return;
   }
   _fbMode=true;
-  setNet(true,'@'+myUsername+' (Firebase)');
-  toast('📡 Работаем через Firebase (обход блокировок)',4000);
+  setNet(true,'@'+myUsername);
   _fbListen(myUsername);
+  _startMyPresence();
+  // Следим за присутствием известных контактов
+  Object.keys(peerNames).forEach(pid=>_watchPresence(pid));
   // Переподключаем всех известных пиров через Firebase
   setTimeout(()=>{
     Object.keys(peerNames).forEach(pid=>_fbSilentConnect(pid));
-  },500);
+  },800);
 }
 
 // Слушаем входящие сообщения для себя в Firebase
 function _fbListen(username){
   if(!_fbReady())return;
-  const db=_fbDb();
+  const db=window._fbDb;
   const inbox=window._fbRef(db,'inbox/'+username);
   window._fbOnChildAdded(inbox,snap=>{
     const data=snap.val();
@@ -1423,9 +1346,10 @@ function _fbListen(username){
       if(!$('si-'+pid))addSbItem(pid);
       saveAll();
     }
-    // Помечаем как "онлайн через Firebase"
+    // Помечаем как онлайн и следим за присутствием
     _fbConns[pid]=true;
     setSbStatus(pid,true);
+    _watchPresence(pid);
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
     // Обрабатываем данные
     if(data.payload&&typeof data.payload==='object'){
@@ -1437,6 +1361,36 @@ function _fbListen(username){
 // "Виртуальные соединения" через Firebase
 let _fbConns={}; // pid -> true если доступен через Firebase
 
+
+// ── Firebase Presence: следим кто онлайн ──
+let _presenceWatchers={}; // pid -> unsubscribe
+
+function _watchPresence(pid){
+  if(_presenceWatchers[pid]||!window._fbDb)return;
+  const r=window._fbRef(window._fbDb,'presence/'+pid);
+  const unsub=window._fbOnValue(r,snap=>{
+    const data=snap.val();
+    const online=!!(data&&data.online&&(Date.now()-data.ts)<60000);
+    setSbStatus(pid,online);
+  });
+  _presenceWatchers[pid]=unsub;
+}
+
+function _startMyPresence(){
+  if(!window._fbDb||!myUsername)return;
+  const presRef=window._fbRef(window._fbDb,'presence/'+myUsername);
+  window._fbSet(presRef,{online:true,ts:Date.now()});
+  // Обновляем каждые 25 секунд
+  setInterval(()=>{
+    if(myUsername&&window._fbDb)
+      window._fbSet(window._fbRef(window._fbDb,'presence/'+myUsername),{online:true,ts:Date.now()});
+  },25000);
+  // Убираем при закрытии
+  window.addEventListener('beforeunload',()=>{
+    window._fbRemove(window._fbRef(window._fbDb,'presence/'+myUsername));
+  });
+}
+
 function _fbSilentConnect(pid){
   if(!_fbReady()||!pid||pid===myUsername)return;
   // Отправляем hello через Firebase
@@ -1444,9 +1398,9 @@ function _fbSilentConnect(pid){
 }
 
 function _fbSend(pid,data){
-  if(!_fbReady())return false;
+  if(!_fbReady()||!window._fbDb)return false;
   try{
-    const db=_fbDb();
+    const db=window._fbDb;
     const inboxRef=window._fbRef(db,'inbox/'+pid);
     window._fbPush(inboxRef,{from:myUsername,payload:data,ts:Date.now()});
     return true;
@@ -1536,12 +1490,12 @@ function connectTo(pid,nick){
 }
 
 function sendData(conn,data){
-  // Если есть прямое WebRTC соединение — используем его
-  try{if(conn?.open){conn.send(data);return;}}catch(e){}
-  // Иначе — Firebase fallback
-  if(_fbMode&&conn?.peer){
-    _fbSend(conn.peer,data);
+  if(_fbMode){
+    const pid=typeof conn==='string'?conn:(conn?.peer||conn?.pid||null);
+    if(pid)_fbSend(pid,data);
+    return;
   }
+  try{if(conn?.open){conn.send(data);}}catch(e){}
 }
 
 // ── DATA HANDLER ──
@@ -1573,41 +1527,52 @@ function onData(pid,data){
       if(activeCall?.peerId===pid){endCallCleanup();toast('Звонок завершён');}
       break;
     case 'call_cancel':
-      // Caller cancelled before we answered
-      if(pendingCall?.peerId===pid||pendingCall?.call?.peer===pid){
-        stopRingSound();
-        $('incoming').classList.remove('show');
-        pendingCall=null;
-        toast('Звонок отменён');
+    case 'call_reject':
+      if(pendingCall?.peerId===pid){
+        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;toast('Звонок отменён');
       }
+      if(data.type==='call_reject'&&activeCall?.peerId===pid){endCallCleanup();toast('Звонок отклонён');}
       break;
-    case 'webrtc_offer':
+    case 'call_incoming':
+      // Входящий звонок — показываем UI, ждём offer
+      if(activeCall)break; // уже в звонке
+      pendingCall={peerId:pid,isVideo:!!data.isVideo,sdp:null};
+      {const av=peerAvatars[pid],el=$('icAv');el.innerHTML='';
+      if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';el.appendChild(i);}
+      else el.innerHTML=icoSvg('i-person');
+      $('icName').textContent=data.nick||peerNames[pid]||('@'+pid);
+      $('icType').textContent=data.isVideo?'Видеозвонок':'Голосовой звонок';
+      $('incoming').classList.add('show');startRingSound();
+      showDesktopNotif('📞 Входящий звонок',data.nick||peerNames[pid]||('@'+pid),null,'call');
+      if(navigator.vibrate)navigator.vibrate([300,100,300,100,300]);}
+      break;
+    case 'call_offer':
+      // SDP offer от звонящего
       (async()=>{
-        if(!activeCall||activeCall.peerId!==pid)return;
-        const pc=activeCall.call.peerConnection;if(!pc)return;
-        try{
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          const answer=await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          sendData(conns[pid],{type:'webrtc_answer',sdp:pc.localDescription});
-          pc.addEventListener('track',e=>{
-            if(e.track.kind==='video'){
-              const rv=$('remoteVideo');
-              rv.srcObject=e.streams[0]||new MediaStream([e.track]);
-              rv.play().catch(()=>{});
-              $('callVidWrap').classList.add('show');
-              $('callAudUI').style.display='none';
-            }
-          },{once:true});
-        }catch(err){console.warn('renegotiate answer error:',err);}
+        if(pendingCall?.peerId===pid){pendingCall.sdp=data.sdp;}
+        // Если уже нажали "принять" до прихода offer — отвечаем сразу
+        if(activeCall?.peerId===pid&&_callPC){
+          try{
+            await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            const answer=await _callPC.createAnswer();
+            await _callPC.setLocalDescription(answer);
+            _callSend(pid,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
+          }catch(e){console.warn('late offer handle:',e);}
+        }
       })();
       break;
-    case 'webrtc_answer':
+    case 'call_answer':
       (async()=>{
-        if(!activeCall||activeCall.peerId!==pid)return;
-        const pc=activeCall.call.peerConnection;if(!pc)return;
-        try{await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));}
-        catch(err){console.warn('set remote answer error:',err);}
+        if(!activeCall||activeCall.peerId!==pid||!_callPC)return;
+        try{await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));}
+        catch(e){console.warn('set answer error:',e);}
+      })();
+      break;
+    case 'call_ice':
+      (async()=>{
+        if(!_callPC||!data.candidate)return;
+        try{await _callPC.addIceCandidate(new RTCIceCandidate(data.candidate));}
+        catch(e){console.warn('ice candidate error:',e);}
       })();
       break;
     case 'group_invite':
@@ -1675,7 +1640,7 @@ function sendMsg(){
     },delay);
   }else{
     const c=conns[activeChat];
-    if(c?.open)sendData(c,{type:'msg',text:txt,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',text:txt,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
     else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
   }
 }
@@ -1762,8 +1727,8 @@ function showRemoteTyping(pid){
 
 function onTyping(el){
   resizeInp(el);
-  if(activeChat!=='ai'&&!activeChat.startsWith('g_')&&conns[activeChat]?.open)
-    sendData(conns[activeChat],{type:'typing'});
+  if(activeChat!=='ai'&&!activeChat.startsWith('g_')&&(_fbMode||conns[activeChat]?.open))
+    sendData(conns[activeChat]||activeChat,{type:'typing'});
 }
 
 // ── FILES ──
@@ -1803,9 +1768,9 @@ function sendFileTo(fid,name,mime,isImg,data){
     sendData(conn,{type:'file_end',id:fid});
   };
   if(activeChat.startsWith('g_')){
-    groups[activeChat]?.members?.forEach(pid=>{if(pid!==myUsername&&conns[pid]?.open)doSend(conns[pid]);});
-  }else if(activeChat!=='ai'&&conns[activeChat]?.open){
-    doSend(conns[activeChat]);
+    groups[activeChat]?.members?.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))doSend(conns[pid]||pid);});
+  }else if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
+    doSend(conns[activeChat]||activeChat);
   }
 }
 
@@ -1917,38 +1882,97 @@ async function getMediaStream(isVideo){
 // ── CALLS (аудио + видео + экран + камера в аудио) ──
 // ═══════════════════════════════════════════════════
 
+// ── WebRTC звонки через Firebase/DataChannel сигналинг ──
+let _callPC=null; // RTCPeerConnection для активного звонка
+const ICE_SERVERS=[
+  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
+];
+
+function _callSend(peerId,data){
+  // Сигналинг для звонков — через DataChannel если есть, иначе Firebase
+  if(conns[peerId]?.open){
+    try{conns[peerId].send(data);return;}catch(e){}
+  }
+  _fbSend(peerId,data);
+}
+
 function startCallWithPerm(peerId,isVideo){
-  if(!peer?.open)return toast('P2P не готов');
-  if(!conns[peerId]?.open)return toast('Собеседник не в сети');
+  // В fbMode считаем всех потенциально доступными
   if(activeCall)return toast('Уже идёт звонок');
   if(!hasMediaDevices)return toast('Медиа-устройства недоступны');
   getMediaStream(isVideo)
     .then(stream=>doStartCall(peerId,isVideo,stream))
     .catch(e=>{if(e.message!=='skipped')console.error('Perm error:',e);});
 }
-function doStartCall(peerId,isVideo,stream){
+
+async function doStartCall(peerId,isVideo,stream){
   localStream=stream;
-  const call=peer.call(peerId,stream,{metadata:{video:isVideo}});
-  activeCall={call,peerId,isVideo};
+  _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
+  stream.getTracks().forEach(t=>_callPC.addTrack(t,stream));
+  _callPC.onicecandidate=e=>{
+    if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
+  };
+  _callPC.ontrack=e=>{
+    if(activeCall)activeCall.answered=true;
+    onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo);
+  };
+  _callPC.onconnectionstatechange=()=>{
+    if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
+      if(activeCall)endCallCleanup();
+    }
+  };
+  const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
+  activeCall={call:fakeCall,peerId,isVideo,answered:false};
   setupCallUI(peerId,isVideo);
-  call.on('stream',rs=>{activeCall.answered=true;onRemoteStream(rs,isVideo);});
-  call.on('close',()=>{if(activeCall)endCallCleanup();});
-  call.on('error',e=>{console.error('call error:',e);endCallCleanup();});
+  // Уведомляем собеседника о звонке
+  _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+  // Offer
+  try{
+    const offer=await _callPC.createOffer();
+    await _callPC.setLocalDescription(offer);
+    _callSend(peerId,{type:'call_offer',sdp:_callPC.localDescription.toJSON(),isVideo});
+  }catch(e){console.error('call offer error',e);endCallCleanup();}
 }
+
 async function answerCall(){
-  $('incoming').classList.remove('show');stopRingSound();if(!pendingCall)return;
-  const{call,peerId,isVideo}=pendingCall;pendingCall=null;
-  getMediaStream(isVideo).then(stream=>{
+  $('incoming').classList.remove('show');stopRingSound();
+  if(!pendingCall)return;
+  const{peerId,isVideo,sdp}=pendingCall;pendingCall=null;
+  getMediaStream(isVideo).then(async stream=>{
     localStream=stream;
-    call.answer(stream);
-    activeCall={call,peerId,isVideo};
+    _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
+    stream.getTracks().forEach(t=>_callPC.addTrack(t,stream));
+    _callPC.onicecandidate=e=>{
+      if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
+    };
+    _callPC.ontrack=e=>{
+      onRemoteStream(e.streams[0]||new MediaStream([e.track]),isVideo);
+    };
+    _callPC.onconnectionstatechange=()=>{
+      if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
+        if(activeCall)endCallCleanup();
+      }
+    };
+    const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
+    activeCall={call:fakeCall,peerId,isVideo};
     setupCallUI(peerId,isVideo);
-    call.on('stream',rs=>onRemoteStream(rs,isVideo));
-    call.on('close',()=>{if(activeCall)endCallCleanup();});
-    call.on('error',e=>{console.error('answer error:',e);endCallCleanup();});
-  }).catch(()=>{toast('Не удалось получить доступ к микрофону');call.close();});
+    try{
+      await _callPC.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer=await _callPC.createAnswer();
+      await _callPC.setLocalDescription(answer);
+      _callSend(peerId,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
+    }catch(e){console.error('answer error',e);endCallCleanup();}
+  }).catch(()=>toast('Нет доступа к микрофону'));
 }
-function rejectCall(){$('incoming').classList.remove('show');stopRingSound();playHangupSound();if(pendingCall?.call)pendingCall.call.close();pendingCall=null;}
+
+function rejectCall(){
+  $('incoming').classList.remove('show');stopRingSound();playHangupSound();
+  if(pendingCall){_callSend(pendingCall.peerId,{type:'call_reject'});pendingCall=null;}
+}
 
 function setupCallUI(peerId,isVideo){
   const av=peerAvatars[peerId];
@@ -2111,6 +2135,7 @@ function endCallCleanup(){playHangupSound();stopRingSound();
   isScreenSharing=false;
 
   try{activeCall?.call?.close();}catch(e){}
+  try{if(_callPC){_callPC.close();_callPC=null;}}catch(e){}
   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
   if(callTimer){clearInterval(callTimer);callTimer=null;}
   const a=$('remAudio');a.srcObject=null;a.pause();
@@ -2327,7 +2352,7 @@ function createGroup(name,members){
   const gid='g_'+Date.now();
   groups[gid]={name,members:[myUsername,...members],admin:myUsername};grpHist[gid]=[];
   const inv={type:'group_invite',gid,name,members:groups[gid].members,admin:myUsername};
-  members.forEach(pid=>{if(conns[pid]?.open)sendData(conns[pid],inv);});
+  members.forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,inv);});
   addSbGroup(gid);openChat(gid);sysMsg(gid,'Группа "'+name+'" создана!');saveAll();
 }
 function recvGrpInvite(data){
@@ -2343,7 +2368,7 @@ function sendGrpMsg(gid,text){
   if(!grpHist[gid])grpHist[gid]=[];grpHist[gid].push(msg);appendMsg(msg);scrollDown();
   updatePreview(gid,'Вы: '+text.slice(0,25));
   const pkt={type:'group_msg',gid,text,nick:myNick||('@'+myUsername),avatar:myAvatar||null,sid:myUsername,mid:'gm'+Date.now(),time:nowTime()};
-  g.members.forEach(pid=>{if(pid!==myUsername&&conns[pid]?.open)sendData(conns[pid],pkt);});saveAll();
+  g.members.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))sendData(conns[pid]||pid,pkt);});saveAll();
 }
 function recvGrpMsg(data){
   if(!groups[data.gid])return;if(!grpHist[data.gid])grpHist[data.gid]=[];
@@ -2482,7 +2507,7 @@ function updateChatHeader(){
 }
 function updateReconBanner(){
   const id=activeChat;
-  if(id==='ai'||id.startsWith('g_')||conns[id]?.open||currentView==='profile'){
+  if(id==='ai'||id.startsWith('g_')||_fbMode||conns[id]?.open||currentView==='profile'){
     $('reconBanner').classList.remove('show');return;
   }
   $('reconWho').textContent='@'+(peerNames[id]||id);
@@ -2497,6 +2522,7 @@ function reconnectCurrent(){
 }
 function addSbItem(pid){
   if($('si-'+pid)){updateSbName(pid);updateSbAvatar(pid);return;}
+  if(_fbMode)_watchPresence(pid);
   const av=peerAvatars[pid];
   const d=document.createElement('div');d.className='sb-item';d.id='si-'+pid;d.onclick=()=>openChat(pid);d.oncontextmenu=e=>showChatCtxMenu(e,pid);
   d.innerHTML=`
@@ -2659,7 +2685,7 @@ function editNick(){
 function saveNick(){
   const v=($('nickInp')?.value||'').trim().slice(0,32);
   myNick=v;saveAll();updateProfileDisplay();
-  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
   closeModal();toast('Имя обновлено');
 }
 
@@ -2677,7 +2703,7 @@ function editBio(){
 function saveBio(){
   myBio=($('bioInp')?.value||'').trim().slice(0,200);
   saveAll();updateProfileDisplay();
-  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio,username:myUsername});});
+  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio,username:myUsername});});
   closeModal();toast('Биография обновлена');
 }
 
@@ -2689,14 +2715,14 @@ async function handleAvatarUpload(inp){
     const thumb=await makeThumb(e.target.result,200,0.8);
     myAvatar=thumb||e.target.result;
     saveAll();updateProfileDisplay();
-    Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:myAvatar,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+    Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
     toast('Фото профиля обновлено');
   };
   reader.readAsDataURL(file);
 }
 function removeAvatar(){
   myAvatar=null;saveAll();updateProfileDisplay();
-  Object.values(conns).forEach(c=>{if(c?.open)sendData(c,{type:'hello',nick:myNick,avatar:null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
   toast('Фото удалено');
 }
 
