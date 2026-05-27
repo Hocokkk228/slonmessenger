@@ -151,6 +151,15 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .file-ico{font-size:22px;width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;}
 .file-name{font-size:12px;font-weight:600;}
 .file-sz{font-size:10px;opacity:.7;}
+.msg-link{color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,.5);word-break:break-all;}
+.msg.inc .msg-link{color:var(--accent);text-decoration-color:rgba(88,166,255,.4);}
+.msg.out .msg-link:hover{text-decoration-color:#fff;}
+.msg.inc .msg-link:hover{text-decoration-color:var(--accent);}
+.upload-progress{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);border-radius:50%;pointer-events:none;}
+.upload-progress .upload-pct{position:absolute;font-size:10px;color:#fff;font-weight:600;}
+.photo-bub,.file-bub{position:relative;}
+.date-separator{display:flex;justify-content:center;margin:14px 0 8px;}
+.date-separator span{background:var(--bg2);color:var(--text2);font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid var(--border);font-weight:500;}
 
 .typing-wrap{padding:0 10px 5px;min-height:26px;}
 .typing{display:none;align-items:center;gap:3px;padding:7px 11px;background:var(--msg-in);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:3px;width:fit-content;}
@@ -1062,6 +1071,43 @@ window.dispatchEvent(new Event('firebaseReady'));
 const $ = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const nowTime = () => { const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+const fmtTime = (ts) => { const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+// Дата для разделителей в чате: "Сегодня", "Вчера", "23 мая" или "23 мая 2024"
+function fmtDateSeparator(ts){
+  const d=new Date(ts), now=new Date();
+  const isSameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  const yesterday=new Date(now); yesterday.setDate(now.getDate()-1);
+  if(isSameDay(d,now))return 'Сегодня';
+  if(isSameDay(d,yesterday))return 'Вчера';
+  const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const sameYear=d.getFullYear()===now.getFullYear();
+  return d.getDate()+' '+months[d.getMonth()]+(sameYear?'':' '+d.getFullYear());
+}
+
+// Превращаем ссылки в кликабельные <a>. Безопасно эскейпит остальное.
+function linkify(text){
+  if(!text)return '';
+  const urlRegex=/(\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+)/gi;
+  let lastIndex=0, out='';
+  text.replace(urlRegex,(match,_g,idx)=>{
+    out+=esc(text.slice(lastIndex,idx));
+    let url=match;
+    if(/^www\./i.test(url))url='https://'+url;
+    // отрезаем хвостовые знаки препинания
+    let tail='';
+    while(/[.,!?;:)\]}'"]$/.test(match)){
+      tail=match.slice(-1)+tail;
+      match=match.slice(0,-1);
+      url=url.slice(0,-1);
+    }
+    out+='<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" class="msg-link" onclick="event.stopPropagation()">'+esc(match)+'</a>'+esc(tail);
+    lastIndex=idx+(match.length+tail.length);
+    return match;
+  });
+  out+=esc(text.slice(lastIndex));
+  return out;
+}
 const fmtSz = b => b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
 const icoSvg = id => `<svg><use href="#${id}"/></svg>`;
 
@@ -1224,30 +1270,50 @@ function saveUsername(){
   }
 
   const oldUsername=myUsername;
+  const isFirstRegistration=!oldUsername;
   myUsername=raw;
   LS.set('sl_username',raw);
   $('usernameOverlay').classList.remove('show');
-  // Обновляем Firebase профиль с новым юзернеймом немедленно
-  if(_fbMode||_fbReady()){
-    _publishMyProfile(oldUsername);
-    // Уведомляем всех контактов о смене юзернейма
-    Object.keys(peerNames).forEach(pid=>{
-      _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
-        username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',oldUsername});
-    });
-    setMyLabel();
-    updateProfileDisplay();
-    // Переподключаем Firebase listener на новый username
-    _fbListen(myUsername);
-    _startMyPresence();
-    toast('Юзернейм изменён: @'+myUsername);
+  setMyLabel();
+  updateProfileDisplay();
+
+  // Если Firebase готов — сразу инициализируем (одинаково для первой регистрации и смены)
+  if(_fbReady()){
+    // Если уже в FB-режиме — просто перепереключим listener на новый username
+    if(_fbMode){
+      // Отписываемся от старого username (если он был)
+      if(oldUsername&&oldUsername!==myUsername){
+        try{_fbStopListen(oldUsername);}catch(e){}
+      }
+      _fbListen(myUsername);
+      _startMyPresence();
+      _publishMyProfile(oldUsername||undefined);
+      // Известным контактам шлём hello с новыми данными
+      Object.keys(peerNames).forEach(pid=>{
+        _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
+          username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',oldUsername:oldUsername||undefined});
+      });
+      if(!isFirstRegistration)toast('Юзернейм изменён: @'+myUsername);
+      return;
+    }
+    // Ещё не в FB-режиме — поднимаем полностью
+    initFirebaseMode();
     return;
   }
-  // Уничтожаем старое соединение и создаём новое с новым ID
-  if(peer&&!peer.destroyed){try{peer.destroy();}catch(e){}}
-  peer=null;
-  initPeer._retries=0;
-  initPeer();
+
+  // Firebase ещё грузится — ждём готовности и поднимаемся
+  setNet(false,'Подключение…');
+  window.addEventListener('firebaseReady',()=>{
+    if(myUsername)initFirebaseMode();
+  },{once:true});
+}
+
+// Останавливаем listener на старый username (на случай смены)
+function _fbStopListen(username){
+  if(_fbListeners[username]){
+    try{_fbListeners[username]();}catch(e){}
+    delete _fbListeners[username];
+  }
 }
 
 // ── SAVE / LOAD ──
@@ -1292,6 +1358,37 @@ function loadStorage(){
     LS.set('sl_iid',myInternalId);
   }
   if(!chatHist.ai)chatHist.ai=[];
+  // Бэкфилл ts для старых сообщений (приближение: если есть time, считаем что сегодня)
+  const tdy=new Date();tdy.setHours(0,0,0,0);
+  const tdyMs=tdy.getTime();
+  for(const h of Object.values(chatHist)){
+    if(!h)continue;
+    for(let i=0;i<h.length;i++){
+      const m=h[i];
+      if(m&&!m.ts){
+        if(m.time&&/^\d{2}:\d{2}$/.test(m.time)){
+          const [hh,mm]=m.time.split(':').map(Number);
+          m.ts=tdyMs+hh*3600000+mm*60000;
+        }else{
+          m.ts=Date.now()-(h.length-i)*60000; // приближение
+        }
+      }
+    }
+  }
+  for(const h of Object.values(grpHist)){
+    if(!h)continue;
+    for(let i=0;i<h.length;i++){
+      const m=h[i];
+      if(m&&!m.ts){
+        if(m.time&&/^\d{2}:\d{2}$/.test(m.time)){
+          const [hh,mm]=m.time.split(':').map(Number);
+          m.ts=tdyMs+hh*3600000+mm*60000;
+        }else{
+          m.ts=Date.now()-(h.length-i)*60000;
+        }
+      }
+    }
+  }
   for(const h of Object.values(chatHist))for(const m of(h||[]))if(m.photoSaved){m.photoId=storePhoto(m.photoSaved);delete m.photoSaved;}
   for(const h of Object.values(grpHist))for(const m of(h||[]))if(m.photoSaved){m.photoId=storePhoto(m.photoSaved);delete m.photoSaved;}
   applyTheme(LS.get('sl_theme','dark'),false);
@@ -1649,7 +1746,7 @@ function onData(pid,data){
       saveAll();
       break;
     case 'msg':
-      recvMsg(pid,data.text,data.nick,data.avatar,data.id);
+      recvMsg(pid,data.text,data.nick,data.avatar,data.id,data.ts);
       break;
     case 'read':
       // Собеседник прочитал наши сообщения
@@ -1792,7 +1889,7 @@ function onData(pid,data){
       break;
     case 'media_start':{
       inMediaBufs[data.id]={kind:data.kind,dur:data.dur||0,mime:data.mime||'',
-        total:data.chunks,parts:[],nick:data.nick||('@'+pid),avatar:data.avatar||peerAvatars[pid]||null,pid};
+        total:data.chunks,parts:[],nick:data.nick||('@'+pid),avatar:data.avatar||peerAvatars[pid]||null,pid,ts:data.ts};
       break;}
     case 'media_chunk':{
       const buf=inMediaBufs[data.id];if(buf)buf.parts[data.i]=data.d;
@@ -1802,14 +1899,15 @@ function onData(pid,data){
       const spid2=pid;
       const dn=data.nick||(peerNames[spid2]||('@'+spid2));
       const dav=data.avatar||peerAvatars[spid2]||null;
+      const mts=data.ts||Date.now();
       if(data.kind==='voice'){
-        const mv={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),voiceData:data.url,voiceDur:data.dur,isUrl:true};
+        const mv={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:data.url,voiceDur:data.dur,isUrl:true};
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(mv);
         if(activeChat===spid2){appendMsg(mv);scrollDown();}
         else{addUnread(spid2);toast('🎙️ '+(peerNames[spid2]||('@'+spid2))+': голосовое');}
         updatePreview(spid2,'🎙️ Голосовое');
       }else if(data.kind==='slon'){
-        const ms={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),slonData:data.url,slonDur:data.dur,isUrl:true};
+        const ms={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:data.url,slonDur:data.dur,isUrl:true};
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(ms);
         if(activeChat===spid2){appendMsg(ms);scrollDown();}
         else{addUnread(spid2);toast('🐘 '+(peerNames[spid2]||('@'+spid2))+': слонкружок');}
@@ -1823,6 +1921,7 @@ function onData(pid,data){
         const spid=pid;
         const dn=data.nick||(peerNames[spid]||('@'+spid));
         const dav=data.avatar||peerAvatars[spid]||null;
+        const mts=data.ts||Date.now();
         try{
           const base='media_transfer/'+myUsername+'/'+data.id;
           const parts=[];
@@ -1834,16 +1933,15 @@ function onData(pid,data){
             });
           }
           const fullData=parts.join('');
-          // Чистим из RTDB
           window._fbRemove(window._fbRef(window._fbDb,base)).catch(()=>{});
           if(data.kind==='voice'){
-            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),voiceData:fullData,voiceDur:data.dur};
+            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:fullData,voiceDur:data.dur};
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
             updatePreview(spid,'🎙️ Голосовое');
           }else if(data.kind==='slon'){
-            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,time:nowTime(),slonData:fullData,slonDur:data.dur};
+            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:fullData,slonDur:data.dur};
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
@@ -1859,14 +1957,15 @@ function onData(pid,data){
       const fullData=buf.parts.join('');
       delete inMediaBufs[data.id];
       const spid=buf.pid;
+      const mts=buf.ts||Date.now();
       if(buf.kind==='voice'){
-        const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,time:nowTime(),voiceData:fullData,voiceDur:buf.dur};
+        const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),voiceData:fullData,voiceDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg2);
         if(activeChat===spid){appendMsg(msg2);scrollDown();}
         else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
         updatePreview(spid,'🎙️ Голосовое');
       }else if(buf.kind==='slon'){
-        const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,time:nowTime(),slonData:fullData,slonDur:buf.dur};
+        const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),slonData:fullData,slonDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg3);
         if(activeChat===spid){appendMsg(msg3);scrollDown();}
         else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
@@ -1874,12 +1973,21 @@ function onData(pid,data){
       }
       saveAll();break;}
     case 'file_start':
-      inFiles[data.id]={name:data.name,mime:data.mime,total:data.chunks,parts:[],isImg:data.isImg};
+      inFiles[data.id]={name:data.name,mime:data.mime,total:data.chunks,parts:[],isImg:data.isImg,ts:data.ts};
+      // Показываем уведомление об отправке (для прогресса)
+      _showIncomingFileProgress(pid,data.id,data.name,data.chunks);
       break;
     case 'file_chunk':
-      if(inFiles[data.id])inFiles[data.id].parts[data.i]=data.d;
+      if(inFiles[data.id]){
+        inFiles[data.id].parts[data.i]=data.d;
+        // Считаем сколько уже получено
+        let recv=0;
+        for(const p of inFiles[data.id].parts)if(p!=null)recv++;
+        _updateIncomingFileProgress(data.id,recv,inFiles[data.id].total);
+      }
       break;
     case 'file_end':
+      _hideIncomingFileProgress(data.id);
       finishFile(data.id,pid);
       break;
   }
@@ -1895,7 +2003,7 @@ function sendMsg(){
     if(found){
       found.m.text=txt;found.m.edited=true;
       const bub=document.querySelector('[data-msg-id="'+mid+'"] .msg-bub');
-      if(bub)bub.innerHTML=esc(txt)+'<span style="font-size:10px;opacity:.5;margin-left:4px">ред.</span>';
+      if(bub)bub.innerHTML=linkify(txt)+'<span style="font-size:10px;opacity:.5;margin-left:4px">ред.</span>';
       saveAll();
       if(activeChat&&activeChat!=='ai')
         sendData(conns[activeChat]||activeChat,{type:'msg_edit',id:mid,text:txt});
@@ -1906,7 +2014,8 @@ function sendMsg(){
   inp.value='';resizeInp(inp);
   if(activeChat.startsWith('g_')){sendGrpMsg(activeChat,txt);return;}
   const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const msg={id:mid,sender:'me',text:txt,time:nowTime(),status:'sent'};
+  const ts=Date.now();
+  const msg={id:mid,sender:'me',text:txt,ts,time:fmtTime(ts),status:'sent'};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: '+txt.slice(0,28));saveAll();
@@ -1915,25 +2024,28 @@ function sendMsg(){
     const delay=700+Math.random()*900;
     setTimeout(()=>{
       $('typing').classList.remove('show');
-      const r={id:'m'+Date.now(),sender:'inc',name:'🐘 СЛОН',text:aiReply(txt),time:nowTime()};
+      const rts=Date.now();
+      const r={id:'m'+Date.now(),sender:'inc',name:'🐘 СЛОН',text:aiReply(txt),ts:rts,time:fmtTime(rts)};
       chatHist.ai.push(r);appendMsg(r);scrollDown();saveAll();
       updatePreview('ai','🐘: '+r.text.slice(0,25));
     },delay);
   }else{
     const c=conns[activeChat];
-    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',id:mid,text:txt,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
     else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
   }
 }
 
-function recvMsg(pid,text,nick,avatar,mid){
+function recvMsg(pid,text,nick,avatar,mid,ts){
   if(!chatHist[pid])chatHist[pid]=[];
   if(nick&&nick!=='')peerNames[pid]=nick;
   if(avatar!==undefined){peerAvatars[pid]=avatar;updateSbAvatar(pid);}
   const msgId=mid||('m'+Date.now());
   // Дедупликация
   if(mid&&chatHist[pid].some(m=>m.id===mid))return;
-  const msg={id:msgId,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,time:nowTime()};
+  // Время сообщения — оригинальный ts отправителя, иначе текущее
+  const msgTs=ts||Date.now();
+  const msg={id:msgId,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,ts:msgTs,time:fmtTime(msgTs)};
   chatHist[pid].push(msg);
   // Отправляем read receipt если чат открыт
   if(activeChat===pid&&document.visibilityState==='visible'){
@@ -1953,6 +2065,29 @@ function recvMsg(pid,text,nick,avatar,mid){
 function appendMsg(msg,container){
   const c=container||$('msgs');
   if(msg.sender==='system'){const d=document.createElement('div');d.className='sys';d.textContent=msg.text;c.appendChild(d);return;}
+  // Date separator: вставляем разделитель если это сообщение нового дня
+  if(msg.ts){
+    const lastMsg=c.querySelector('.msg:last-of-type');
+    let prevTs=0;
+    if(lastMsg){
+      const prevMid=lastMsg.dataset.msgId;
+      const hist=chatHist[activeChat]||grpHist[activeChat]||[];
+      const prev=hist.find(x=>x.id===prevMid);
+      if(prev?.ts)prevTs=prev.ts;
+    }
+    const newDate=new Date(msg.ts);
+    const prevDate=prevTs?new Date(prevTs):null;
+    const isNewDay=!prevDate||
+      prevDate.getFullYear()!==newDate.getFullYear()||
+      prevDate.getMonth()!==newDate.getMonth()||
+      prevDate.getDate()!==newDate.getDate();
+    if(isNewDay){
+      const sep=document.createElement('div');
+      sep.className='date-separator';
+      sep.innerHTML='<span>'+esc(fmtDateSeparator(msg.ts))+'</span>';
+      c.appendChild(sep);
+    }
+  }
   const isOut=msg.sender==='me';
   const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
   const av=document.createElement('div');av.className='msg-av';
@@ -1970,14 +2105,32 @@ function appendMsg(msg,container){
     const bub=document.createElement('div');bub.className='photo-bub';
     const pid2=msg.photoId;bub.onclick=()=>openPhoto(pid2);
     const img=document.createElement('img');img.src=photoStore[pid2]||'';img.loading='lazy';
-    bub.appendChild(img);body.appendChild(bub);
+    bub.appendChild(img);
+    // Прогресс отправки
+    const prog=document.createElement('div');prog.className='upload-progress';
+    if(msg.uploadProgress!=null&&msg.uploadProgress<100){_renderProgressRing(prog,msg.uploadProgress);}
+    else{prog.style.display='none';}
+    bub.appendChild(prog);
+    body.appendChild(bub);
   }else if(msg.fileInfo){
     const bub=document.createElement('div');bub.className='file-bub';
     const fid=msg.fileDataId;bub.onclick=()=>{if(fid)dlFile(fid,msg.fileInfo.name);};
     bub.innerHTML=`<div class="file-ico">${icoSvg('i-attach')}</div><div style="flex:1;min-width:0"><div class="file-name">${esc(msg.fileInfo.name)}</div><div class="file-sz">${msg.fileInfo.size||''}</div></div>`;
+    // Прогресс отправки
+    const prog=document.createElement('div');prog.className='upload-progress';
+    if(msg.uploadProgress!=null&&msg.uploadProgress<100){_renderProgressRing(prog,msg.uploadProgress);}
+    else{prog.style.display='none';}
+    bub.appendChild(prog);
     body.appendChild(bub);
   }else{
-    const bub=document.createElement('div');bub.className='msg-bub';bub.textContent=msg.text||'';body.appendChild(bub);
+    const bub=document.createElement('div');bub.className='msg-bub';
+    // Линки: кликабельные, текст эскейпим внутри linkify
+    bub.innerHTML=linkify(msg.text||'');
+    if(msg.edited){
+      const ed=document.createElement('span');ed.style.cssText='font-size:10px;opacity:.5;margin-left:4px';ed.textContent='ред.';
+      bub.appendChild(ed);
+    }
+    body.appendChild(bub);
   }
   const t=document.createElement('div');t.className='msg-time';
   let statusIcon='';
@@ -1986,7 +2139,7 @@ function appendMsg(msg,container){
     else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
     else statusIcon=' <span class="ticks sent">✓</span>';
   }
-  t.innerHTML=esc(msg.time)+statusIcon;
+  t.innerHTML=esc(msg.time||fmtTime(msg.ts||Date.now()))+statusIcon;
   // Кнопка меню сообщения
   const menuBtn=document.createElement('button');
   menuBtn.className='msg-menu-btn';menuBtn.innerHTML='&#8942;';
@@ -2019,7 +2172,21 @@ function showMsgMenu(e,msg,isOut){
   const div=document.createElement('div');
   div.className='msg-menu-popup';
   const items=[];
-  // Только для текстовых — редактирование
+  // Скачать — для фото и файлов
+  if(msg.photoId){
+    items.push(['⬇️ Скачать фото',()=>_downloadPhoto(msg)]);
+  } else if(msg.fileInfo&&msg.fileDataId){
+    items.push(['⬇️ Скачать файл',()=>dlFile(msg.fileDataId,msg.fileInfo.name)]);
+  } else if(msg.voiceData){
+    items.push(['⬇️ Скачать аудио',()=>_downloadVoice(msg)]);
+  } else if(msg.slonData){
+    items.push(['⬇️ Скачать слонкружок',()=>_downloadSlon(msg)]);
+  }
+  // Копировать текст
+  if(msg.text){
+    items.push(['📋 Копировать',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');}]);
+  }
+  // Редактирование — только текстовые свои
   if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
   items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
   if(isOut){
@@ -2038,11 +2205,35 @@ function showMsgMenu(e,msg,isOut){
   _msgMenuEl=div;
   // Позиция
   const r=e.target.getBoundingClientRect();
-  let top=r.bottom+4,left=r.left-120;
+  let top=r.bottom+4,left=r.left-160;
   if(left<8)left=8;
-  if(top+200>window.innerHeight)top=r.top-div.offsetHeight-4;
+  if(top+div.offsetHeight>window.innerHeight)top=r.top-div.offsetHeight-4;
   div.style.cssText='top:'+top+'px;left:'+left+'px;';
   setTimeout(()=>document.addEventListener('click',closeMsgMenu,{once:true}),10);
+}
+
+// ── DOWNLOAD HELPERS ──
+function _downloadPhoto(msg){
+  const src=photoStore[msg.photoId];
+  if(!src){toast('Фото недоступно');return;}
+  const a=document.createElement('a');
+  a.href=src;
+  a.download=msg.fileName||('photo_'+msg.id+'.jpg');
+  document.body.appendChild(a);a.click();a.remove();
+}
+function _downloadVoice(msg){
+  if(!msg.voiceData){toast('Аудио недоступно');return;}
+  const a=document.createElement('a');
+  a.href=msg.voiceData;
+  a.download='voice_'+msg.id+'.webm';
+  document.body.appendChild(a);a.click();a.remove();
+}
+function _downloadSlon(msg){
+  if(!msg.slonData){toast('Слонкружок недоступен');return;}
+  const a=document.createElement('a');
+  a.href=msg.slonData;
+  a.download='slon_'+msg.id+'.webm';
+  document.body.appendChild(a);a.click();a.remove();
 }
 function closeMsgMenu(){if(_msgMenuEl){_msgMenuEl.remove();_msgMenuEl=null;}}
 
@@ -2261,19 +2452,20 @@ function onTyping(el){
 // ── FILES ──
 function handleFile(inp){
   const file=inp.files[0];if(!file)return;
-  if(file.size>20*1024*1024){toast('Файл > 20 МБ');inp.value='';return;}
+  if(file.size>500*1024*1024){toast('Файл > 500 МБ');inp.value='';return;}
   inp.value='';const isImg=file.type.startsWith('image/');
   const reader=new FileReader();
   reader.onload=async e=>{
     const data=e.target.result,fid='f'+Date.now();
+    const ts=Date.now();
     if(isImg){
       const photoId=storePhoto(data),thumb=await makeThumb(data);
-      const msg={id:fid,sender:'me',time:nowTime(),photoId,photoThumb:thumb||data,fileName:file.name};
-      pushMsg(msg);sendFileTo(fid,file.name,file.type,true,data);
+      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),photoId,photoThumb:thumb||data,fileName:file.name,uploadProgress:0};
+      pushMsg(msg);sendFileTo(fid,file.name,file.type,true,data,ts);
     }else{
       const fdid='fd_'+fid;fileStore[fdid]=data;
-      const msg={id:fid,sender:'me',time:nowTime(),fileInfo:{name:file.name,size:fmtSz(file.size)},fileDataId:fdid};
-      pushMsg(msg);sendFileTo(fid,file.name,file.type,false,data);
+      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),fileInfo:{name:file.name,size:fmtSz(file.size)},fileDataId:fdid,uploadProgress:0};
+      pushMsg(msg);sendFileTo(fid,file.name,file.type,false,data,ts);
     }
   };
   reader.readAsDataURL(file);
@@ -2286,19 +2478,81 @@ function pushMsg(msg){
   updatePreview(activeChat,'Вы: 📎 '+(msg.fileName||'Файл').slice(0,20));saveAll();
 }
 
-function sendFileTo(fid,name,mime,isImg,data){
+async function sendFileTo(fid,name,mime,isImg,data,ts){
+  // В Firebase-режиме используем большие chunks (~100KB) чтобы меньше RTDB вызовов,
+  // но ниже лимита 256KB на один RTDB child
+  const chunkSize=_fbMode?100000:CHUNK;
   const chunks=[];
-  for(let i=0;i<data.length;i+=CHUNK)chunks.push(data.slice(i,i+CHUNK));
-  const doSend=conn=>{
-    sendData(conn,{type:'file_start',id:fid,name,mime,chunks:chunks.length,isImg});
-    chunks.forEach((d,i)=>sendData(conn,{type:'file_chunk',id:fid,i,d}));
+  for(let i=0;i<data.length;i+=chunkSize)chunks.push(data.slice(i,i+chunkSize));
+  const total=chunks.length;
+
+  const doSend=async (conn,pid)=>{
+    sendData(conn,{type:'file_start',id:fid,name,mime,chunks:total,isImg,ts});
+    for(let i=0;i<total;i++){
+      sendData(conn,{type:'file_chunk',id:fid,i,d:chunks[i]});
+      // Обновляем прогресс на каждые 5%, чтобы не перерисовывать слишком часто
+      const pct=Math.round(((i+1)/total)*100);
+      _setMsgUploadProgress(fid,pct);
+      // В Firebase-режиме делаем yield в event loop чтобы не блокировать UI
+      if(_fbMode&&i%3===0)await new Promise(r=>setTimeout(r,0));
+    }
     sendData(conn,{type:'file_end',id:fid});
+    _setMsgUploadProgress(fid,100);
+    setTimeout(()=>_setMsgUploadProgress(fid,null),500); // убрать индикатор
   };
+
   if(activeChat.startsWith('g_')){
-    groups[activeChat]?.members?.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))doSend(conns[pid]||pid);});
+    const promises=[];
+    groups[activeChat]?.members?.forEach(pid=>{
+      if(pid!==myUsername&&(_fbMode||conns[pid]?.open))promises.push(doSend(conns[pid]||pid,pid));
+    });
+    await Promise.all(promises);
   }else if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
-    doSend(conns[activeChat]||activeChat);
+    await doSend(conns[activeChat]||activeChat,activeChat);
   }
+}
+
+// Обновляем прогресс отправки в сообщении и в UI
+function _setMsgUploadProgress(fid,pct){
+  // Найти сообщение в любом активном чате
+  for(const hist of Object.values(chatHist)){
+    if(!hist)continue;
+    const m=hist.find(x=>x.id===fid);
+    if(m){m.uploadProgress=pct; break;}
+  }
+  const el=document.querySelector('[data-msg-id="'+fid+'"] .upload-progress');
+  if(el){
+    if(pct==null||pct>=100){el.style.display='none';}
+    else{el.style.display='';el.dataset.pct=pct;_renderProgressRing(el,pct);}
+  }
+}
+
+// Рендерим круговую шкалу прогресса в элементе
+function _renderProgressRing(el,pct){
+  const r=14, c=2*Math.PI*r;
+  const dash=(pct/100)*c;
+  el.innerHTML=
+    '<svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg)">'+
+      '<circle cx="18" cy="18" r="'+r+'" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3"/>'+
+      '<circle cx="18" cy="18" r="'+r+'" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" '+
+        'stroke-dasharray="'+dash+' '+c+'" style="transition:stroke-dasharray .15s"/>'+
+    '</svg>'+
+    '<div class="upload-pct">'+pct+'%</div>';
+}
+
+// Показ прогресса входящего файла (получение)
+const _incFileProgress={}; // fid -> el
+function _showIncomingFileProgress(pid,fid,name,totalChunks){
+  // Прогресс показываем в превью чата (опционально); просто toast при больших файлах
+  if(totalChunks>5){
+    toast('📥 Получаю файл: '+name.slice(0,30));
+  }
+}
+function _updateIncomingFileProgress(fid,recv,total){
+  // Можно дополнительно показывать; для минимализма пока пропускаем
+}
+function _hideIncomingFileProgress(fid){
+  delete _incFileProgress[fid];
 }
 
 async function finishFile(fid,pid){
@@ -2307,10 +2561,11 @@ async function finishFile(fid,pid){
   const fullData=f.parts.join('');
   const isImg=f.mime?.startsWith('image/')||f.isImg;
   delete inFiles[fid];
+  const msgTs=f.ts||Date.now();
   let msg;
   if(isImg){
     const photoId=storePhoto(fullData),thumb=await makeThumb(fullData);
-    msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,time:nowTime(),photoId,photoThumb:thumb||fullData,fileName:f.name};
+    msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,ts:msgTs,time:fmtTime(msgTs),photoId,photoThumb:thumb||fullData,fileName:f.name};
   }else{
     const fdid='fd_'+fid;
     try{
@@ -2319,7 +2574,7 @@ async function finishFile(fid,pid){
       for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
       fileStore[fdid]=URL.createObjectURL(new Blob([arr],{type:f.mime||'application/octet-stream'}));
     }catch(e){fileStore[fdid]=null;}
-    msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,time:nowTime(),fileInfo:{name:f.name,size:''},fileDataId:fdid};
+    msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,ts:msgTs,time:fmtTime(msgTs),fileInfo:{name:f.name,size:''},fileDataId:fdid};
   }
   if(!chatHist[pid])chatHist[pid]=[];
   chatHist[pid].push(msg);
@@ -3977,7 +4232,8 @@ function stopAndSendRec(){
 
 function sendVoiceMsg(dataUrl,dur,mimeType){
   const mid='vm'+Date.now();
-  const msg={id:mid,sender:'me',time:nowTime(),voiceData:dataUrl,voiceDur:dur};
+  const ts=Date.now();
+  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),voiceData:dataUrl,voiceDur:dur};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
@@ -3988,7 +4244,8 @@ function sendVoiceMsg(dataUrl,dur,mimeType){
 
 function sendSlonMsg(dataUrl,dur,mimeType){
   const mid='sc'+Date.now();
-  const msg={id:mid,sender:'me',time:nowTime(),slonData:dataUrl,slonDur:dur};
+  const ts=Date.now();
+  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),slonData:dataUrl,slonDur:dur};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🐘 Слонкружок');
@@ -4005,6 +4262,7 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
   const avatar=myAvatar||null;
   const pid=typeof conn==='string'?conn:(conn?.peer||conn?.pid||null);
   if(!pid)return;
+  const sendTs=Date.now();
 
   if(_fbMode&&window._fbDb){
     try{
@@ -4013,7 +4271,7 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
       const base='media_transfer/'+pid+'/'+id;
       // Пишем метаданные
       await window._fbSet(window._fbRef(db,base+'/meta'),
-        {kind,dur,mime:mimeType,nick,avatar,total:totalChunks,from:myUsername,ts:Date.now()});
+        {kind,dur,mime:mimeType,nick,avatar,total:totalChunks,from:myUsername,ts:sendTs});
       // Пишем чанки последовательно
       for(let i=0;i<totalChunks;i++){
         await window._fbSet(
@@ -4022,7 +4280,7 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
         );
       }
       // Сигнал получателю через inbox
-      sendData(pid,{type:'media_rtdb',kind,id,dur,mime:mimeType,nick,avatar,total:totalChunks});
+      sendData(pid,{type:'media_rtdb',kind,id,dur,mime:mimeType,nick,avatar,total:totalChunks,ts:sendTs});
       return;
     }catch(e){
       console.warn('RTDB media failed:',e);
@@ -4033,7 +4291,7 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
   // P2P fallback
   const chunks=[];
   for(let i=0;i<dataUrl.length;i+=CHUNK)chunks.push(dataUrl.slice(i,i+CHUNK));
-  sendData(conn,{type:'media_start',kind,id,dur,mime:mimeType,chunks:chunks.length,nick,avatar});
+  sendData(conn,{type:'media_start',kind,id,dur,mime:mimeType,chunks:chunks.length,nick,avatar,ts:sendTs});
   chunks.forEach((d,i)=>sendData(conn,{type:'media_chunk',id,i,d}));
   sendData(conn,{type:'media_end',id});
 }
@@ -4389,38 +4647,100 @@ function playHangupSound(){
 // ════════════════════════════════════════════════════════
 let _camFacing='user';
 async function flipCamera(){
-  if(!activeCall||!localStream||!_callPC){toast('Камера не активна');return;}
-  const camTracks=localStream.getVideoTracks();
-  if(!camTracks.length||camTracks[0].readyState!=='live'){toast('Камера не активна');return;}
+  if(!activeCall){toast('Сначала прими/начни звонок');return;}
+  if(!_callPC){toast('Нет соединения');return;}
+  const camTracks=localStream?.getVideoTracks()||[];
+  if(!camTracks.length||camTracks[0].readyState!=='live'){
+    toast('Сначала включи камеру в звонке');return;
+  }
+
   const newFacing=_camFacing==='user'?'environment':'user';
-  let newStream;
+  let newStream=null;
+
+  // СНАЧАЛА пытаемся через enumerateDevices — это самый надёжный путь на мобильных,
+  // т.к. не требует повторного user-gesture для нового facingMode
   try{
-    // Сначала пробуем exact (большинство мобильных так нормально переключают)
-    newStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:newFacing}},audio:false});
-  }catch(e1){
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const cams=devices.filter(d=>d.kind==='videoinput');
+    if(cams.length>=2){
+      const currentSettings=camTracks[0].getSettings();
+      const currentId=currentSettings.deviceId;
+      // Берём камеру, у которой deviceId отличается
+      const otherCam=cams.find(c=>c.deviceId&&c.deviceId!==currentId);
+      if(otherCam){
+        try{
+          // Сначала останавливаем текущий трек чтобы устройство было свободно
+          camTracks[0].stop();
+          newStream=await navigator.mediaDevices.getUserMedia({
+            video:{deviceId:{exact:otherCam.deviceId}},audio:false
+          });
+        }catch(e){
+          console.warn('flipCamera: deviceId exact failed,',e.name,e.message);
+        }
+      }
+    }
+  }catch(e){
+    console.warn('flipCamera: enumerateDevices failed,',e);
+  }
+
+  // Fallback 1: facingMode ideal (мягче чем exact)
+  if(!newStream){
     try{
-      // Если нет задней камеры (exact) — пробуем ideal
-      newStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:newFacing}},audio:false});
-    }catch(e2){
-      toast('Не удалось переключить камеру');
+      newStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:newFacing}},audio:false
+      });
+    }catch(e){console.warn('flipCamera: facingMode ideal failed,',e.name);}
+  }
+
+  // Fallback 2: facingMode exact (последний шанс)
+  if(!newStream){
+    try{
+      newStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{exact:newFacing}},audio:false
+      });
+    }catch(e){
+      console.error('flipCamera: all attempts failed,',e.name,e.message);
+      // Если ничего не вышло — попытаемся вернуть исходную камеру
+      try{
+        newStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+        const tr=newStream.getVideoTracks()[0];
+        if(tr){
+          const oldTrack=localStream.getVideoTracks()[0];
+          if(oldTrack){localStream.removeTrack(oldTrack);try{oldTrack.stop();}catch(_){}}
+          localStream.addTrack(tr);
+          const sender=_callPC.getSenders().find(s=>s._isVideoSender)||_callPC.getSenders().find(s=>s.track?.kind==='video');
+          if(sender)try{await sender.replaceTrack(tr);}catch(_){}
+          const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
+        }
+      }catch(_){}
+      toast('У устройства одна камера или нет доступа к другой');
       return;
     }
   }
+
+  if(!newStream){toast('Не удалось получить новую камеру');return;}
   const newTrack=newStream.getVideoTracks()[0];
   if(!newTrack){toast('Камера не найдена');return;}
-  _camFacing=newFacing;
+
+  // Определяем фактический facingMode
+  const settings=newTrack.getSettings();
+  if(settings.facingMode)_camFacing=settings.facingMode;
+  else _camFacing=newFacing;
+
   // Заменяем в localStream
   const oldTrack=localStream.getVideoTracks()[0];
-  if(oldTrack){localStream.removeTrack(oldTrack);oldTrack.stop();}
+  if(oldTrack){localStream.removeTrack(oldTrack);try{oldTrack.stop();}catch(_){}}
   localStream.addTrack(newTrack);
-  // Заменяем в sender (replaceTrack не требует renegotiation)
-  const sender=_callPC.getSenders().find(s=>s.track?.kind==='video');
+
+  // Заменяем в sender'е
+  const sender=_callPC.getSenders().find(s=>s._isVideoSender)||_callPC.getSenders().find(s=>s.track?.kind==='video');
   if(sender){
     try{await sender.replaceTrack(newTrack);}catch(e){console.warn('flip replaceTrack:',e);}
   }
-  // Обновляем локальное превью
+  // Локальное превью
   const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
-  toast(newFacing==='environment'?'📷 Задняя камера':'🤳 Фронтальная камера');
+
+  toast(_camFacing==='environment'?'📷 Задняя камера':'🤳 Фронтальная камера');
 }
 
 
