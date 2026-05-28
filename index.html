@@ -1508,8 +1508,9 @@ async function doRegister(){
     }
 
     myUsername=raw;myPassword=hash;
+    // Новый аккаунт — генерируем уникальный internal ID для ЭТОГО аккаунта
     myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-    LS.set('sl_iid',myInternalId);
+    LS.set('sl_iid_'+raw,myInternalId);
     LS.set('sl_username',raw);
     const sess={username:raw,verified:true,ts:Date.now()};
     LS.set('sl_session_'+raw,sess);
@@ -1990,12 +1991,15 @@ function loadStorage(){
   myUsername=LS.get('sl_username','');
   myPassword=LS.get('sl_pass_'+myUsername,'');
 
-  // Скрытый постоянный ID устройства (один на устройство, не на аккаунт)
-  myInternalId=LS.get('sl_iid','');
+  // Скрытый постоянный ID — один на АККАУНТ (не на устройство!)
+  // Разные аккаунты на одном устройстве имеют разные iid
+  const iidKey=myUsername?'sl_iid_'+myUsername:'sl_iid';
+  myInternalId=LS.get(iidKey,'')||LS.get('sl_iid','');
   if(!myInternalId){
     myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-    LS.set('sl_iid',myInternalId);
   }
+  if(myUsername)LS.set('sl_iid_'+myUsername,myInternalId);
+  else LS.set('sl_iid',myInternalId);
 
   // Данные аккаунта — читаем с префиксом username если он есть
   const p=_getAccountPrefix(myUsername);
@@ -2159,8 +2163,6 @@ function initFirebaseMode(){
     _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
-  // Синхронизируем свой профиль с Firebase сразу (без лишней задержки)
-  _fetchAndApplyMyProfile();
 }
 
 // ── СЛОН-КАНАЛ: системные новости ──
@@ -2281,7 +2283,15 @@ function _fbListen(username){
     // Удаляем сообщение из inbox после прочтения
     window._fbRemove(snap.ref).catch(()=>{});
     const pid=data.from;
-    if(!pid||pid===myUsername)return;
+    // Пропускаем свои сообщения — КРОМЕ call_self_sync (синхронизация между устройствами)
+    if(!pid)return;
+    if(pid===myUsername){
+      // Обрабатываем только call_self_sync от других наших устройств
+      if(data.payload?.type==='call_self_sync'){
+        onData(myUsername,data.payload);
+      }
+      return;
+    }
     // Авто-добавляем в контакты если новый
     if(!peerNames[pid]){
       peerNames[pid]='@'+pid;
@@ -2335,18 +2345,18 @@ function _checkFirebaseRules(){
     });
 }
 
-function _startMyPresence(){
+async function _startMyPresence(){
   if(!window._fbDb||!myUsername)return;
-  // Публикуем профиль публично (чтобы контакты читали без hello)
+  // СНАЧАЛА читаем профиль из Firebase и применяем локально (чтобы не затереть)
+  await _fetchAndApplyMyProfile();
+  // Потом публикуем (теперь с актуальными данными)
   _publishMyProfile();
   const presRef=window._fbRef(window._fbDb,'presence/'+myUsername);
   window._fbSet(presRef,{online:true,ts:Date.now()});
-  // Обновляем каждые 25 секунд
   setInterval(()=>{
     if(myUsername&&window._fbDb)
       window._fbSet(window._fbRef(window._fbDb,'presence/'+myUsername),{online:true,ts:Date.now()});
   },25000);
-  // Убираем при закрытии
   window.addEventListener('beforeunload',()=>{
     window._fbRemove(window._fbRef(window._fbDb,'presence/'+myUsername));
   });
@@ -2694,7 +2704,20 @@ function onData(pid,data){
         catch(e){console.warn('ice candidate error:',e);}
       })();
       break;
-    case 'webrtc_offer':
+    case 'call_self_sync':
+      // Сообщение от другого нашего устройства о состоянии звонка
+      if(data._device===_myDeviceId)break; // наше собственное — игнорируем
+      if(data.action==='answered'||data.action==='rejected'){
+        // На другом устройстве ответили или отклонили — скрываем incoming UI
+        if(pendingCall?.callId===data.callId||pendingCall?.peerId===data.peerId){
+          stopRingSound();
+          $('incoming').classList.remove('show');
+          pendingCall=null;
+          _lastIncomingCallId=null;
+          if(data.action==='answered')toast('Отвечено на другом устройстве 📱');
+        }
+      }
+      break;
       // Renegotiation offer (camera/screen added or removed mid-call)
       (async()=>{
         if(!_callPC||!data.sdp)return;
@@ -3585,11 +3608,14 @@ async function doStartCall(peerId,isVideo,stream){
 async function answerCall(){
   $('incoming').classList.remove('show');stopRingSound();
   if(!pendingCall)return;
-  const{peerId,isVideo}=pendingCall;
-  // SDP может быть в pendingCall ИЛИ в _pendingRemoteOffer (если offer пришёл раньше)
+  const{peerId,isVideo,callId}=pendingCall;
   let sdp=pendingCall.sdp;
   if(!sdp&&_pendingRemoteOffer?.peerId===peerId)sdp=_pendingRemoteOffer.sdp;
   pendingCall=null;
+
+  // Сообщаем другим нашим устройствам что ответили здесь
+  _syncCallToSelf('answered',callId,peerId);
+
   getMediaStream(isVideo).then(async stream=>{
     _remoteStream=new MediaStream();
     localStream=stream;
@@ -3627,7 +3653,29 @@ async function answerCall(){
 
 function rejectCall(){
   $('incoming').classList.remove('show');stopRingSound();playHangupSound();
-  if(pendingCall){_callSend(pendingCall.peerId,{type:'call_reject'});pendingCall=null;}
+  if(pendingCall){
+    const{callId,peerId}=pendingCall;
+    _callSend(peerId,{type:'call_reject',callId});
+    _syncCallToSelf('rejected',callId,peerId); // сообщаем другим устройствам
+    pendingCall=null;
+  }
+}
+
+// Синхронизация состояния звонка между нашими устройствами
+// Шлём себе в inbox специальное сообщение чтобы другие устройства знали
+function _syncCallToSelf(action,callId,peerId){
+  if(!_fbMode||!window._fbDb||!myUsername||!callId)return;
+  try{
+    // Шлём себе в inbox (все наши устройства слушают inbox/myUsername)
+    _fbSend(myUsername,{
+      type:'call_self_sync',
+      action, // 'answered' | 'rejected'
+      callId,
+      peerId,
+      _device:_myDeviceId, // чтобы отправитель сам себя не обработал
+      ts:Date.now()
+    });
+  }catch(e){}
 }
 
 function setupCallUI(peerId,isVideo){
@@ -6089,32 +6137,17 @@ function updatePipSelfInfo(){
 
 function mergeByInternalId(canonPid, iid){
   if(!iid)return;
-  // Найти все pid у которых тот же iid, кроме canonPid
+  // Ищем дубли с тем же iid
   const dupPids=Object.keys(peerIids).filter(pid=>pid!==canonPid&&peerIids[pid]===iid);
-  // Также ищем в chatHist pid-ы без iid у которых то же имя (legacy dedup)
-  if(dupPids.length===0)return;
-  let merged=false;
+  if(!dupPids.length)return;
+
+  // НЕ сливаем автоматически — это может быть другой аккаунт на том же устройстве.
+  // Сливаем ТОЛЬКО если старый контакт явно указал oldUsername при смене юзернейма.
+  // Это обрабатывается в hello-handler через data.oldUsername.
+  // Здесь только обновляем iid-маппинг.
   dupPids.forEach(dupPid=>{
-    const hist=chatHist[dupPid]||[];
-    if(hist.length>0){
-      if(!chatHist[canonPid])chatHist[canonPid]=[];
-      const have=new Set((chatHist[canonPid]||[]).map(m=>m.id));
-      hist.forEach(m=>{if(!have.has(m.id))chatHist[canonPid].push(m);});
-      chatHist[canonPid].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-      delete chatHist[dupPid];
-      merged=true;
-    }
-    const el=document.getElementById('si-'+dupPid);
-    if(el)el.remove();
-    delete peerNames[dupPid];
-    delete peerAvatars[dupPid];
-    delete peerIids[dupPid];
-    delete peerProfileBgs[dupPid];
-    delete archivedChats[dupPid];
-    if(activeChat===dupPid){activeChat=canonPid;if(typeof renderChat==='function')renderChat(canonPid);}
+    peerIids[dupPid]=iid; // обновляем на всякий случай
   });
-  if(merged)toast('Объединили дублирующийся чат');
-  saveAll();
 }
 
 // ── EXPORT / CLEAR ──
