@@ -4030,7 +4030,14 @@ async function toggleCam(){
   videoTracks.forEach(t=>{t.stop();localStream.removeTrack(t);});
   // Меняем direction трансивера на 'recvonly' — это РЕАЛЬНО меняет SDP и собеседник
   // увидит что видео ушло (а не просто muted). replaceTrack(null) такого не делает.
-  const transceiver=_callPC?.getTransceivers().find(tr=>tr.sender._isVideoSender||tr.sender.track?.kind==='video'||(tr.receiver?.track?.kind==='video'&&tr.sender&&!tr.sender._isScreenAudio));
+  // Ищем видео-трансивер строго — никогда не берём аудио
+  const transceiver=_callPC?.getTransceivers().find(tr=>{
+    if(tr.sender._isVideoSender)return true;
+    if(tr.sender._isScreenAudio)return false;
+    if(tr.receiver?.track?.kind==='video')return true;
+    if(tr.sender?.track?.kind==='video')return true;
+    return false;
+  });
   if(transceiver){
     try{await transceiver.sender.replaceTrack(null);}catch(e){}
     try{transceiver.direction='recvonly';}catch(e){console.warn('set direction recvonly:',e);}
@@ -4054,10 +4061,13 @@ async function toggleCam(){
 async function _activateCam(){
   if(!activeCall||!_callPC){toast('Нет активного звонка');return;}
   try{
-    const vc=selCam&&selCam!=='default'?{deviceId:{ideal:selCam},facingMode:{ideal:_camFacing||'user'}}:{facingMode:_camFacing||'user'};
+    const vc=selCam&&selCam!=='default'
+      ?{deviceId:{ideal:selCam},facingMode:{ideal:_camFacing||'user'}}
+      :{facingMode:_camFacing||'user'};
     const camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
     const videoTrack=camStream.getVideoTracks()[0];
     if(!videoTrack){toast('Камера не найдена');return;}
+
     // Очищаем старые видео-треки из localStream
     if(localStream){
       localStream.getVideoTracks().forEach(t=>{t.stop();localStream.removeTrack(t);});
@@ -4065,46 +4075,52 @@ async function _activateCam(){
     }else{
       localStream=new MediaStream([videoTrack]);
     }
-    // Заменяем или добавляем в PC. Ищем видео-sender по маркеру или по треку.
-    let sender=_callPC.getSenders().find(s=>s._isVideoSender);
-    if(!sender)sender=_callPC.getSenders().find(s=>s.track?.kind==='video');
-    // sender без трека (после disable) тоже валиден
-    if(!sender)sender=_callPC.getSenders().find(s=>!s.track&&!s._isScreenAudio);
+
+    // Ищем видео-трансивер СТРОГО по типу трека через receiver или по маркеру
+    // НИКОГДА не берём трансивер у которого неизвестный kind
+    const videoTransceiver=_callPC.getTransceivers().find(tr=>{
+      if(tr.sender._isVideoSender)return true;
+      if(tr.sender._isScreenAudio)return false;
+      // Проверяем по receiver — он всегда знает свой kind
+      if(tr.receiver?.track?.kind==='video')return true;
+      // Проверяем по текущему треку sender'а
+      if(tr.sender?.track?.kind==='video')return true;
+      return false;
+    });
+
     let needsRenegotiation=false;
-    if(sender){
-      // Уже есть видео-sender — просто меняем трек
+    if(videoTransceiver){
+      const sender=videoTransceiver.sender;
       await sender.replaceTrack(videoTrack);
       sender._isVideoSender=true;
-      // Если direction был 'recvonly' (после выключения) — возвращаем 'sendrecv'
-      const tr=_callPC.getTransceivers().find(t=>t.sender===sender);
-      if(tr&&tr.direction!=='sendrecv'){
-        try{tr.direction='sendrecv';}catch(e){}
-        needsRenegotiation=true; // смена direction требует renegotiation
+      // Возвращаем direction если был recvonly/inactive
+      if(videoTransceiver.direction==='recvonly'||videoTransceiver.direction==='inactive'){
+        try{videoTransceiver.direction='sendrecv';}catch(e){}
+        needsRenegotiation=true;
       }
     }else{
-      // Аудиозвонок без видео-трансивера — добавляем, нужна renegotiation
+      // Нет видео-трансивера (аудиозвонок) — добавляем новый
       const newSender=_callPC.addTrack(videoTrack,localStream);
       if(newSender)newSender._isVideoSender=true;
       needsRenegotiation=true;
     }
+
     if(needsRenegotiation){
       try{
         const offer=await _callPC.createOffer();
         await _callPC.setLocalDescription(offer);
-        // ВАЖНО: .toJSON() обязательно, иначе при сериализации через Firebase
-        // теряются type и sdp которые лежат на прототипе RTCSessionDescription
         _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
       }catch(re){console.warn('renegotiate cam:',re);}
     }
-    // Локальное превью
+
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
     lv.style.display='';
     $('pipSelfInfo').style.display='none';
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
     isCamOff=false;updateCamBtn();
-    // Показать кнопку переворота камеры на мобильных
-    const fbw=$('flipCamWrap');if(fbw){const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);fbw.style.display=isMob?'':'none';}
+    const fbw=$('flipCamWrap');
+    if(fbw){const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);fbw.style.display=isMob?'':'none';}
     _updateRemoteVideoUI();
     toast('Камера включена');
   }catch(e){
@@ -4165,21 +4181,23 @@ async function toggleScreenShare(){
       return;
     }
 
-    // Ищем видео-sender (по маркеру), избегаем перепутывания с _isScreenAudio
+    // Ищем видео-трансивер СТРОГО — через receiver.track.kind или маркер
+    const videoTransceiver=_callPC.getTransceivers().find(tr=>{
+      if(tr.sender._isVideoSender)return true;
+      if(tr.sender._isScreenAudio)return false;
+      if(tr.receiver?.track?.kind==='video')return true;
+      if(tr.sender?.track?.kind==='video')return true;
+      return false;
+    });
+
     let needsRenegotiation=false;
-    let videoSender=_callPC.getSenders().find(s=>s._isVideoSender);
-    if(!videoSender)videoSender=_callPC.getSenders().find(s=>s.track?.kind==='video'&&!s._isScreenAudio);
-    if(!videoSender)videoSender=_callPC.getSenders().find(s=>!s.track&&!s._isScreenAudio);
-    if(videoSender){
-      await videoSender.replaceTrack(screenTrack);
-      videoSender._isVideoSender=true;
-      // Восстанавливаем direction если был recvonly
-      const tr=_callPC.getTransceivers().find(t=>t.sender===videoSender);
-      if(tr&&tr.direction!=='sendrecv'){
-        try{tr.direction='sendrecv';}catch(e){}
+    if(videoTransceiver){
+      await videoTransceiver.sender.replaceTrack(screenTrack);
+      videoTransceiver.sender._isVideoSender=true;
+      if(videoTransceiver.direction==='recvonly'||videoTransceiver.direction==='inactive'){
+        try{videoTransceiver.direction='sendrecv';}catch(e){}
         needsRenegotiation=true;
       }
-      // Renegotiation если был добавлен новый screen-audio трансивер
       if(screenAudioTracks.length>0)needsRenegotiation=true;
     }else{
       const newSender=_callPC.addTrack(screenTrack,screenShareStream);
@@ -4191,7 +4209,7 @@ async function toggleScreenShare(){
     if(screenAudioTracks.length>0){
       const audSender=_callPC.getSenders().find(s=>s._isScreenAudio);
       const audTr=_callPC.getTransceivers().find(t=>t.sender===audSender);
-      if(audTr&&audTr.direction!=='sendrecv'){
+      if(audTr&&(audTr.direction==='recvonly'||audTr.direction==='inactive')){
         try{audTr.direction='sendrecv';}catch(e){}
         needsRenegotiation=true;
       }
@@ -4230,7 +4248,6 @@ async function toggleScreenShare(){
 }
 
 async function stopScreenShare(){
-  // Останавливаем треки экрана
   if(screenShareStream){
     screenShareStream.getTracks().forEach(t=>t.stop());
     screenShareStream=null;
@@ -4241,40 +4258,41 @@ async function stopScreenShare(){
 
   if(!activeCall||!_callPC){_updateRemoteVideoUI();return;}
 
-  // Убираем screen-audio sender если он был
+  // Убираем screen-audio sender
   const screenAudioSender=_callPC.getSenders().find(s=>s._isScreenAudio);
   if(screenAudioSender){
     try{await screenAudioSender.replaceTrack(null);}catch(e){}
   }
 
-  // Видео-sender — ищем по маркеру _isVideoSender (мы его помечаем в toggleScreenShare и _activateCam)
-  // Если маркера нет — берём первый sender с видео-треком
-  let videoSender=_callPC.getSenders().find(s=>s._isVideoSender);
-  if(!videoSender)videoSender=_callPC.getSenders().find(s=>s.track?.kind==='video');
+  // Ищем видео-трансивер строго
+  const videoTransceiver=_callPC.getTransceivers().find(tr=>{
+    if(tr.sender._isVideoSender)return true;
+    if(tr.sender._isScreenAudio)return false;
+    if(tr.receiver?.track?.kind==='video')return true;
+    if(tr.sender?.track?.kind==='video')return true;
+    return false;
+  });
 
-  // Проверяем есть ли активная камера в localStream
   const camTracks=localStream?.getVideoTracks()||[];
   const hasActiveCam=camTracks.length>0&&camTracks[0].readyState==='live';
 
-  if(hasActiveCam){
-    // Есть камера — переключаем sender обратно на камеру
-    if(videoSender){
-      try{await videoSender.replaceTrack(camTracks[0]);}catch(e){}
+  if(hasActiveCam&&videoTransceiver){
+    // Возвращаем камеру в видео-трансивер
+    try{await videoTransceiver.sender.replaceTrack(camTracks[0]);}catch(e){}
+    if(videoTransceiver.direction!=='sendrecv'){
+      try{videoTransceiver.direction='sendrecv';}catch(e){}
     }
     const lv2=$('localVideo');lv2.srcObject=localStream;lv2.play().catch(()=>{});
-    lv2.style.display='';
-    $('pipSelfInfo').style.display='none';
+    lv2.style.display='';$('pipSelfInfo').style.display='none';
   }else{
-    // Ни камеры, ни экрана — меняем direction трансивера на recvonly
-    const videoTransceiver=_callPC.getTransceivers().find(tr=>tr.sender===videoSender);
-    const screenAudioTransceiver=_callPC.getTransceivers().find(tr=>tr.sender===screenAudioSender);
+    // Ни камеры ни экрана — направление в recvonly и renegotiation
     if(videoTransceiver){
       try{await videoTransceiver.sender.replaceTrack(null);}catch(e){}
       try{videoTransceiver.direction='recvonly';}catch(e){}
     }
-    if(screenAudioTransceiver){
-      try{await screenAudioTransceiver.sender.replaceTrack(null);}catch(e){}
-      try{screenAudioTransceiver.direction='recvonly';}catch(e){}
+    const screenAudioTr=_callPC.getTransceivers().find(t=>t.sender===screenAudioSender);
+    if(screenAudioTr){
+      try{screenAudioTr.direction='recvonly';}catch(e){}
     }
     try{
       const offer=await _callPC.createOffer();
@@ -4282,7 +4300,6 @@ async function stopScreenShare(){
       _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
     }catch(e){console.warn('screen-off renegotiate:',e);}
   }
-  // Единый апдейт UI
   _updateRemoteVideoUI();
   toast('Демонстрация экрана остановлена');
 }
