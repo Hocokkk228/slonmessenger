@@ -1176,7 +1176,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 <script type="module">
 // ── FIREBASE SIGNALING INIT ──
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove, push, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, remove, push, onChildAdded, onChildRemoved, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1197,6 +1197,7 @@ window._fbOnValue = onValue;
 window._fbRemove = remove;
 window._fbPush = push;
 window._fbOnChildAdded = onChildAdded;
+window._fbOnChildRemoved = onChildRemoved;
 window._fbOff = off;
 window._firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
@@ -2194,41 +2195,57 @@ const SLON_CHANGELOG=`🐘 **SLON v0.9 — Changelog**
 • Пропавшие сообщения при переполнении localStorage`;
 
 function _initSlonChannel(){
-  // Добавляем SLON-канал в список контактов если ещё нет
   if(!peerNames[SLON_CHANNEL_ID]){
     peerNames[SLON_CHANNEL_ID]='🐘 SLON Новости';
     peerAvatars[SLON_CHANNEL_ID]=null;
     if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
-    // Добавляем changelog как первое сообщение
-    const cid='ch_'+Date.now();
-    const ts=Date.now();
     const already=chatHist[SLON_CHANNEL_ID].some(m=>m.text&&m.text.includes('SLON v0.9'));
     if(!already){
-      chatHist[SLON_CHANNEL_ID].push({
-        id:cid,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),
-        text:SLON_CHANGELOG
-      });
+      const cid='ch_'+Date.now();const ts=Date.now();
+      chatHist[SLON_CHANNEL_ID].push({id:cid,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:SLON_CHANGELOG});
     }
     if(!$('si-'+SLON_CHANNEL_ID))addSbItem(SLON_CHANNEL_ID);
     saveAll();
     toast('📢 Новости SLON — проверь канал!',4000);
   }
-  // Проверяем новые версии через Firebase
+  if(!window._fbDb)return;
   try{
-    if(!window._fbDb)return;
+    // Слушаем список постов (slon_channel/posts/{id})
+    window._fbOnChildAdded(window._fbRef(window._fbDb,'slon_channel/posts'),snap=>{
+      const d=snap.val();if(!d||!d.text)return;
+      const already=(chatHist[SLON_CHANNEL_ID]||[]).some(m=>m.id===d.id);
+      if(already)return;
+      if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
+      const ts=d.ts||Date.now();
+      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text,channelPostId:snap.key});
+      if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
+      else{addUnread(SLON_CHANNEL_ID);toast('📢 Новое в SLON-канале!',4000);}
+      saveAll();
+    });
+    // Слушаем удаления постов
+    window._fbOnChildRemoved(window._fbRef(window._fbDb,'slon_channel/posts'),snap=>{
+      if(!chatHist[SLON_CHANNEL_ID])return;
+      const key=snap.key;
+      const before=chatHist[SLON_CHANNEL_ID].length;
+      chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(m=>m.channelPostId!==key&&m.id!==key);
+      if(chatHist[SLON_CHANNEL_ID].length!==before){
+        if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
+        saveAll();
+      }
+    });
+    // Слушаем legacy latest (обратная совместимость)
     window._fbOnValue(window._fbRef(window._fbDb,'slon_channel/latest'),snap=>{
-      const d=snap.val();
-      if(!d||!d.text)return;
+      const d=snap.val();if(!d||!d.text)return;
       const already=(chatHist[SLON_CHANNEL_ID]||[]).some(m=>m.id===d.id);
       if(already)return;
       if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
       const ts=d.ts||Date.now();
       chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text});
-      if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);}
+      if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
       else{addUnread(SLON_CHANNEL_ID);toast('📢 Новое в SLON-канале!',4000);}
       saveAll();
     },{onlyOnce:false});
-  }catch(e){}
+  }catch(e){console.warn('_initSlonChannel:',e);}
 }
 
 // Синхронизация отправленных сообщений между устройствами
@@ -3066,17 +3083,21 @@ function showMsgMenu(e,msg,isOut){
   } else if(msg.slonData){
     items.push(['⬇️ Скачать слонкружок',()=>_downloadSlon(msg)]);
   }
-  // Копировать текст
   if(msg.text){
     items.push(['📋 Копировать',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');}]);
   }
-  // Редактирование — только текстовые свои
-  if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
-  items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
-  // Удаление: у себя — для всех, у всех — только своих (стандарт мессенджеров)
-  items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
-  if(isOut){
-    items.push(['🗑 Удалить у всех',()=>deleteMsg(msg,true),'danger']);
+  // Для SLON-канала: admins могут удалять и редактировать посты
+  if(activeChat===SLON_CHANNEL_ID&&CHANNEL_ADMINS.has(myUsername)){
+    if(msg.text)items.push(['✏️ Редактировать пост',()=>adminEditChannelPost(msg)]);
+    items.push(['🗑 Удалить пост у всех',()=>adminDeleteChannelPost(msg),'danger']);
+    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
+  } else {
+    if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
+    items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
+    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
+    if(isOut){
+      items.push(['🗑 Удалить у всех',()=>deleteMsg(msg,true),'danger']);
+    }
   }
   items.forEach(([label,fn,cls])=>{
     const btn=document.createElement('button');
@@ -3086,13 +3107,64 @@ function showMsgMenu(e,msg,isOut){
   });
   document.body.appendChild(div);
   _msgMenuEl=div;
-  // Позиция
   const r=e.target.getBoundingClientRect();
   let top=r.bottom+4,left=r.left-160;
   if(left<8)left=8;
   if(top+div.offsetHeight>window.innerHeight)top=r.top-div.offsetHeight-4;
   div.style.cssText='top:'+top+'px;left:'+left+'px;';
   setTimeout(()=>document.addEventListener('click',closeMsgMenu,{once:true}),10);
+}
+
+// Удалить пост из канала у всех (admin only)
+async function adminDeleteChannelPost(msg){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  const postKey=msg.channelPostId||msg.id;
+  try{
+    // Удаляем из Firebase — onChildRemoved у всех уберёт пост
+    if(window._fbDb){
+      await window._fbRemove(window._fbRef(window._fbDb,'slon_channel/posts/'+postKey));
+    }
+    // Локально тоже убираем
+    if(chatHist[SLON_CHANNEL_ID]){
+      chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(m=>m.id!==msg.id);
+    }
+    if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
+    saveAll();
+    toast('✅ Пост удалён у всех');
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+
+// Редактировать пост в канале (admin only)
+function adminEditChannelPost(msg){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  showModal(`
+    <div class="m-title">✏️ Редактировать пост</div>
+    <textarea class="m-ta" id="editChPostTa" maxlength="4000" style="min-height:160px">${esc(msg.text)}</textarea>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="adminSaveChannelPost('${msg.id}','${msg.channelPostId||msg.id}')">Сохранить</button>
+    </div>
+  `);
+  setTimeout(()=>$('editChPostTa')?.focus(),100);
+}
+
+async function adminSaveChannelPost(msgId,postKey){
+  const text=($('editChPostTa')?.value||'').trim();
+  if(!text){toast('Текст не может быть пустым');return;}
+  closeModal();
+  try{
+    if(window._fbDb){
+      // Обновляем в Firebase
+      const ref=window._fbRef(window._fbDb,'slon_channel/posts/'+postKey+'/text');
+      await window._fbSet(ref,text);
+    }
+    // Локально
+    const m=chatHist[SLON_CHANNEL_ID]?.find(x=>x.id===msgId);
+    if(m){m.text=text;m.edited=true;}
+    if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
+    saveAll();
+    toast('✅ Пост обновлён');
+  }catch(e){toast('Ошибка: '+e.message);}
 }
 
 // ── DOWNLOAD HELPERS ──
@@ -5094,14 +5166,11 @@ async function publishChannelPost(){
   const postId='post_'+Date.now();
   const ts=Date.now();
   try{
+    // Пишем в список постов (сохраняется навсегда, можно удалить)
+    const postRef=window._fbRef(window._fbDb,'slon_channel/posts/'+postId);
+    await window._fbSet(postRef,{id:postId,text,ts,author:myUsername});
+    // Тоже пишем в latest для обратной совместимости
     await window._fbSet(window._fbRef(window._fbDb,'slon_channel/latest'),{id:postId,text,ts,author:myUsername});
-    if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
-    const msg={id:postId,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text};
-    if(!chatHist[SLON_CHANNEL_ID].some(m=>m.id===postId)){
-      chatHist[SLON_CHANNEL_ID].push(msg);
-    }
-    if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
-    saveAll();
     toast('✅ Пост опубликован!');
   }catch(e){
     toast('Ошибка: '+e.message);
