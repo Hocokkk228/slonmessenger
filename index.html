@@ -2163,10 +2163,11 @@ function initFirebaseMode(){
     _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
+  // Синхронизация групп между устройствами одного аккаунта
+  _fbListenMyGroups();
   // Проверяем слонгалочку через Firebase
   setTimeout(()=>{
     _checkElephantBadgeFirebase();
-    // Автовыдача vadimslonik67
     if(myUsername==='vadimslonik67')_grantElephantBadge('vadimslonik67');
   },1500);
 }
@@ -4321,23 +4322,60 @@ function updateScreenShareBtn(){
 }
 
 // ── GROUPS ──
+
+// Записываем группу в Firebase чтобы все устройства аккаунта её видели
+function _fbSyncGroupToSelf(gid){
+  if(!_fbMode||!window._fbDb||!myUsername||!groups[gid])return;
+  try{
+    window._fbSet(
+      window._fbRef(window._fbDb,'user_groups/'+myUsername+'/'+gid),
+      {name:groups[gid].name,members:groups[gid].members,admin:groups[gid].admin,ts:Date.now()}
+    );
+  }catch(e){console.warn('fbSyncGroup:',e);}
+}
+
+// Слушаем изменения групп для этого аккаунта (синхронизация между устройствами)
+function _fbListenMyGroups(){
+  if(!_fbReady()||!window._fbDb||!myUsername)return;
+  window._fbOnChildAdded(
+    window._fbRef(window._fbDb,'user_groups/'+myUsername),
+    snap=>{
+      const gid=snap.key;
+      const d=snap.val();
+      if(!gid||!d)return;
+      if(groups[gid])return; // уже есть на этом устройстве
+      // Новая группа пришла с другого устройства или при первом входе
+      groups[gid]={name:d.name,members:d.members,admin:d.admin};
+      if(!grpHist[gid])grpHist[gid]=[];
+      if(!$('si-'+gid))addSbGroup(gid);
+      saveAll();
+      toast('📥 Группа "'+d.name+'" синхронизирована');
+    }
+  );
+}
+
 function createGroup(name,members){
   const gid='g_'+Date.now();
   groups[gid]={name,members:[myUsername,...members],admin:myUsername};grpHist[gid]=[];
   const inv={type:'group_invite',gid,name,members:groups[gid].members,admin:myUsername,
     adminNick:myNick||('@'+myUsername),adminAvatar:myAvatar||null};
-  // Шлём через Firebase — доставит даже оффлайн-участникам
+  // Шлём участникам через Firebase
   members.forEach(pid=>{
     if(_fbMode)_fbSend(pid,inv);
     else if(conns[pid]?.open)sendData(conns[pid],inv);
   });
+  // Записываем группу в Firebase чтобы наши другие устройства тоже её увидели
+  _fbSyncGroupToSelf(gid);
   addSbGroup(gid);openChat(gid);sysMsg(gid,'Группа "'+name+'" создана! Участников: '+(members.length+1));saveAll();
 }
+
 function recvGrpInvite(data){
   if(groups[data.gid])return;
   groups[data.gid]={name:data.name,members:data.members,admin:data.admin};grpHist[data.gid]=[];
   if(!$('si-'+data.gid))addSbGroup(data.gid);
   sysMsg(data.gid,'Тебя добавили в "'+data.name+'"');toast('Добавлен в "'+data.name+'"!');
+  // Записываем группу в Firebase чтобы наши другие устройства тоже её увидели
+  _fbSyncGroupToSelf(data.gid);
   data.members.forEach(pid=>{if(pid!==myUsername&&!conns[pid]?.open)silentConnect(pid);});saveAll();
 }
 function sendGrpMsg(gid,text){
