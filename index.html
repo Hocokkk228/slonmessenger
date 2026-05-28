@@ -1461,8 +1461,9 @@ async function doLogin(){
     $('usernameOverlay').classList.remove('show');
     setMyLabel();updateProfileDisplay();rebuildSidebar();
     initFirebaseMode();
-    // Подгружаем профиль с Firebase (ник/аватарка могут быть обновлены на другом устройстве)
-    _fetchAndApplyMyProfile();
+    // Подгружаем профиль с Firebase ПОСЛЕ инициализации (ник/аватарка с другого устройства)
+    // initFirebaseMode ставит _fbMode=true и Firebase готов — вызываем с небольшой задержкой
+    setTimeout(()=>_fetchAndApplyMyProfile(),500);
   }finally{
     if(btn){btn.textContent=origText;btn.disabled=false;}
   }
@@ -1619,7 +1620,11 @@ function showUsernameOverlay(){
 
 // Загружаем свой профиль из Firebase (ник/аватарка/bio актуальные)
 async function _fetchAndApplyMyProfile(){
-  if(!_fbReady()||!window._fbDb||!myUsername)return;
+  // Ждём Firebase если ещё не готов
+  if(!_fbReady()||!window._fbDb){
+    await new Promise(res=>window.addEventListener('firebaseReady',res,{once:true}));
+  }
+  if(!myUsername)return;
   try{
     const snap=await new Promise(res=>{
       window._fbOnValue(window._fbRef(window._fbDb,'profiles/'+myUsername),s=>res(s),{onlyOnce:true});
@@ -1627,11 +1632,24 @@ async function _fetchAndApplyMyProfile(){
     const d=snap?.val();
     if(!d)return;
     let changed=false;
-    if(d.nick&&d.nick!==myNick){myNick=d.nick;changed=true;}
-    if(d.avatar&&d.avatar!==myAvatar){myAvatar=d.avatar;changed=true;}
-    if(d.bio&&d.bio!==myBio){myBio=d.bio;changed=true;}
+    // Применяем ВСЕ поля из Firebase (не проверяем на непустоту — Firebase хранит актуальное)
+    if(d.nick!==undefined&&d.nick!==myNick){myNick=d.nick;changed=true;}
+    if(d.avatar!==undefined&&d.avatar!==myAvatar){myAvatar=d.avatar;changed=true;}
+    if(d.bio!==undefined&&d.bio!==myBio){myBio=d.bio;changed=true;}
     if(d.profileBg&&d.profileBg!==myProfileBg){myProfileBg=d.profileBg;changed=true;}
-    if(changed){updateProfileDisplay();setMyLabel();saveAll();}
+    if(changed){
+      updateProfileDisplay();
+      setMyLabel();
+      // Обновляем аватарки в сайдбаре у нашего элемента
+      const bnAv=$('bnProfAv');
+      if(bnAv){
+        bnAv.innerHTML='';
+        if(myAvatar){const i=document.createElement('img');i.src=myAvatar;i.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';bnAv.appendChild(i);}
+        else bnAv.innerHTML='<svg><use href="#i-person"/></svg>';
+      }
+      saveAll();
+      toast('Профиль синхронизирован 🔄');
+    }
   }catch(e){console.warn('fetchMyProfile:',e);}
 }
 
@@ -1648,6 +1666,8 @@ let hasElephantBadge=false;
 let conns={},activeChat='ai',currentView='chat';
 let chatHist={ai:[]},grpHist={},groups={},peerNames={},peerAvatars={};
 let archivedChats={}; // id->true
+let pinnedChats={}; // id->true — закреплённые чаты
+let mutedChats={}; // id->true — заглушённые чаты
 let peerIids={}; // pid->internalId
 let peerProfileBgs={};
 let peerBios={}; // pid->bio // pid->bgId
@@ -1914,6 +1934,8 @@ function saveAll(){
       localStorage.setItem(p+'pbg',JSON.stringify(myProfileBg));
       localStorage.setItem(p+'elephant',JSON.stringify(hasElephantBadge));
       localStorage.setItem(p+'arch',JSON.stringify(archivedChats));
+      localStorage.setItem(p+'pinned',JSON.stringify(pinnedChats));
+      localStorage.setItem(p+'muted',JSON.stringify(mutedChats));
       localStorage.setItem(p+'piids',JSON.stringify(peerIids));
       localStorage.setItem(p+'pbgs2',JSON.stringify(peerProfileBgs));
       // Настройки устройства — без префикса
@@ -1973,6 +1995,8 @@ function loadStorage(){
   myProfileBg=LS.get(p+'pbg',LS.get('sl_pbg','bg0'));
   hasElephantBadge=LS.get(p+'elephant',LS.get('sl_elephant',false));
   archivedChats=LS.get(p+'arch',LS.get('sl_arch',{}));
+  pinnedChats=LS.get(p+'pinned',{});
+  mutedChats=LS.get(p+'muted',{});
   peerIids=LS.get(p+'piids',LS.get('sl_piids',{}));
   peerProfileBgs=LS.get(p+'pbgs2',LS.get('sl_pbgs2',{}));
 
@@ -2019,6 +2043,28 @@ function loadStorage(){
 function rebuildSidebar(){
   Object.keys(peerNames).forEach(pid=>{if(!$('si-'+pid))addSbItem(pid);});
   Object.keys(groups).forEach(gid=>{if(!$('si-'+gid))addSbGroup(gid);});
+  // Закреплённые — поднимаем наверх списка
+  const sbList=$('sbList');
+  Object.keys(pinnedChats).forEach(id=>{
+    const el=$('si-'+id);
+    if(el&&sbList.contains(el)){
+      sbList.insertBefore(el,sbList.firstChild);
+      // Значок булавки
+      if(!el.querySelector('.sb-pin')){
+        const pin=document.createElement('span');
+        pin.className='sb-pin';pin.textContent='📌';
+        pin.style.cssText='font-size:9px;position:absolute;top:2px;left:2px;opacity:.55';
+        el.style.position='relative';el.appendChild(pin);
+      }
+    }
+  });
+  // Убираем значок булавки у открепленных
+  document.querySelectorAll('.sb-pin').forEach(el=>{
+    const id=el.closest('[id^="si-"]')?.id?.replace('si-','');
+    if(id&&!pinnedChats[id])el.remove();
+  });
+  // Мут-иконки
+  Object.keys(peerNames).forEach(id=>_updateSbMuteIcon(id));
   // Move archived items
   Object.keys(archivedChats).forEach(id=>{
     const el=$('si-'+id);
@@ -2085,8 +2131,8 @@ function initFirebaseMode(){
     _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
-  // Синхронизируем свой профиль с Firebase
-  setTimeout(()=>_fetchAndApplyMyProfile(),1200);
+  // Синхронизируем свой профиль с Firebase сразу (без лишней задержки)
+  _fetchAndApplyMyProfile();
 }
 
 // ── СЛОН-КАНАЛ: системные новости ──
@@ -2805,7 +2851,7 @@ function recvMsg(pid,text,nick,avatar,mid,ts){
       showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);
     }
   }
-  else{addUnread(pid);playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}
+  else{addUnread(pid);if(!mutedChats[pid]){playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}}
   saveAll();
 }
 
@@ -5360,10 +5406,87 @@ function showChatCtxMenu(e,id){
   ctxTargetId=id;
   const menu=$('chatCtxMenu');
   const isArch=!!archivedChats[id];
-  $('ctxArchiveLbl').textContent=isArch?'Из архива':'В архив';
-  menu.style.left=Math.min(e.clientX,window.innerWidth-180)+'px';
-  menu.style.top=Math.min(e.clientY,window.innerHeight-90)+'px';
+  const isPinned=!!pinnedChats[id];
+  const isMuted=!!mutedChats[id];
+  const isChannel=id===SLON_CHANNEL_ID;
+
+  // Динамически строим меню
+  menu.innerHTML=`
+    ${!isChannel?`
+    <div class="ctx-item" onclick="ctxPinToggle()">
+      <svg viewBox="0 0 24 24"><path d="${isPinned?
+        'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z':
+        'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z'}"/></svg>
+      <span>${isPinned?'📌 Открепить':'📌 Закрепить чат'}</span>
+    </div>
+    <div class="ctx-item" onclick="ctxMuteToggle()">
+      <svg viewBox="0 0 24 24"><path d="${isMuted?
+        'M18 16.08c.67-.06 1.27-.35 1.73-.81L21 14c.49-.49.49-1.28 0-1.77l-4.24-4.24-4.24-4.24L4.27 1.49 3 2.77l4.5 4.5C6.61 8.24 6 9.56 6 11v4c0 1.1-.9 2-2 2v1h9.05l2.86 2.86 1.27-1.27L18 16.08zM7.58 9.35L17 18.76V19H5v-8c0-1.17.45-2.23 1.17-3.02l1.41 1.37zM11 21c1.1 0 2-.9 2-2H9c0 1.1.9 2 2 2zm1.5-14h-1V5.73L15 9.23V11h-2.5z':
+        'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z'}"/></svg>
+      <span>${isMuted?'🔔 Включить уведомления':'🔕 Выключить уведомления'}</span>
+    </div>
+    <div class="ctx-item" onclick="ctxArchiveToggle()">
+      <svg><use href="#i-inbox"/></svg>
+      <span>${isArch?'Из архива':'В архив'}</span>
+    </div>
+    `:''}
+    <div class="ctx-item danger" onclick="ctxDeleteChat()">
+      <svg><use href="#i-trash"/></svg>
+      <span>Удалить чат</span>
+    </div>
+  `;
+
+  menu.style.left=Math.min(e.clientX,window.innerWidth-196)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-menu.children.length*44)+'px';
   menu.classList.add('show');
+}
+
+function ctxPinToggle(){
+  $('chatCtxMenu').classList.remove('show');
+  if(!ctxTargetId)return;
+  const id=ctxTargetId;
+  if(pinnedChats[id]){
+    delete pinnedChats[id];
+    toast('Чат откреплён');
+  }else{
+    pinnedChats[id]=true;
+    toast('Чат закреплён 📌');
+  }
+  saveAll();
+  rebuildSidebar(); // Перестраиваем сайдбар чтобы закреплённые были сверху
+}
+
+function ctxMuteToggle(){
+  $('chatCtxMenu').classList.remove('show');
+  if(!ctxTargetId)return;
+  const id=ctxTargetId;
+  if(mutedChats[id]){
+    delete mutedChats[id];
+    toast('Уведомления включены 🔔');
+  }else{
+    mutedChats[id]=true;
+    toast('Уведомления выключены 🔕');
+  }
+  saveAll();
+  // Обновляем иконку в сайдбаре
+  _updateSbMuteIcon(id);
+}
+
+function _updateSbMuteIcon(id){
+  const el=$('si-'+id);if(!el)return;
+  let muteEl=el.querySelector('.sb-mute');
+  if(mutedChats[id]){
+    if(!muteEl){
+      muteEl=document.createElement('span');
+      muteEl.className='sb-mute';
+      muteEl.textContent='🔕';
+      muteEl.style.cssText='font-size:10px;position:absolute;top:4px;right:4px;opacity:.6';
+      el.style.position='relative';
+      el.appendChild(muteEl);
+    }
+  }else{
+    muteEl?.remove();
+  }
 }
 
 function ctxArchiveToggle(){
@@ -6058,10 +6181,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 </div>
 
 <!-- CHAT CONTEXT MENU -->
-<div class="chat-ctx-menu" id="chatCtxMenu">
-  <div class="ctx-item" onclick="ctxArchiveToggle()"><svg><use href="#i-inbox"/></svg><span id="ctxArchiveLbl">В архив</span></div>
-  <div class="ctx-item danger" onclick="ctxDeleteChat()"><svg><use href="#i-trash"/></svg>Удалить чат</div>
-</div>
+<div class="chat-ctx-menu" id="chatCtxMenu"></div>
 
 </body>
 </html>
