@@ -1445,24 +1445,37 @@ async function doLogin(){
       errEl.textContent='Неверный пароль';errEl.style.display='block';return;
     }
 
-    // Если входим в ДРУГОЙ аккаунт — данные хранятся раздельно по username, ничего чистить не нужно
-
     // Вход успешен
+    const prevUsername=myUsername;
     myUsername=raw;myPassword=storedHash;
     LS.set('sl_username',raw);
     LS.set('sl_pass_'+raw,storedHash);
-    // Сессия с флагом verified и ключом по username
     const sess={username:raw,verified:true,ts:Date.now()};
     LS.set('sl_session_'+raw,sess);
-    LS.set('sl_session',sess); // обратная совместимость
+    LS.set('sl_session',sess);
 
-    // Загружаем данные этого аккаунта
-    loadStorage(); // перечитывает с префиксом нового username
+    // Если был другой аккаунт — сбрасываем Firebase соединение
+    if(prevUsername&&prevUsername!==raw&&_fbMode){
+      _fbMode=false;
+      try{
+        if(window._fbDb&&window._fbRef)
+          window._fbSet(window._fbRef(window._fbDb,'presence/'+prevUsername),{online:false,ts:Date.now()});
+      }catch(e){}
+    }
+
+    // Загружаем данные нового аккаунта (с его prefix sl_u_raw_*)
+    loadStorage();
+
     $('usernameOverlay').classList.remove('show');
-    setMyLabel();updateProfileDisplay();rebuildSidebar();
+
+    // Сбрасываем UI полностью
+    activeChat='ai';
+    setMyLabel();updateProfileDisplay();
+    rebuildSidebar();
+    openChat('ai');
+
     initFirebaseMode();
-    // Подгружаем профиль с Firebase ПОСЛЕ инициализации (ник/аватарка с другого устройства)
-    // initFirebaseMode ставит _fbMode=true и Firebase готов — вызываем с небольшой задержкой
+    // Подгружаем актуальный профиль с Firebase (ник/аватарка могут быть другими)
     setTimeout(()=>_fetchAndApplyMyProfile(),500);
   }finally{
     if(btn){btn.textContent=origText;btn.disabled=false;}
@@ -1504,10 +1517,12 @@ async function doRegister(){
     // Сохраняем пароль
     await _fbSetPasswordHash(raw,hash);
 
-    // Загружаем данные нового аккаунта (пустые)
-    loadStorage();
+    loadStorage(); // читает пустые данные для нового username
     $('usernameOverlay').classList.remove('show');
-    setMyLabel();updateProfileDisplay();rebuildSidebar();
+    activeChat='ai';
+    setMyLabel();updateProfileDisplay();
+    rebuildSidebar();
+    openChat('ai');
     initFirebaseMode();
     toast('Добро пожаловать в SLON, @'+raw+' 🐘');
   }finally{
@@ -2041,36 +2056,49 @@ function loadStorage(){
 }
 
 function rebuildSidebar(){
-  Object.keys(peerNames).forEach(pid=>{if(!$('si-'+pid))addSbItem(pid);});
-  Object.keys(groups).forEach(gid=>{if(!$('si-'+gid))addSbGroup(gid);});
-  // Закреплённые — поднимаем наверх списка
+  // Полностью очищаем списки — нужно при смене аккаунта
   const sbList=$('sbList');
-  Object.keys(pinnedChats).forEach(id=>{
-    const el=$('si-'+id);
-    if(el&&sbList.contains(el)){
-      sbList.insertBefore(el,sbList.firstChild);
-      // Значок булавки
-      if(!el.querySelector('.sb-pin')){
-        const pin=document.createElement('span');
-        pin.className='sb-pin';pin.textContent='📌';
-        pin.style.cssText='font-size:9px;position:absolute;top:2px;left:2px;opacity:.55';
-        el.style.position='relative';el.appendChild(pin);
-      }
+  const archList=$('archiveList');
+  // Убираем все si-* элементы кроме ai
+  sbList.querySelectorAll('.sb-item:not(#si-ai)').forEach(el=>el.remove());
+  archList.querySelectorAll('.sb-item').forEach(el=>el.remove());
+
+  // Строим заново из текущего state
+  // Сначала закреплённые
+  const pinned=Object.keys(pinnedChats).filter(id=>peerNames[id]||groups[id]);
+  const normal=Object.keys(peerNames).filter(id=>!pinnedChats[id]);
+  const grpIds=Object.keys(groups).filter(id=>!pinnedChats[id]);
+
+  pinned.forEach(id=>{
+    if(groups[id])addSbGroup(id);
+    else addSbItem(id);
+  });
+  normal.forEach(pid=>{addSbItem(pid);});
+  grpIds.forEach(gid=>{addSbGroup(gid);});
+
+  // Значки булавки
+  pinned.forEach(id=>{
+    const el=$('si-'+id);if(!el)return;
+    el.style.position='relative';
+    if(!el.querySelector('.sb-pin')){
+      const pin=document.createElement('span');
+      pin.className='sb-pin';pin.textContent='📌';
+      pin.style.cssText='font-size:9px;position:absolute;top:2px;left:2px;opacity:.55;pointer-events:none';
+      el.appendChild(pin);
     }
   });
-  // Убираем значок булавки у открепленных
-  document.querySelectorAll('.sb-pin').forEach(el=>{
-    const id=el.closest('[id^="si-"]')?.id?.replace('si-','');
-    if(id&&!pinnedChats[id])el.remove();
-  });
+
   // Мут-иконки
   Object.keys(peerNames).forEach(id=>_updateSbMuteIcon(id));
-  // Move archived items
+
+  // Архивированные
   Object.keys(archivedChats).forEach(id=>{
     const el=$('si-'+id);
-    if(el&&!$('archiveList').contains(el)){el.classList.add('archived');$('archiveList').appendChild(el);}
+    if(el){el.classList.add('archived');archList.appendChild(el);}
   });
   updateArchiveHeader();
+
+  // Превью последних сообщений
   for(const[id,hist]of Object.entries(chatHist)){
     if(id==='ai'||!hist?.length)continue;
     const last=hist[hist.length-1];
@@ -2324,15 +2352,42 @@ function _startMyPresence(){
   });
 }
 
-function _publishMyProfile(oldUsername){
+async function _publishMyProfile(oldUsername){
   if(!window._fbDb||!myUsername)return;
-  const data={nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
-    username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',ts:Date.now()};
-  window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
-  // Если сменили username — пишем redirect в старый профиль чтобы подписчики узнали
-  if(oldUsername&&oldUsername!==myUsername){
-    window._fbSet(window._fbRef(window._fbDb,'profiles/'+oldUsername),
-      {...data,redirectTo:myUsername}).catch(()=>{});
+  try{
+    // Читаем текущий профиль из Firebase
+    const snap=await new Promise(res=>{
+      window._fbOnValue(window._fbRef(window._fbDb,'profiles/'+myUsername),s=>res(s),{onlyOnce:true});
+    });
+    const existing=snap?.val()||{};
+
+    // Мержим: локальные данные перезаписывают Firebase только если они НЕ пустые
+    // Если локальный ник пустой — берём из Firebase (чтобы не затереть с другого устройства)
+    const nick=myNick||existing.nick||'';
+    const avatar=myAvatar||existing.avatar||null;
+    const bio=myBio||existing.bio||'';
+    const profileBg=myProfileBg||existing.profileBg||'bg0';
+
+    // Применяем Firebase данные локально если наши пустые
+    let localChanged=false;
+    if(!myNick&&existing.nick){myNick=existing.nick;localChanged=true;}
+    if(!myAvatar&&existing.avatar){myAvatar=existing.avatar;localChanged=true;}
+    if(!myBio&&existing.bio){myBio=existing.bio;localChanged=true;}
+    if(!myProfileBg&&existing.profileBg){myProfileBg=existing.profileBg;localChanged=true;}
+    if(localChanged){updateProfileDisplay();setMyLabel();saveAll();}
+
+    const data={nick,avatar,bio,username:myUsername,iid:myInternalId,profileBg,ts:Date.now()};
+    window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
+
+    if(oldUsername&&oldUsername!==myUsername){
+      window._fbSet(window._fbRef(window._fbDb,'profiles/'+oldUsername),
+        {redirectTo:myUsername,username:myUsername,ts:Date.now()});
+    }
+  }catch(e){
+    // Если читать не удалось — пишем то что есть локально
+    const data={nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
+      username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',ts:Date.now()};
+    window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
   }
 }
 
@@ -2488,37 +2543,40 @@ function sendData(conn,data){
 function onData(pid,data){
   switch(data.type){
     case 'hello':
-      if(data.nick!=null&&data.nick!==''){peerNames[pid]=data.nick;}
-      else if(data.username){peerNames[pid]='@'+data.username;}
+      // Применяем профиль собеседника — источник правды Firebase
+      // Если есть непустой ник — используем его, иначе @ + username
+      if(data.nick!=null&&data.nick!==''){
+        peerNames[pid]=data.nick;
+      }else if(!peerNames[pid]||peerNames[pid]==='@'+pid){
+        peerNames[pid]=data.username?'@'+data.username:'@'+pid;
+      }
+      // Аватарку берём всегда если она пришла (null тоже применяем — значит убрали)
       if(data.avatar!==undefined){peerAvatars[pid]=data.avatar;updateSbAvatar(pid);}
       if(data.profileBg){peerProfileBgs[pid]=data.profileBg;}
-      // Если собеседник сменил юзернейм — перепривязываем по oldUsername
+      if(data.bio!==undefined){peerBios[pid]=data.bio;}
+      // Миграция по oldUsername
       if(data.oldUsername&&data.oldUsername!==pid){
-        // Мигрируем историю со старого username на новый
         if(chatHist[data.oldUsername]&&!chatHist[pid]){
-          chatHist[pid]=chatHist[data.oldUsername];
-          delete chatHist[data.oldUsername];
+          chatHist[pid]=chatHist[data.oldUsername];delete chatHist[data.oldUsername];
         } else if(chatHist[data.oldUsername]){
           const existIds=new Set((chatHist[pid]||[]).map(m=>m.id));
           (chatHist[data.oldUsername]||[]).forEach(m=>{if(!existIds.has(m.id))chatHist[pid].push(m);});
-          chatHist[pid].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+          chatHist[pid].sort((a,b)=>(a.ts||0)-(b.ts||0));
           delete chatHist[data.oldUsername];
         }
-        const oldEl=document.getElementById('si-'+data.oldUsername);
-        if(oldEl)oldEl.remove();
-        delete peerNames[data.oldUsername];
-        delete peerAvatars[data.oldUsername];
+        document.getElementById('si-'+data.oldUsername)?.remove();
+        delete peerNames[data.oldUsername];delete peerAvatars[data.oldUsername];
         if(activeChat===data.oldUsername){activeChat=pid;renderChat(pid);}
       }
-      // Сохраняем скрытый ID и дедуплицируем по нему
-      if(data.iid){
-        peerIids[pid]=data.iid;
-        mergeByInternalId(pid,data.iid);
-      } else if(data.username){
-        mergeByUsername(pid,data.username);
-      }
+      if(data.iid){peerIids[pid]=data.iid;mergeByInternalId(pid,data.iid);}
+      else if(data.username){mergeByUsername(pid,data.username);}
       updateSbName(pid);
       if(activeChat===pid)updateChatHeader();
+      // Отвечаем своим профилем (если это не ответ)
+      if(!data._reply){
+        _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
+          username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',_reply:true});
+      }
       saveAll();
       break;
     case 'msg':
