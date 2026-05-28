@@ -31,6 +31,8 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 /* ── USERNAME SETUP OVERLAY ── */
 .username-overlay{position:fixed;inset:0;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px;}
 .username-overlay.show{display:flex;}
+.auth-link{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid var(--accent);padding-bottom:1px;}
+.auth-link:hover{opacity:.8;}
 .username-card{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:36px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.9);}
 .username-logo{font-size:56px;margin-bottom:8px;display:block;}
 .username-card h2{font-size:22px;font-weight:900;margin-bottom:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
@@ -677,20 +679,91 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 
 <!-- ── USERNAME SETUP OVERLAY ── -->
 <div class="username-overlay" id="usernameOverlay">
-  <div class="username-card">
-    <span class="username-logo">🐘</span>
-    <h2>Добро пожаловать в SLON!</h2>
-    <p>Выбери юзернейм — это твой постоянный адрес. Друзья будут добавлять тебя именно по нему.</p>
-    <div class="username-inp-wrap">
-      <span class="username-prefix">@</span>
-      <input class="username-inp" id="usernameInp" placeholder="твой_юзернейм" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')saveUsername()" oninput="sanitizeUsernameInput(this)">
+  <div class="username-card" id="authCard">
+
+    <!-- ══ ЭКРАН ВХОДА ══ -->
+    <div id="authLogin">
+      <span class="username-logo">🐘</span>
+      <h2>Войти в SLON</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Введи юзернейм и пароль</p>
+      <div class="username-inp-wrap">
+        <span class="username-prefix">@</span>
+        <input class="username-inp" id="loginUsernameInp" placeholder="юзернейм" maxlength="20"
+          autocomplete="username" autocapitalize="none" spellcheck="false"
+          oninput="sanitizeUsernameInput(this)"
+          onkeydown="if(event.key==='Enter')$('loginPassInp').focus()">
+      </div>
+      <div class="username-inp-wrap" style="margin-top:10px">
+        <span class="username-prefix" style="font-size:18px">🔑</span>
+        <input class="username-inp" id="loginPassInp" type="password" placeholder="пароль"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="username-error" id="loginError" style="display:none"></div>
+      <button class="username-btn" onclick="doLogin()" style="margin-top:14px">Войти 🐘</button>
+      <p style="margin-top:18px;font-size:13px;color:var(--text2);text-align:center">
+        Нет аккаунта?
+        <a href="#" class="auth-link" onclick="showAuthRegister();return false">Зарегистрируйтесь здесь</a>
+      </p>
     </div>
-    <div class="username-hint">Только латинские буквы, цифры и _ • От 3 до 20 символов • Изменить нельзя</div>
-    <button class="username-btn" onclick="saveUsername()">Войти в SLON 🐘</button>
-    <div class="username-error" id="usernameError"></div>
-    <div class="username-taken-hint" id="usernameTakenHint">
-      Этот юзернейм уже занят — выбери другой. Если ты уже пользовался этим ником, возможно прошло <b>72 часа</b> неактивности и он освободился.
+
+    <!-- ══ ЭКРАН РЕГИСТРАЦИИ ══ -->
+    <div id="authRegister" style="display:none">
+      <span class="username-logo">🐘</span>
+      <h2>Создать аккаунт</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Выбери юзернейм и придумай пароль</p>
+      <div class="username-inp-wrap">
+        <span class="username-prefix">@</span>
+        <input class="username-inp" id="regUsernameInp" placeholder="твой_юзернейм" maxlength="20"
+          autocomplete="username" autocapitalize="none" spellcheck="false"
+          oninput="sanitizeUsernameInput(this)"
+          onkeydown="if(event.key==='Enter')$('regPassInp').focus()">
+      </div>
+      <div class="username-hint">Только латинские буквы, цифры и _ · 3–20 символов</div>
+      <div class="username-inp-wrap" style="margin-top:10px">
+        <span class="username-prefix" style="font-size:18px">🔑</span>
+        <input class="username-inp" id="regPassInp" type="password" placeholder="пароль (мин. 6 символов)"
+          autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')$('regPassConfInp').focus()">
+      </div>
+      <div class="username-inp-wrap" style="margin-top:10px">
+        <span class="username-prefix" style="font-size:18px">✅</span>
+        <input class="username-inp" id="regPassConfInp" type="password" placeholder="повтори пароль"
+          autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <div class="username-error" id="regError" style="display:none"></div>
+      <button class="username-btn" onclick="doRegister()" style="margin-top:14px">Зарегистрироваться 🐘</button>
+      <p style="margin-top:18px;font-size:13px;color:var(--text2);text-align:center">
+        Уже есть аккаунт?
+        <a href="#" class="auth-link" onclick="showAuthLogin();return false">Войти</a>
+      </p>
     </div>
+
+    <!-- ══ ЗАПРОС ПАРОЛЯ ДЛЯ УЖЕ ЗАРЕГАННЫХ ══ -->
+    <div id="authSetPassword" style="display:none">
+      <span class="username-logo">🔒</span>
+      <h2>Защити аккаунт</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Привет, <b id="authSetPassUsername"></b>! В SLON появились пароли — установи пароль чтобы никто не мог войти в твой аккаунт.</p>
+      <div class="username-inp-wrap">
+        <span class="username-prefix" style="font-size:18px">🔑</span>
+        <input class="username-inp" id="setPassInp" type="password" placeholder="новый пароль (мин. 6 символов)"
+          autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')$('setPassConfInp').focus()">
+      </div>
+      <div class="username-inp-wrap" style="margin-top:10px">
+        <span class="username-prefix" style="font-size:18px">✅</span>
+        <input class="username-inp" id="setPassConfInp" type="password" placeholder="повтори пароль"
+          autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')doSetPassword()">
+      </div>
+      <div class="username-error" id="setPassError" style="display:none"></div>
+      <button class="username-btn" onclick="doSetPassword()" style="margin-top:14px">Установить пароль 🔒</button>
+      <p style="margin-top:12px;font-size:12px;color:var(--text2);text-align:center">
+        <a href="#" class="auth-link" style="font-size:12px" onclick="skipSetPassword();return false">Пропустить (не рекомендуется)</a>
+      </p>
+    </div>
+
   </div>
 </div>
 
@@ -1045,6 +1118,21 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
               <div class="prof-info-lbl">Нужны для уведомлений в фоне</div>
             </div>
           </div>
+          <!-- Сменить пароль -->
+          <div class="prof-info-row" onclick="showChangePassword()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val">Сменить пароль 🔑</div>
+            </div>
+          </div>
+          <!-- Выйти из аккаунта -->
+          <div class="prof-info-row danger-row" onclick="logout()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24" style="fill:var(--red)"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" style="color:var(--red)">Выйти из аккаунта</div>
+              <div class="prof-info-lbl">@<span id="profileLogoutUser"></span></div>
+            </div>
+          </div>
           <div class="prof-info-row danger-row" id="removeAvRow" onclick="removeAvatar()" style="display:none">
             <svg class="prof-info-ico" viewBox="0 0 24 24" style="fill:var(--red)"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             <div class="prof-info-txt">
@@ -1238,13 +1326,301 @@ const LS={
   del(k){try{localStorage.removeItem(k);}catch(e){}}
 };
 
+// ── SHA-256 хеширование пароля (нативный SubtleCrypto) ──
+async function hashPassword(pass){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pass));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── AUTH SCREENS ──
+function showAuthLogin(){
+  $('authLogin').style.display='';
+  $('authRegister').style.display='none';
+  $('authSetPassword').style.display='none';
+  setTimeout(()=>$('loginUsernameInp')?.focus(),100);
+}
+function showAuthRegister(){
+  $('authLogin').style.display='none';
+  $('authRegister').style.display='';
+  $('authSetPassword').style.display='none';
+  setTimeout(()=>$('regUsernameInp')?.focus(),100);
+}
+function showSetPassword(username){
+  $('authLogin').style.display='none';
+  $('authRegister').style.display='none';
+  $('authSetPassword').style.display='';
+  $('authSetPassUsername').textContent='@'+username;
+  setTimeout(()=>$('setPassInp')?.focus(),100);
+}
+
+// ── FIREBASE AUTH HELPERS ──
+// Пароли хранятся в Firebase RTDB: auth/{username}/hash
+// Локально кэшируем только текущую сессию
+
+async function _fbGetPasswordHash(username){
+  // Сначала проверяем локальный кэш (для скорости)
+  const cached=LS.get('sl_pass_'+username,'');
+  if(cached)return cached;
+  // Запрашиваем из Firebase
+  if(!_fbReady()||!window._fbDb)return null;
+  try{
+    const snap=await new Promise((res,rej)=>{
+      window._fbOnValue(
+        window._fbRef(window._fbDb,'auth/'+username+'/hash'),
+        s=>res(s),{onlyOnce:true}
+      );
+    });
+    return snap?.val()||null;
+  }catch(e){return null;}
+}
+
+async function _fbSetPasswordHash(username,hash){
+  // Сохраняем в Firebase и локально
+  LS.set('sl_pass_'+username,hash);
+  if(!_fbReady()||!window._fbDb)return;
+  try{
+    await window._fbSet(
+      window._fbRef(window._fbDb,'auth/'+username),
+      {hash,updatedAt:Date.now()}
+    );
+  }catch(e){console.warn('fbSetPass error:',e);}
+}
+
+async function _fbAccountExists(username){
+  if(!_fbReady()||!window._fbDb)return false;
+  try{
+    const snap=await new Promise(res=>{
+      window._fbOnValue(
+        window._fbRef(window._fbDb,'auth/'+username+'/hash'),
+        s=>res(s),{onlyOnce:true}
+      );
+    });
+    return !!(snap?.val());
+  }catch(e){return false;}
+}
+
+// Сбрасываем данные устройства для входа в другой аккаунт
+function _clearLocalForNewAccount(){
+  // Удаляем все данные чатов/профиля текущего локального аккаунта
+  // (они привязаны к старому username)
+  const keysToKeep=['sl_theme','sl_device_id'];
+  const allKeys=Object.keys(localStorage);
+  allKeys.forEach(k=>{
+    if(!keysToKeep.includes(k)&&k!=='sl_iid'){
+      // sl_iid (internal id устройства) сохраняем
+      localStorage.removeItem(k);
+    }
+  });
+  // Сбрасываем state
+  chatHist={ai:[]};grpHist={};groups={};
+  peerNames={};peerAvatars={};peerIids={};peerProfileBgs={};
+  myNick='';myBio='';myAvatar=null;myProfileBg='bg0';
+  archivedChats={};hasElephantBadge=false;
+}
+
+// ── ВХОД ──
+async function doLogin(){
+  const raw=($('loginUsernameInp')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const pass=($('loginPassInp')?.value||'').trim();
+  const errEl=$('loginError');
+  errEl.style.display='none';
+
+  if(raw.length<3){errEl.textContent='Юзернейм минимум 3 символа';errEl.style.display='block';return;}
+  if(!pass){errEl.textContent='Введи пароль';errEl.style.display='block';return;}
+
+  // Показываем загрузку
+  const btn=$('usernameOverlay').querySelector('#authLogin .username-btn');
+  const origText=btn?.textContent||'';
+  if(btn){btn.textContent='Проверяем…';btn.disabled=true;}
+
+  try{
+    // Получаем хэш из Firebase
+    const storedHash=await _fbGetPasswordHash(raw);
+    if(!storedHash){
+      errEl.textContent='Аккаунт не найден — зарегистрируйся!';
+      errEl.style.display='block';return;
+    }
+    const inputHash=await hashPassword(pass);
+    if(inputHash!==storedHash){
+      errEl.textContent='Неверный пароль';errEl.style.display='block';return;
+    }
+
+    // Если входим в ДРУГОЙ аккаунт — чистим локальные данные
+    if(myUsername&&myUsername!==raw){
+      _clearLocalForNewAccount();
+    }
+
+    // Вход успешен
+    myUsername=raw;myPassword=storedHash;
+    LS.set('sl_username',raw);
+    LS.set('sl_pass_'+raw,storedHash); // кэшируем локально
+    LS.set('sl_session',{username:raw,hash:storedHash,ts:Date.now()});
+
+    $('usernameOverlay').classList.remove('show');
+    setMyLabel();updateProfileDisplay();rebuildSidebar();
+    initFirebaseMode();
+  }finally{
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }
+}
+
+// ── РЕГИСТРАЦИЯ ──
+async function doRegister(){
+  const raw=($('regUsernameInp')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const pass=($('regPassInp')?.value||'');
+  const conf=($('regPassConfInp')?.value||'');
+  const errEl=$('regError');
+  errEl.style.display='none';
+
+  if(raw.length<3){errEl.textContent='Юзернейм минимум 3 символа';errEl.style.display='block';return;}
+  if(raw.length>20){errEl.textContent='Юзернейм максимум 20 символов';errEl.style.display='block';return;}
+  if(pass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.style.display='block';return;}
+  if(pass!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
+
+  const btn=$('usernameOverlay').querySelector('#authRegister .username-btn');
+  const origText=btn?.textContent||'';
+  if(btn){btn.textContent='Создаём аккаунт…';btn.disabled=true;}
+
+  try{
+    // Проверяем занятость юзернейма через Firebase
+    const exists=await _fbAccountExists(raw);
+    if(exists){
+      errEl.textContent='Юзернейм занят — выбери другой или войди';
+      errEl.style.display='block';return;
+    }
+
+    const hash=await hashPassword(pass);
+
+    // Если на устройстве уже был другой аккаунт — чистим
+    if(myUsername&&myUsername!==raw){
+      _clearLocalForNewAccount();
+    }
+
+    // Сохраняем пароль в Firebase и локально
+    await _fbSetPasswordHash(raw,hash);
+
+    myUsername=raw;myPassword=hash;
+    // Новый аккаунт — генерируем новый internal ID
+    myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    LS.set('sl_iid',myInternalId);
+
+    LS.set('sl_username',raw);
+    LS.set('sl_session',{username:raw,hash,ts:Date.now()});
+
+    $('usernameOverlay').classList.remove('show');
+    setMyLabel();updateProfileDisplay();rebuildSidebar();
+    initFirebaseMode();
+    toast('Добро пожаловать в SLON, @'+raw+' 🐘');
+  }finally{
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }
+}
+
+// ── УСТАНОВКА ПАРОЛЯ (существующий юзер без пароля) ──
+async function doSetPassword(){
+  const pass=($('setPassInp')?.value||'');
+  const conf=($('setPassConfInp')?.value||'');
+  const errEl=$('setPassError');
+  errEl.style.display='none';
+  if(pass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.style.display='block';return;}
+  if(pass!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
+
+  const btn=$('usernameOverlay').querySelector('#authSetPassword .username-btn');
+  if(btn){btn.textContent='Сохраняем…';btn.disabled=true;}
+
+  try{
+    const hash=await hashPassword(pass);
+    myPassword=hash;
+    await _fbSetPasswordHash(myUsername,hash);
+    LS.set('sl_session',{username:myUsername,hash,ts:Date.now()});
+    $('usernameOverlay').classList.remove('show');
+    toast('Пароль установлен 🔒');
+    initFirebaseMode();
+  }finally{
+    if(btn){btn.textContent='Установить пароль 🔒';btn.disabled=false;}
+  }
+}
+
+function skipSetPassword(){
+  LS.set('sl_session',{username:myUsername,hash:'',ts:Date.now()});
+  $('usernameOverlay').classList.remove('show');
+  initFirebaseMode();
+}
+
+// ── СМЕНА ПАРОЛЯ ──
+async function showChangePassword(){
+  showModal(`
+    <div class="m-title">🔑 Сменить пароль</div>
+    <input class="m-inp" id="cpOldInp" type="password" placeholder="текущий пароль" autocomplete="current-password">
+    <input class="m-inp" id="cpNewInp" type="password" placeholder="новый пароль (мин. 6 символов)" autocomplete="new-password" style="margin-top:8px">
+    <input class="m-inp" id="cpConfInp" type="password" placeholder="повтори новый пароль" autocomplete="new-password" style="margin-top:8px">
+    <div class="m-err" id="cpErr" style="display:none"></div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="doChangePassword()">Сохранить</button>
+    </div>
+  `);
+}
+
+async function doChangePassword(){
+  const old=$('cpOldInp')?.value||'';
+  const nw=$('cpNewInp')?.value||'';
+  const conf=$('cpConfInp')?.value||'';
+  const errEl=$('cpErr');errEl.style.display='none';
+  if(myPassword){
+    const oldHash=await hashPassword(old);
+    if(oldHash!==myPassword){errEl.textContent='Неверный текущий пароль';errEl.style.display='block';return;}
+  }
+  if(nw.length<6){errEl.textContent='Новый пароль минимум 6 символов';errEl.style.display='block';return;}
+  if(nw!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
+  const newHash=await hashPassword(nw);
+  myPassword=newHash;
+  await _fbSetPasswordHash(myUsername,newHash);
+  LS.set('sl_session',{username:myUsername,hash:newHash,ts:Date.now()});
+  closeModal();toast('Пароль изменён 🔒');
+}
+
+// ── ВЫХОД ──
+function logout(){
+  showModal(`
+    <div class="m-title">Выйти из аккаунта?</div>
+    <div class="m-info">Ты выйдешь из <b>@${esc(myUsername)}</b>. При следующем входе потребуется пароль.</div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-danger" onclick="doLogout()">Выйти</button>
+    </div>
+  `);
+}
+
+function doLogout(){
+  closeModal();
+  LS.del('sl_session');
+  LS.del('sl_username');
+  myUsername='';myPassword='';
+  if(_fbMode){_fbMode=false;}
+  location.reload();
+}
+
+function showUsernameOverlay(){
+  $('usernameOverlay').classList.add('show');
+  const savedUser=LS.get('sl_username','');
+  if(savedUser){
+    showAuthLogin();
+    const inp=$('loginUsernameInp');
+    if(inp)inp.value=savedUser;
+  }else{
+    showAuthRegister();
+  }
+}
+
 // ── TOAST ──
 function toast(msg,dur=3000){document.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),dur);}
 
 // ── STATE ──
 let peer=null,myId=null;
-let myUsername=''; // ← стабильный PeerJS ID
-let myInternalId=''; // ← скрытый постоянный ID (никогда не меняется)
+let myUsername='';
+let myInternalId='';
+let myPassword=''; // хэш пароля (sha256 hex)
 let myNick='',myBio='',myAvatar=null,myProfileBg='bg0';
 let hasElephantBadge=false;
 let conns={},activeChat='ai',currentView='chat';
@@ -1362,7 +1738,96 @@ function _fbStopListen(username){
   }
 }
 
-// ── SAVE / LOAD ──
+// ══════════════════════════════════════════════
+// ── INDEXEDDB: хранилище медиа (голос, слонкружки, файлы) ──
+// Хранит бинарные данные без ограничения 5MB как у localStorage
+// ══════════════════════════════════════════════
+const _idb={
+  _db:null,
+  _ready:false,
+  _q:[],
+  init(){
+    if(this._ready||this._opening)return;
+    this._opening=true;
+    const req=indexedDB.open('slon_media',1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('media'))
+        db.createObjectStore('media'); // key=msgId+kind
+    };
+    req.onsuccess=e=>{
+      this._db=e.target.result;this._ready=true;
+      this._q.forEach(fn=>fn());this._q=[];
+    };
+    req.onerror=()=>{console.warn('[IDB] open failed');};
+  },
+  _run(fn){this._ready?fn():this._q.push(fn);},
+  put(key,blob){
+    return new Promise(res=>{
+      this._run(()=>{
+        try{
+          const tx=this._db.transaction('media','readwrite');
+          tx.objectStore('media').put(blob,key);
+          tx.oncomplete=()=>res(true);
+          tx.onerror=()=>res(false);
+        }catch(e){res(false);}
+      });
+    });
+  },
+  get(key){
+    return new Promise(res=>{
+      this._run(()=>{
+        try{
+          const tx=this._db.transaction('media','readonly');
+          const req=tx.objectStore('media').get(key);
+          req.onsuccess=()=>res(req.result||null);
+          req.onerror=()=>res(null);
+        }catch(e){res(null);}
+      });
+    });
+  },
+  del(key){
+    return new Promise(res=>{
+      this._run(()=>{
+        try{
+          const tx=this._db.transaction('media','readwrite');
+          tx.objectStore('media').delete(key);
+          tx.oncomplete=()=>res(true);
+          tx.onerror=()=>res(false);
+        }catch(e){res(false);}
+      });
+    });
+  }
+};
+_idb.init();
+// Сохраняем медиа в IndexedDB (blob URL или data URL → Blob)
+async function _saveMediaToIdb(msgId,kind,src){
+  try{
+    let blob;
+    if(src.startsWith('blob:')){
+      const resp=await fetch(src);
+      blob=await resp.blob();
+    }else if(src.startsWith('data:')){
+      const parts=src.split(',');
+      const mime=parts[0].match(/:(.*?);/)?.[1]||'application/octet-stream';
+      const bytes=atob(parts[1]);
+      const buf=new Uint8Array(bytes.length);
+      for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
+      blob=new Blob([buf],{type:mime});
+    }else return;
+    await _idb.put(msgId+':'+kind,blob);
+  }catch(e){console.warn('[IDB] save failed:',msgId,kind,e);}
+}
+
+// Загружаем медиа из IDB → свежий Blob URL
+async function _loadMediaFromIdb(msgId,kind){
+  try{
+    const blob=await _idb.get(msgId+':'+kind);
+    if(!blob)return null;
+    return URL.createObjectURL(blob);
+  }catch(e){return null;}
+}
+
 function saveAll(){
   // Очищаем тяжёлые данные из истории перед сохранением в localStorage.
   // base64-фото/аудио/видео могут занимать мегабайты — LS квота обычно 5-10 MB.
@@ -1375,14 +1840,31 @@ function saveAll(){
       // thumb слишком большой — сжимаем до маркера
       clean.photoThumb=clean.photoThumb.slice(0,50000);
     }
-    // Голосовые/слонкружки base64 — сохраняем только метаданные (URL-вариант остаётся)
-    if(clean.voiceData&&!clean.isUrl){
-      clean.voiceData=null; // base64 не помещается, только URL-версия
-      clean._mediaLost=true;
+    // Голосовые/слонкружки:
+    // - isUrl=true && blob: → сохраняем в IDB, ставим маркер idb:
+    // - isUrl=true && idb: → уже в IDB, оставляем
+    // - base64 data: → тоже в IDB
+    if(clean.voiceData){
+      const v=clean.voiceData;
+      if(v.startsWith('blob:')||(!v.startsWith('idb:')&&v.startsWith('data:'))){
+        // Асинхронно сохраняем в IDB (не ждём)
+        _saveMediaToIdb(clean.id,'voice',v);
+        clean.voiceData='idb:'+clean.id+':voice';
+        clean.isUrl=false;
+      }
     }
-    if(clean.slonData&&!clean.isUrl){
-      clean.slonData=null;
-      clean._mediaLost=true;
+    if(clean.slonData){
+      const v=clean.slonData;
+      if(v.startsWith('blob:')||(!v.startsWith('idb:')&&v.startsWith('data:'))){
+        _saveMediaToIdb(clean.id,'slon',v);
+        clean.slonData='idb:'+clean.id+':slon';
+        clean.isUrl=false;
+      }
+      // blob: уже сохранён ранее — ставим маркер
+      if(v.startsWith('blob:')){
+        clean.slonData='idb:'+clean.id+':slon';
+        clean.isUrl=false;
+      }
     }
     // Файлы: fileStore хранится в памяти, при перезагрузке всё равно теряется
     // Оставляем fileInfo (имя/размер) но убираем fileDataId если нет URL
@@ -1457,6 +1939,7 @@ function loadStorage(){
   hasElephantBadge=LS.get('sl_elephant',false);
   archivedChats=LS.get('sl_arch',{});
   myUsername=LS.get('sl_username','');
+  myPassword=LS.get('sl_pass_'+myUsername,'');
   // Скрытый постоянный ID — генерируем один раз навсегда
   myInternalId=LS.get('sl_iid','');
   peerIids=LS.get('sl_piids',{});
@@ -1562,16 +2045,122 @@ function initFirebaseMode(){
   }
   _fbMode=true;
   setNet(true,'@'+myUsername);
-  // Проверяем доступность RTDB (права)
   _checkFirebaseRules();
   _fbListen(myUsername);
   _startMyPresence();
-  // Следим за присутствием и профилями известных контактов в реальном времени
   Object.keys(peerNames).forEach(pid=>{_watchPresence(pid);_fetchProfile(pid);});
-  // Переподключаем всех известных пиров через Firebase
   setTimeout(()=>{
     Object.keys(peerNames).forEach(pid=>_fbSilentConnect(pid));
+    _initSlonChannel(); // Инициализируем системный канал
   },800);
+  _fbListenSent(myUsername);
+}
+
+// ── СЛОН-КАНАЛ: системные новости ──
+const SLON_CHANNEL_ID='slon_channel';
+const SLON_CHANGELOG=`🐘 **SLON v0.9 — Changelog**
+
+✨ **Новое:**
+• Система паролей — аккаунты теперь защищены
+• Вход/Регистрация с подтверждением пароля
+• Выход из аккаунта
+• Мульти-устройство: одновременный вход с нескольких гаджетов
+• IndexedDB: голосовые и слонкружки сохраняются после перезагрузки
+• Кнопка поворота камеры в слонкружках
+• Исправлены голосовые сообщения (длительность 0 с)
+• Исправлены даты в чате (разделитель «Сегодня»)
+• Исправлена доставка звонков оффлайн-пользователям
+
+🔧 **Исправлено:**
+• Слонкружки — чёрный экран у получателя
+• Первая регистрация — вечное «Подключение»
+• Удаление у всех — теперь удаляет полностью
+• Пропавшие сообщения при переполнении localStorage`;
+
+function _initSlonChannel(){
+  // Добавляем SLON-канал в список контактов если ещё нет
+  if(!peerNames[SLON_CHANNEL_ID]){
+    peerNames[SLON_CHANNEL_ID]='🐘 SLON Новости';
+    peerAvatars[SLON_CHANNEL_ID]=null;
+    if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
+    // Добавляем changelog как первое сообщение
+    const cid='ch_'+Date.now();
+    const ts=Date.now();
+    const already=chatHist[SLON_CHANNEL_ID].some(m=>m.text&&m.text.includes('SLON v0.9'));
+    if(!already){
+      chatHist[SLON_CHANNEL_ID].push({
+        id:cid,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),
+        text:SLON_CHANGELOG
+      });
+    }
+    if(!$('si-'+SLON_CHANNEL_ID))addSbItem(SLON_CHANNEL_ID);
+    saveAll();
+    toast('📢 Новости SLON — проверь канал!',4000);
+  }
+  // Проверяем новые версии через Firebase
+  try{
+    if(!window._fbDb)return;
+    window._fbOnValue(window._fbRef(window._fbDb,'slon_channel/latest'),snap=>{
+      const d=snap.val();
+      if(!d||!d.text)return;
+      const already=(chatHist[SLON_CHANNEL_ID]||[]).some(m=>m.id===d.id);
+      if(already)return;
+      if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
+      const ts=d.ts||Date.now();
+      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text});
+      if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);}
+      else{addUnread(SLON_CHANNEL_ID);toast('📢 Новое в SLON-канале!',4000);}
+      saveAll();
+    },{onlyOnce:false});
+  }catch(e){}
+}
+
+// Синхронизация отправленных сообщений между устройствами
+let _sentListener=null;
+let _lastSyncTs=Date.now(); // не подгружаем сообщения старше сессии
+
+function _fbListenSent(username){
+  if(!_fbReady()||!window._fbDb)return;
+  const db=window._fbDb;
+  const sentRef=window._fbRef(db,'sent/'+username);
+  // Слушаем только новые записи (после старта)
+  if(_sentListener){try{_sentListener();}catch(e){}}
+  _sentListener=window._fbOnChildAdded(sentRef,snap=>{
+    const data=snap.val();
+    if(!data||!data.ts)return;
+    if(data.ts<=_lastSyncTs)return; // игнорируем старые
+    if(data._device===_myDeviceId)return; // наше собственное — уже есть
+    // Это сообщение отправлено с другого устройства
+    const pid=data.to;
+    if(!pid)return;
+    if(!chatHist[pid])chatHist[pid]=[];
+    if(chatHist[pid].some(m=>m.id===data.id))return; // дедупликация
+    const msg={id:data.id,sender:'me',text:data.text,ts:data.ts,time:fmtTime(data.ts),status:'sent'};
+    chatHist[pid].push(msg);
+    chatHist[pid].sort((a,b)=>(a.ts||0)-(b.ts||0));
+    if(activeChat===pid){appendMsg(msg);scrollDown();}
+    updatePreview(pid,'Вы: '+( data.text||'').slice(0,28));
+    saveAll();
+    // Удаляем из Firebase (уже синхронизировано)
+    window._fbRemove(snap.ref).catch(()=>{});
+  });
+}
+
+// Уникальный ID устройства (для фильтрации собственных sync-записей)
+let _myDeviceId=LS.get('sl_device_id','');
+if(!_myDeviceId){
+  _myDeviceId='dev'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  LS.set('sl_device_id',_myDeviceId);
+}
+
+// Публикуем отправленное сообщение для синхронизации на других устройствах
+function _syncSentMsg(toPid,mid,text,ts){
+  if(!_fbMode||!window._fbDb)return;
+  try{
+    const db=window._fbDb;
+    const ref=window._fbRef(db,'sent/'+myUsername);
+    window._fbPush(ref,{id:mid,to:toPid,text,ts,_device:_myDeviceId});
+  }catch(e){}
 }
 
 // Слушаем входящие сообщения для себя в Firebase
@@ -2050,13 +2639,15 @@ function onData(pid,data){
           const fullData=parts.join('');
           window._fbRemove(window._fbRef(window._fbDb,base)).catch(()=>{});
           if(data.kind==='voice'){
-            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:fullData,voiceDur:data.dur};
+            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',slonDur:data.dur};
+            _saveMediaToIdb(data.id,'voice',fullData);
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
             updatePreview(spid,'🎙️ Голосовое');
           }else if(data.kind==='slon'){
-            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:fullData,slonDur:data.dur};
+            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:data.dur};
+            _saveMediaToIdb(data.id,'slon',fullData);
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
@@ -2074,13 +2665,15 @@ function onData(pid,data){
       const spid=buf.pid;
       const mts=buf.ts||Date.now();
       if(buf.kind==='voice'){
-        const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),voiceData:fullData,voiceDur:buf.dur};
+        _saveMediaToIdb(data.id,'voice',fullData);
+        const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',voiceDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg2);
         if(activeChat===spid){appendMsg(msg2);scrollDown();}
         else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
         updatePreview(spid,'🎙️ Голосовое');
       }else if(buf.kind==='slon'){
-        const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),slonData:fullData,slonDur:buf.dur};
+        _saveMediaToIdb(data.id,'slon',fullData);
+        const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg3);
         if(activeChat===spid){appendMsg(msg3);scrollDown();}
         else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
@@ -2111,6 +2704,8 @@ function onData(pid,data){
 // ── MESSAGES ──
 function sendMsg(){
   const inp=$('msgInp'),txt=inp.value.trim();if(!txt)return;
+  // SLON-канал только для чтения
+  if(activeChat===SLON_CHANNEL_ID){toast('📢 Это канал — сюда нельзя писать');inp.value='';return;}
   // Режим редактирования
   if(inp.dataset.editId){
     const mid=inp.dataset.editId;
@@ -2146,7 +2741,11 @@ function sendMsg(){
     },delay);
   }else{
     const c=conns[activeChat];
-    if(_fbMode||c?.open)sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+    if(_fbMode||c?.open){
+      sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+      // Синхронизируем на другие наши устройства
+      if(_fbMode)_syncSentMsg(activeChat,mid,txt,ts);
+    }
     else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
   }
 }
@@ -3809,6 +4408,7 @@ function updateProfileDisplay(){
   const nv=$('profNickVal');if(nv)nv.textContent=myNick||'Задать имя';
   const bv=$('profBioVal');if(bv)bv.textContent=myBio||'Не задано';
   const iv=$('profIdVal');if(iv)iv.textContent='@'+myUsername;
+  const lu=$('profileLogoutUser');if(lu)lu.textContent=myUsername;
   // New profile v2 elements
   const bv2=$('profBioVal2');if(bv2)bv2.textContent=myBio||'Добавить описание…';
   // Hero bg
@@ -4315,19 +4915,28 @@ function beginRec(stream,mode){
 
   const btn=$('voiceRecBtn');if(btn)btn.classList.add('rec-active');
 
-  // Живой превью
+  // Живой превью и кнопка поворота камеры
   if(mode==='slon'){
+    _slonFacing='user';
+    _slonStream=stream;
     const preview=$('slonPreview');
     if(preview){
       preview.srcObject=stream;
       preview.play().catch(()=>{});
+    }
+    const flipBtn=$('slonFlipBtn');
+    if(flipBtn){
+      const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      flipBtn.style.display=isMob?'flex':'none';
     }
   }
 }
 
 function cancelRec(){
   _stopRec();
-  const preview=$('slonPreview');if(preview){preview.srcObject=null;}
+  _slonStream=null;
+  const preview=$('slonPreview');if(preview){preview.srcObject=null;preview.style.display='none';}
+  const flipBtn=$('slonFlipBtn');if(flipBtn)flipBtn.style.display='none';
   $('recModal').classList.remove('show');
   const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
 }
@@ -4357,7 +4966,8 @@ function stopAndSendRec(){
   _mr.onstop=()=>{
     const preview=$('slonPreview');
     if(preview){preview.srcObject=null;preview.style.display='none';}
-    if(_stream)_stream.getTracks().forEach(t=>t.stop());
+    const flipBtn=$('slonFlipBtn');if(flipBtn)flipBtn.style.display='none';
+    _slonStream=null;
 
     if(!recChunks.length){toast('Запись пустая');return;}
     // Берём тип из первого непустого чанка, fallback на _recMime
@@ -4384,7 +4994,9 @@ function stopAndSendRec(){
 function sendVoiceMsg(dataUrl,dur,mimeType){
   const mid='vm'+Date.now();
   const ts=Date.now();
-  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),voiceData:dataUrl,voiceDur:dur};
+  // Сохраняем в IDB сразу, используем idb: маркер
+  _saveMediaToIdb(mid,'voice',dataUrl).catch(()=>{});
+  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),voiceData:'idb:'+mid+':voice',voiceDur:dur};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
@@ -4477,18 +5089,32 @@ function renderVoiceBub(msg,isOut){
     <div class="vb-dur">${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}</div>`;
   const playBtn=div.querySelector('.vb-play');
   let audio=null,playing=false;
-  playBtn.onclick=()=>{
+
+  async function _getAudioSrc(){
+    const src=msg.voiceData;
+    if(!src) return null;
+    if(src.startsWith('idb:')){
+      const parts=src.split(':'); // idb:msgId:kind
+      return await _loadMediaFromIdb(parts[1],parts[2]||'voice');
+    }
+    if(src.startsWith('blob:')||src.startsWith('data:')||src.startsWith('http')) return src;
+    return src;
+  }
+
+  playBtn.onclick=async()=>{
     if(!audio){
-      audio=new Audio(msg.voiceData);
-      audio.onended=()=>{playing=false;playBtn.innerHTML=icoSvg('i-play');div.querySelectorAll('.vb-bar').forEach(b=>b.classList.remove('played'));};
+      const src=await _getAudioSrc();
+      if(!src){toast('Аудио недоступно');return;}
+      audio=new Audio(src);
+      audio.onended=()=>{playing=false;playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M8 5v14l11-7z"/></svg>';div.querySelectorAll('.vb-bar').forEach(b=>b.classList.remove('played'));};
       audio.ontimeupdate=()=>{
-        const pct=audio.currentTime/audio.duration;
+        const pct=audio.duration?audio.currentTime/audio.duration:0;
         const n=Math.floor(pct*barsCount);
         div.querySelectorAll('.vb-bar').forEach((b,i)=>b.classList.toggle('played',i<n));
       };
     }
     if(playing){audio.pause();playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M8 5v14l11-7z"/></svg>';playing=false;}
-    else{audio.play();playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M6 6h12v12H6z"/></svg>';playing=true;}
+    else{audio.play().catch(e=>{toast('Ошибка воспроизведения: '+e.message);});playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M6 6h12v12H6z"/></svg>';playing=true;}
   };
   return div;
 }
@@ -4497,46 +5123,75 @@ function renderSlonBub(msg){
   const dur=msg.slonDur||0;
   const durStr=Math.floor(dur/60)+':'+String(dur%60).padStart(2,'0');
   const wrap=document.createElement('div');wrap.className='slon-circle-bub';
+  const isOut=msg.sender==='me';
 
-  // SVG: тело слона = большой круг, уши = два боковых круга, хобот = кривая снизу
   wrap.innerHTML=`
     <div class="slon-circle-wrap" id="sw-${msg.id}">
       <svg class="slon-circle-svg" viewBox="0 0 180 185" xmlns="http://www.w3.org/2000/svg">
-        <!-- Левое ухо (большое, высокое) -->
         <ellipse cx="16" cy="72" rx="22" ry="34" fill="rgba(88,166,255,0.55)" stroke="rgba(88,166,255,0.85)" stroke-width="2.5"/>
-        <!-- Правое ухо -->
         <ellipse cx="164" cy="72" rx="22" ry="34" fill="rgba(88,166,255,0.55)" stroke="rgba(88,166,255,0.85)" stroke-width="2.5"/>
-        <!-- Кольцо вокруг кружка -->
         <circle cx="90" cy="82" r="72" fill="none" stroke="rgba(88,166,255,0.7)" stroke-width="3"/>
-        <!-- Хобот длинный, изогнутый -->
         <path d="M 76 152 Q 68 165 64 174 Q 62 182 70 184 Q 82 186 88 178 Q 92 170 88 160 Q 84 152 82 152 Z" fill="rgba(88,166,255,0.72)" stroke="rgba(88,166,255,0.9)" stroke-width="1.5"/>
       </svg>
       <video class="slon-circle-vid" id="sv-${msg.id}" playsinline muted loop></video>
-      <div class="slon-circle-play-overlay"><svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="slon-circle-play-overlay" id="so-${msg.id}">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg>
+      </div>
     </div>
     <div class="slon-circle-dur">🐘 ${durStr}</div>`;
 
-  const vid=wrap.querySelector(`#sv-${msg.id}`);
-  // Convert data URL to Blob URL — fixes black screen on mobile/Chrome
-  if(msg.slonData){
-    try{
-      const arr=msg.slonData.split(',');
-      const mime=arr[0].match(/:(.*?);/)[1];
-      const bytes=atob(arr[1]);
-      const buf=new Uint8Array(bytes.length);
-      for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
-      const blob=new Blob([buf],{type:mime});
-      vid.src=URL.createObjectURL(blob);
-    }catch(e){vid.src=msg.slonData;}
-  }
-  let playing=false;
-  const overlay=wrap.querySelector('.slon-circle-play-overlay');
+  const vid=wrap.querySelector('#sv-'+msg.id);
+  const overlay=wrap.querySelector('#so-'+msg.id);
   const playSvg='<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg>';
   const pauseSvg='<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-  if(overlay) overlay.innerHTML=playSvg;
-  wrap.querySelector('.slon-circle-wrap').onclick=()=>{
+
+  // Загружаем видео — обрабатываем все форматы
+  async function _loadSrc(){
+    const src=msg.slonData;
+    if(!src||src==='null'){
+      // Нет данных — показываем заглушку
+      if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Видео недоступно</span>';
+      return;
+    }
+    try{
+      if(src.startsWith('idb:')){
+        // Загружаем из IndexedDB
+        const parts=src.split(':'); // idb:msgId:kind
+        const blobUrl=await _loadMediaFromIdb(parts[1],parts[2]||'slon');
+        if(blobUrl){vid.src=blobUrl;}
+        else if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Видео недоступно</span>';
+      }else if(src.startsWith('blob:')){
+        // Живой Blob URL — используем напрямую, и сохраняем в IDB на всякий случай
+        vid.src=src;
+        _saveMediaToIdb(msg.id,'slon',src).catch(()=>{});
+      }else if(src.startsWith('data:')){
+        // data URL → Blob URL
+        const parts=src.split(',');
+        const mime=parts[0].match(/:(.*?);/)?.[1]||'video/webm';
+        const bytes=atob(parts[1]);
+        const buf=new Uint8Array(bytes.length);
+        for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
+        const blob=new Blob([buf],{type:mime});
+        vid.src=URL.createObjectURL(blob);
+        // Сохраняем в IDB для будущих перезагрузок
+        _idb.put(msg.id+':slon',blob).catch(()=>{});
+      }else{
+        vid.src=src; // HTTP URL или что-то другое
+      }
+    }catch(e){
+      console.warn('renderSlonBub load error:',e);
+      if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Ошибка загрузки</span>';
+    }
+  }
+  _loadSrc();
+
+  let playing=false;
+  const slonWrap=wrap.querySelector('.slon-circle-wrap');
+
+  slonWrap.onclick=()=>{
+    if(!vid.src&&!vid.srcObject){return;}
     if(playing){
-      vid.pause();vid.muted=true;playing=false;
+      vid.pause();playing=false;
       if(overlay)overlay.innerHTML=playSvg;
     }else{
       vid.muted=false;
@@ -4546,7 +5201,60 @@ function renderSlonBub(msg){
     }
   };
   vid.onended=()=>{playing=false;if(overlay)overlay.innerHTML=playSvg;};
+
   return wrap;
+}
+
+// Запись слонкружка с предпросмотром и кнопкой поворота камеры
+let _slonFacing='user'; // текущая камера для слонкружка
+let _slonStream=null;   // текущий стрим записи
+
+async function flipSlonCamera(){
+  if(!_slonStream||!mediaRecorder)return;
+  const newFacing=_slonFacing==='user'?'environment':'user';
+  let newStream=null;
+
+  // Перебираем камеры через enumerateDevices (надёжнее на мобильных)
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const cams=devices.filter(d=>d.kind==='videoinput');
+    if(cams.length>=2){
+      const curId=_slonStream.getVideoTracks()[0]?.getSettings().deviceId;
+      const other=cams.find(c=>c.deviceId&&c.deviceId!==curId);
+      if(other){
+        // Останавливаем только видеотрек, аудио оставляем
+        _slonStream.getVideoTracks().forEach(t=>{t.stop();_slonStream.removeTrack(t);});
+        const vs=await navigator.mediaDevices.getUserMedia({
+          video:{deviceId:{exact:other.deviceId}},audio:false
+        });
+        vs.getVideoTracks().forEach(t=>_slonStream.addTrack(t));
+        newStream=_slonStream;
+      }
+    }
+  }catch(e){console.warn('flipSlon enum:',e);}
+
+  // Fallback facingMode
+  if(!newStream){
+    try{
+      const ns=await navigator.mediaDevices.getUserMedia({
+        audio:true,video:{facingMode:{ideal:newFacing}}
+      });
+      // Останавливаем старый стрим и переключаемся
+      _slonStream.getTracks().forEach(t=>t.stop());
+      _slonStream=ns;
+      newStream=ns;
+    }catch(e){toast('Не удалось переключить камеру');return;}
+  }
+
+  _slonFacing=newFacing;
+
+  // Обновляем превью
+  const preview=$('slonPreview');
+  if(preview){
+    preview.srcObject=_slonStream||newStream;
+    preview.play().catch(()=>{});
+  }
+  toast(newFacing==='environment'?'📷 Задняя камера':'🤳 Фронтальная');
 }
 
 // ── Patch appendMsg for voice+slon ──
@@ -5225,10 +5933,55 @@ document.addEventListener('DOMContentLoaded',()=>{
   rebuildSidebar();
 
   if(!myUsername){
-    showUsernameOverlay();
-    // НЕ вешаем listener здесь — saveUsername сам вызовет initFirebaseMode
+    $('usernameOverlay').classList.add('show');
+    showAuthRegister();
   }else{
-    initPeer();
+    const session=LS.get('sl_session',null);
+    const sessionFresh=session&&session.username===myUsername&&
+      (Date.now()-session.ts)<30*24*60*60*1000;
+    const localHash=LS.get('sl_pass_'+myUsername,'');
+
+    if(sessionFresh&&session.hash&&session.hash===localHash){
+      // Активная сессия — входим без пароля, верифицируем с Firebase в фоне
+      myPassword=localHash;
+      initPeer();
+      // Фоновая проверка: не изменился ли пароль на другом устройстве
+      setTimeout(async()=>{
+        const fbHash=await _fbGetPasswordHash(myUsername).catch(()=>null);
+        if(fbHash&&fbHash!==localHash){
+          toast('Сессия истекла — войди снова',5000);
+          setTimeout(()=>{doLogout();},3000);
+        }else if(fbHash){
+          LS.set('sl_pass_'+myUsername,fbHash);
+          myPassword=fbHash;
+        }
+      },2000);
+    }else if(sessionFresh&&!session.hash){
+      // Старая сессия без пароля (зарегистрировался до системы паролей)
+      // Проверяем есть ли пароль в Firebase
+      $('usernameOverlay').classList.add('show');
+      showSetPassword(myUsername);
+      // Но сначала проверяем Firebase — вдруг пароль уже установлен
+      _fbGetPasswordHash(myUsername).then(fbHash=>{
+        if(fbHash){
+          // Пароль уже есть в Firebase — показываем экран входа
+          showAuthLogin();
+          const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
+        }
+        // Иначе остаёмся на экране установки пароля
+      }).catch(()=>{});
+    }else{
+      // Сессии нет или истекла — экран входа
+      $('usernameOverlay').classList.add('show');
+      if(myUsername){
+        // Знаем username — сразу на экран пароля
+        showAuthLogin();
+        const inp=$('loginUsernameInp');
+        if(inp)inp.value=myUsername;
+      }else{
+        showAuthRegister();
+      }
+    }
   }
 
   openChat('ai');
@@ -5240,7 +5993,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   <div class="rec-modal-bg" onclick="cancelRec()"></div>
   <div class="rec-panel">
     <div class="rec-panel-title" id="recModalTitle">Запись голосового</div>
-    <video id="slonPreview" style="display:none;width:120px;height:120px;border-radius:50%;object-fit:cover;background:#000;transform:scaleX(-1)" autoplay playsinline muted></video>
+    <div style="position:relative;display:inline-block">
+      <video id="slonPreview" style="display:none;width:120px;height:120px;border-radius:50%;object-fit:cover;background:#000;transform:scaleX(-1)" autoplay playsinline muted></video>
+      <!-- Кнопка поворота камеры (только для слонкружков) -->
+      <button id="slonFlipBtn" onclick="flipSlonCamera()" style="display:none;position:absolute;bottom:4px;right:4px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.55);border:none;cursor:pointer;align-items:center;justify-content:center;color:#fff">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#fff"><path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 11.5v-3H9V15l-3.5-3.5L9 8v2.5h6V8l3.5 3.5L15 15.5z"/></svg>
+      </button>
+    </div>
     <div class="rec-anim" id="recAnim">🎙️</div>
     <div class="rec-timer" id="recTimerEl">0:00</div>
     <div class="rec-hint" id="recHint">Говорите… нажмите ✓ чтобы отправить</div>
