@@ -2163,6 +2163,12 @@ function initFirebaseMode(){
     _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
+  // Проверяем слонгалочку через Firebase
+  setTimeout(()=>{
+    _checkElephantBadgeFirebase();
+    // Автовыдача vadimslonik67
+    if(myUsername==='vadimslonik67')_grantElephantBadge('vadimslonik67');
+  },1500);
 }
 
 // ── СЛОН-КАНАЛ: системные новости ──
@@ -2866,8 +2872,12 @@ function onData(pid,data){
 // ── MESSAGES ──
 function sendMsg(){
   const inp=$('msgInp'),txt=inp.value.trim();if(!txt)return;
-  // SLON-канал только для чтения
-  if(activeChat===SLON_CHANNEL_ID){toast('📢 Это канал — сюда нельзя писать');inp.value='';return;}
+  // SLON-канал — для admins открываем публикацию, для остальных блокируем
+  if(activeChat===SLON_CHANNEL_ID){
+    if(CHANNEL_ADMINS.has(myUsername)){showChannelPublish();inp.value='';}
+    else{toast('📢 Это канал — сюда нельзя писать');inp.value='';}
+    return;
+  }
   // Режим редактирования
   if(inp.dataset.editId){
     const mid=inp.dataset.editId;
@@ -4458,9 +4468,15 @@ function updateChatHeader(){
     $('chAv').innerHTML='<span style="font-size:22px;line-height:38px">🐘</span>';
     $('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
     $('chName').textContent='🐘 SLON Новости';
-    $('chStatus').innerHTML='<span style="font-size:11px">📢 Официальный канал</span>';
+    const isAdmin=CHANNEL_ADMINS.has(myUsername);
+    $('chStatus').innerHTML=isAdmin
+      ?'<span style="font-size:11px">📢 Ты редактор канала</span>'
+      :'<span style="font-size:11px">📢 Официальный канал</span>';
     $('chStatus').className='ch-status';
-    $('chActs').innerHTML='';
+    // Для admins — кнопка публикации
+    $('chActs').innerHTML=isAdmin
+      ?`<button class="ch-act" onclick="showChannelPublish()" title="Опубликовать пост" style="background:var(--accent);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600">📝 Пост</button>`
+      :'';
     mob.style.display='none';
   }else if(id.startsWith('g_')){
     const g=groups[id]||{};
@@ -5011,7 +5027,66 @@ function handleKey(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}
 }
 
-// ── SECRET CODE ──
+// ── CHANNEL PUBLISH (только для admins) ──
+function showChannelPublish(){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  showModal(`
+    <div class="m-title">📝 Новый пост в канале</div>
+    <textarea class="m-ta" id="chPostTa" placeholder="Текст поста… Поддерживаются эмодзи 🐘" maxlength="4000" style="min-height:160px"></textarea>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="publishChannelPost()">📢 Опубликовать</button>
+    </div>
+  `);
+  setTimeout(()=>$('chPostTa')?.focus(),100);
+}
+
+async function publishChannelPost(){
+  const text=($('chPostTa')?.value||'').trim();
+  if(!text){toast('Введи текст поста');return;}
+  closeModal();
+  if(!_fbReady()||!window._fbDb){toast('Нет подключения к Firebase');return;}
+  const postId='post_'+Date.now();
+  const ts=Date.now();
+  try{
+    await window._fbSet(window._fbRef(window._fbDb,'slon_channel/latest'),{id:postId,text,ts,author:myUsername});
+    if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
+    const msg={id:postId,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text};
+    if(!chatHist[SLON_CHANNEL_ID].some(m=>m.id===postId)){
+      chatHist[SLON_CHANNEL_ID].push(msg);
+    }
+    if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
+    saveAll();
+    toast('✅ Пост опубликован!');
+  }catch(e){
+    toast('Ошибка: '+e.message);
+    console.error('publishChannelPost:',e);
+  }
+}
+
+// ── SLON CHANNEL ADMINS ──
+// Эти юзернеймы могут публиковать посты в канале
+const CHANNEL_ADMINS=new Set(['mamedov','vadimslonik67']);
+
+// Слонгалочка через Firebase — проверяем при каждом входе
+async function _checkElephantBadgeFirebase(){
+  if(!_fbReady()||!window._fbDb||!myUsername)return;
+  try{
+    const snap=await new Promise(res=>{
+      window._fbOnValue(window._fbRef(window._fbDb,'elephant_badges/'+myUsername),s=>res(s),{onlyOnce:true});
+    });
+    if(snap?.val()===true&&!hasElephantBadge){
+      hasElephantBadge=true;saveAll();
+      showEpicOverlay();
+    }
+  }catch(e){}
+}
+
+// Выдать слонгалочку пользователю (только для channel admins)
+async function _grantElephantBadge(username){
+  if(!_fbReady()||!window._fbDb)return;
+  await window._fbSet(window._fbRef(window._fbDb,'elephant_badges/'+username),true);
+}
 function checkSecretCode(){
   const inp=$('secretCodeInp'),st=$('secretCodeStatus');
   const code=(inp?.value||'').trim();
