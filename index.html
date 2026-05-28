@@ -998,6 +998,14 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 
         <!-- Опасная зона -->
         <div class="prof-danger-section">
+          <!-- Уведомления -->
+          <div class="prof-info-row" onclick="requestNotifPermission()" id="notifRow">
+            <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" id="notifRowVal">Включить уведомления 🔔</div>
+              <div class="prof-info-lbl">Нужны для уведомлений в фоне</div>
+            </div>
+          </div>
           <div class="prof-info-row danger-row" id="removeAvRow" onclick="removeAvatar()" style="display:none">
             <svg class="prof-info-ico" viewBox="0 0 24 24" style="fill:var(--red)"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             <div class="prof-info-txt">
@@ -1318,22 +1326,84 @@ function _fbStopListen(username){
 
 // ── SAVE / LOAD ──
 function saveAll(){
-  const prep=hist=>(hist||[]).slice(-120).map(m=>{
-    if(m.photoThumb)return{...m,photoSaved:m.photoThumb,photoId:undefined,photoThumb:undefined};
-    if(m.photoId&&!m.photoThumb)return null;
-    return m;
+  // Очищаем тяжёлые данные из истории перед сохранением в localStorage.
+  // base64-фото/аудио/видео могут занимать мегабайты — LS квота обычно 5-10 MB.
+  // Сохраняем только метаданные; при загрузке показываем заглушку "медиа недоступно".
+  const prep=hist=>(hist||[]).slice(-200).map(m=>{
+    if(!m||m.sender==='system')return m;
+    const clean={...m};
+    // Фото: сохраняем thumb (маленький) вместо полного photoId
+    if(clean.photoThumb&&clean.photoThumb.length>50000){
+      // thumb слишком большой — сжимаем до маркера
+      clean.photoThumb=clean.photoThumb.slice(0,50000);
+    }
+    // Голосовые/слонкружки base64 — сохраняем только метаданные (URL-вариант остаётся)
+    if(clean.voiceData&&!clean.isUrl){
+      clean.voiceData=null; // base64 не помещается, только URL-версия
+      clean._mediaLost=true;
+    }
+    if(clean.slonData&&!clean.isUrl){
+      clean.slonData=null;
+      clean._mediaLost=true;
+    }
+    // Файлы: fileStore хранится в памяти, при перезагрузке всё равно теряется
+    // Оставляем fileInfo (имя/размер) но убираем fileDataId если нет URL
+    if(clean.fileDataId&&!clean.fileUrl){
+      clean.fileDataId=null;
+      clean._mediaLost=true;
+    }
+    return clean;
   }).filter(Boolean);
+
   const co={};for(const[k,v]of Object.entries(chatHist))co[k]=prep(v);
   const go={};for(const[k,v]of Object.entries(grpHist))go[k]=prep(v);
-  LS.set('sl_chats',co);LS.set('sl_grpH',go);
-  LS.set('sl_groups',groups);LS.set('sl_names',peerNames);LS.set('sl_avs',peerAvatars);
-  LS.set('sl_nick',myNick);LS.set('sl_bio',myBio);
-  LS.set('sl_av',myAvatar);LS.set('sl_pbg',myProfileBg);
-  LS.set('sl_mic',selMic);LS.set('sl_spk',selSpk);LS.set('sl_cam',selCam);
-  LS.set('sl_elephant',hasElephantBadge);
-  LS.set('sl_arch',archivedChats);
-  LS.set('sl_piids',peerIids);
-  LS.set('sl_pbgs2',peerProfileBgs);
+
+  const _trySave=()=>{
+    try{
+      localStorage.setItem('sl_chats',JSON.stringify(co));
+      localStorage.setItem('sl_grpH',JSON.stringify(go));
+      localStorage.setItem('sl_groups',JSON.stringify(groups));
+      localStorage.setItem('sl_names',JSON.stringify(peerNames));
+      localStorage.setItem('sl_avs',JSON.stringify(peerAvatars));
+      localStorage.setItem('sl_nick',JSON.stringify(myNick));
+      localStorage.setItem('sl_bio',JSON.stringify(myBio));
+      localStorage.setItem('sl_av',JSON.stringify(myAvatar));
+      localStorage.setItem('sl_pbg',JSON.stringify(myProfileBg));
+      localStorage.setItem('sl_mic',JSON.stringify(selMic));
+      localStorage.setItem('sl_spk',JSON.stringify(selSpk));
+      localStorage.setItem('sl_cam',JSON.stringify(selCam));
+      localStorage.setItem('sl_elephant',JSON.stringify(hasElephantBadge));
+      localStorage.setItem('sl_arch',JSON.stringify(archivedChats));
+      localStorage.setItem('sl_piids',JSON.stringify(peerIids));
+      localStorage.setItem('sl_pbgs2',JSON.stringify(peerProfileBgs));
+      return true;
+    }catch(e){
+      if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'){
+        return false;
+      }
+      return true; // другие ошибки игнорируем
+    }
+  };
+
+  if(!_trySave()){
+    // Квота переполнена — обрезаем историю вдвое и пробуем снова
+    console.warn('LS quota exceeded, trimming history...');
+    for(const k of Object.keys(co))co[k]=(co[k]||[]).slice(-50);
+    for(const k of Object.keys(go))go[k]=(go[k]||[]).slice(-50);
+    // Убираем аватарки контактов (они занимают много)
+    const trimmedAvs={};
+    for(const[k,v]of Object.entries(peerAvatars)){
+      if(v&&v.length<5000)trimmedAvs[k]=v; // только маленькие
+    }
+    try{localStorage.setItem('sl_avs',JSON.stringify(trimmedAvs));}catch(e){}
+    if(!_trySave()){
+      // Крайняя мера — очищаем аватарки и обрезаем до 20 сообщений
+      console.error('LS quota still exceeded, emergency trim');
+      try{localStorage.removeItem('sl_avs');}catch(e){}
+      for(const k of Object.keys(co))co[k]=(co[k]||[]).slice(-20);
+      _trySave();
+    }
+  }
 }
 
 function loadStorage(){
@@ -1775,32 +1845,39 @@ function onData(pid,data){
     case 'typing':
       showRemoteTyping(pid);
       break;
-    case 'call_end':
-      if(pendingCall?.peerId===pid){
-        // Caller cancelled before we answered
-        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;toast('Звонок отменён');
-      } else if(activeCall?.peerId===pid){
-        endCallCleanup();toast('Звонок завершён');
-      }
-      break;
     case 'call_cancel':
     case 'call_reject':
-      // Always hide incoming notification if it's from this peer
-      if(pendingCall?.peerId===pid){
-        stopRingSound();$('incoming').classList.remove('show');pendingCall=null;
-        toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
+      // Скрываем входящий звонок — проверяем и по callId и по pid
+      // (сообщение могло прийти до call_incoming при оффлайн-доставке)
+      {
+        const isForUs=pendingCall?.peerId===pid||
+          (data.callId&&_lastIncomingCallId===data.callId);
+        stopRingSound();
+        $('incoming').classList.remove('show');
+        if(isForUs||!pendingCall){
+          // Отмена звонка — убираем pending независимо от состояния
+          pendingCall=null;
+          _lastIncomingCallId=null;
+        }
+        if(activeCall?.peerId===pid){endCallCleanup();}
+        if(isForUs||!activeCall)
+          toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
       }
-      if(data.type==='call_reject'&&activeCall?.peerId===pid){endCallCleanup();toast('Звонок отклонён');}
-      if(data.type==='call_cancel'&&activeCall?.peerId===pid){endCallCleanup();toast('Звонок отменён');}
+      break;
+    case 'call_end':
+      stopRingSound();
+      $('incoming').classList.remove('show');
+      if(pendingCall?.peerId===pid){pendingCall=null;_lastIncomingCallId=null;}
+      if(activeCall?.peerId===pid){endCallCleanup();toast('Звонок завершён');}
       break;
     case 'call_incoming':
       // Входящий звонок — показываем UI, ждём offer
       if(activeCall)break; // уже в звонке
-      // Сброс старых ICE-кандидатов от предыдущих звонков (но НЕ _pendingRemoteOffer —
-      // он может уже содержать offer от этого же звонящего, пришедший до call_incoming)
+      // Проверяем что это не старый звонок (callId должен отличаться от последнего отменённого)
+      if(data.callId&&_cancelledCallIds?.has(data.callId))break;
       _pendingIceCandidates=[];
-      pendingCall={peerId:pid,isVideo:!!data.isVideo,sdp:null};
-      // Если offer уже пришёл раньше — используем его
+      _lastIncomingCallId=data.callId||null;
+      pendingCall={peerId:pid,isVideo:!!data.isVideo,sdp:null,callId:data.callId};
       if(_pendingRemoteOffer?.peerId===pid){
         pendingCall.sdp=_pendingRemoteOffer.sdp;
       }
@@ -2067,14 +2144,9 @@ function appendMsg(msg,container){
   if(msg.sender==='system'){const d=document.createElement('div');d.className='sys';d.textContent=msg.text;c.appendChild(d);return;}
   // Date separator: вставляем разделитель если это сообщение нового дня
   if(msg.ts){
-    const lastMsg=c.querySelector('.msg:last-of-type');
-    let prevTs=0;
-    if(lastMsg){
-      const prevMid=lastMsg.dataset.msgId;
-      const hist=chatHist[activeChat]||grpHist[activeChat]||[];
-      const prev=hist.find(x=>x.id===prevMid);
-      if(prev?.ts)prevTs=prev.ts;
-    }
+    // Берём ts последнего СООБЩЕНИЯ через data-атрибут на контейнере
+    // (не через querySelector который ломается на date-separator div'ах)
+    const prevTs=parseInt(c.dataset.lastMsgTs||'0',10)||0;
     const newDate=new Date(msg.ts);
     const prevDate=prevTs?new Date(prevTs):null;
     const isNewDay=!prevDate||
@@ -2087,6 +2159,8 @@ function appendMsg(msg,container){
       sep.innerHTML='<span>'+esc(fmtDateSeparator(msg.ts))+'</span>';
       c.appendChild(sep);
     }
+    // Обновляем ts последнего сообщения на контейнере
+    c.dataset.lastMsgTs=String(msg.ts);
   }
   const isOut=msg.sender==='me';
   const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
@@ -2189,11 +2263,10 @@ function showMsgMenu(e,msg,isOut){
   // Редактирование — только текстовые свои
   if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
   items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
+  // Удаление: у себя — для всех, у всех — только своих (стандарт мессенджеров)
+  items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
   if(isOut){
-    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
     items.push(['🗑 Удалить у всех',()=>deleteMsg(msg,true),'danger']);
-  }else{
-    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
   }
   items.forEach(([label,fn,cls])=>{
     const btn=document.createElement('button');
@@ -2276,21 +2349,14 @@ function deleteMsg(msg,forAll){
 function _handleMsgDelete(pid,data){
   if(!data.forAll)return;
   const mid=data.id;
+  // Удаляем из истории полностью (любые сообщения — и своё и собеседника)
   if(chatHist[pid]){
     chatHist[pid]=chatHist[pid].filter(m=>m.id!==mid);
-    const el=document.querySelector('[data-msg-id="'+mid+'"]');
-    if(el){
-      // Для текстовых — показываем "удалено", для медиа — убираем совсем
-      const bub=el.querySelector('.msg-bub');
-      if(bub){
-        bub.innerHTML='<i style="opacity:.5">Сообщение удалено</i>';
-        el.querySelector('.msg-menu-btn')?.remove();
-      }else{
-        el.remove();
-      }
-    }
-    saveAll();
   }
+  // Удаляем из DOM
+  const el=document.querySelector('[data-msg-id="'+mid+'"]');
+  if(el)el.remove();
+  saveAll();
 }
 
 function startEditMsg(msg){
@@ -2408,6 +2474,7 @@ function _handleChatDelete(pid,data){
 
 function renderChat(id){
   const c=$('msgs');c.innerHTML='<div class="sys">Начало чата</div>';
+  c.dataset.lastMsgTs='0'; // сброс для date-separator
   const hist=id.startsWith('g_')?grpHist[id]:chatHist[id];
   if(hist?.length)hist.forEach(m=>appendMsg(m,c));
   scrollDown();
@@ -2666,9 +2733,11 @@ async function getMediaStream(isVideo){
 
 // ── WebRTC звонки через Firebase/DataChannel сигналинг ──
 let _callPC=null; // RTCPeerConnection для активного звонка
-let _remoteStream=null; // единый MediaStream для всех remote-треков (переиспользуется)
-let _pendingIceCandidates=[]; // ICE-кандидаты, пришедшие до того как PC/remoteDescription готовы
-let _pendingRemoteOffer=null; // offer, пришедший раньше чем callee нажал "принять"
+let _remoteStream=null;
+let _pendingIceCandidates=[];
+let _pendingRemoteOffer=null;
+let _lastIncomingCallId=null; // callId последнего входящего звонка
+let _cancelledCallIds=new Set(); // callId отменённых звонков (чтобы не показывать при оффлайн-доставке)
 const ICE_SERVERS=[
   {urls:'stun:stun.cloudflare.com:3478'},
   {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
@@ -2710,6 +2779,8 @@ async function doStartCall(peerId,isVideo,stream){
   _pendingRemoteOffer=null;
   _remoteStream=new MediaStream();
   localStream=stream;
+  // Уникальный ID этого звонка — для идентификации при оффлайн-доставке
+  const callId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
   stream.getTracks().forEach(t=>_callPC.addTrack(t,stream));
   _callPC.onicecandidate=e=>{
@@ -2725,15 +2796,15 @@ async function doStartCall(peerId,isVideo,stream){
     }
   };
   const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
-  activeCall={call:fakeCall,peerId,isVideo,answered:false};
+  activeCall={call:fakeCall,peerId,isVideo,answered:false,callId};
   setupCallUI(peerId,isVideo);
-  // Уведомляем собеседника о звонке
-  _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+  // Уведомляем собеседника о звонке (с callId чтобы отмена корректно привязалась)
+  _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null,callId});
   // Offer
   try{
     const offer=await _callPC.createOffer();
     await _callPC.setLocalDescription(offer);
-    _callSend(peerId,{type:'call_offer',sdp:_callPC.localDescription.toJSON(),isVideo});
+    _callSend(peerId,{type:'call_offer',sdp:_callPC.localDescription.toJSON(),isVideo,callId});
   }catch(e){console.error('call offer error',e);endCallCleanup();}
 }
 
@@ -3053,13 +3124,20 @@ function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show
 function endCall(){
   if(activeCall?.peerId){
     const msgType=activeCall.answered?'call_end':'call_cancel';
-    _callSend(activeCall.peerId,{type:msgType});
+    const callId=activeCall.callId;
+    _callSend(activeCall.peerId,{type:msgType,callId});
+    // Запоминаем отменённый callId чтобы не показывать его при оффлайн-доставке
+    if(callId){_cancelledCallIds.add(callId);setTimeout(()=>_cancelledCallIds.delete(callId),60000);}
   }
   endCallCleanup();
 }
 
 function cancelOutgoingCall(){
-  if(activeCall?.peerId)_callSend(activeCall.peerId,{type:'call_cancel'});
+  if(activeCall?.peerId){
+    const callId=activeCall.callId;
+    _callSend(activeCall.peerId,{type:'call_cancel',callId});
+    if(callId){_cancelledCallIds.add(callId);setTimeout(()=>_cancelledCallIds.delete(callId),60000);}
+  }
   endCallCleanup();
 }
 function endCallCleanup(){playHangupSound();stopRingSound();
@@ -4749,47 +4827,106 @@ async function flipCamera(){
 // ════════════════════════════════════════════════════════
 let _notifPermission='default';
 
+// ── SERVICE WORKER для фоновых уведомлений ──
+let _swReg=null;
+
+function _initServiceWorker(){
+  if(!('serviceWorker' in navigator))return;
+  // SW-код прямо в Blob — не нужен отдельный файл
+  const swCode=`
+self.addEventListener('install',e=>self.skipWaiting());
+self.addEventListener('activate',e=>self.clients.claim());
+self.addEventListener('message',e=>{
+  if(e.data?.type==='NOTIFY'){
+    const d=e.data;
+    self.registration.showNotification(d.title,{
+      body:d.body,
+      icon:d.icon||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>',
+      tag:d.tag||'msg',
+      requireInteraction:d.tag==='call',
+      vibrate:d.tag==='call'?[300,100,300,100,300]:[200,100],
+      data:{url:self.location.origin}
+    });
+  }
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window'}).then(cs=>{
+    for(const c of cs)if('focus' in c)return c.focus();
+    if(clients.openWindow)return clients.openWindow(e.notification.data?.url||'/');
+  }));
+});
+`;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const swUrl=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl,{scope:'./'})
+    .then(reg=>{
+      _swReg=reg;
+      console.log('[SLON] Service Worker registered');
+    })
+    .catch(e=>console.warn('[SLON] SW registration failed:',e));
+}
+
+function _updateNotifRow(){
+  const el=$('notifRowVal');if(!el)return;
+  const p=Notification.permission;
+  if(p==='granted'){el.textContent='Уведомления включены ✅';}
+  else if(p==='denied'){el.textContent='Уведомления заблокированы ❌';}
+  else{el.textContent='Включить уведомления 🔔';}
+}
+
 function initDesktopNotif(){
   if(!('Notification' in window))return;
   _notifPermission=Notification.permission;
+  _updateNotifRow();
+  _initServiceWorker();
   if(_notifPermission==='default'){
-    // Запрашиваем разрешение при первом входящем событии, не сразу
+    // Запрашиваем разрешение сразу при старте для мобильных
+    const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(isMob){
+      Notification.requestPermission().then(p=>{_notifPermission=p;_updateNotifRow();});
+    }
   }
 }
 
 function requestNotifPermission(){
   if(!('Notification' in window))return;
-  Notification.requestPermission().then(p=>{_notifPermission=p;});
+  Notification.requestPermission().then(p=>{
+    _notifPermission=p;
+    _updateNotifRow();
+    toast(p==='granted'?'Уведомления включены 🔔':p==='denied'?'Уведомления заблокированы — разреши в настройках браузера':'Уведомления не разрешены');
+  });
 }
 
 function showDesktopNotif(title, body, iconUrl, tag){
-  // Запрашиваем разрешение если ещё не получили
   if(!('Notification' in window))return;
-  if(_notifPermission==='default'){
-    Notification.requestPermission().then(p=>{
-      _notifPermission=p;
-      if(p==='granted')_doNotif(title,body,iconUrl,tag);
-    });
-    return;
-  }
-  if(_notifPermission!=='granted')return;
-  // Показываем только если вкладка не активна
-  if(document.visibilityState==='visible')return;
-  _doNotif(title,body,iconUrl,tag);
-}
+  const _doShow=()=>{
+    const iconSvg='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>';
+    const icon=iconUrl||iconSvg;
+    const notifTitle='SLON · '+title;
 
-function _doNotif(title,body,iconUrl,tag){
-  try{
-    const n=new Notification('SLON · '+title,{
-      body:body,
-      icon:iconUrl||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>',
-      tag:tag||'msg',
-      silent:false,
-      requireInteraction:tag==='call',
-    });
-    n.onclick=()=>{window.focus();n.close();};
-    if(tag!=='call')setTimeout(()=>n.close(),5000);
-  }catch(e){}
+    // Путь 1: Service Worker (работает когда браузер свёрнут на мобильных)
+    if(_swReg?.active){
+      _swReg.active.postMessage({type:'NOTIFY',title:notifTitle,body,icon,tag:tag||'msg'});
+      return;
+    }
+    // Путь 2: обычный Notification API (только когда страница открыта)
+    if(_notifPermission==='granted'&&document.visibilityState!=='visible'){
+      try{
+        const n=new Notification(notifTitle,{
+          body,icon,tag:tag||'msg',silent:false,requireInteraction:tag==='call'
+        });
+        n.onclick=()=>{window.focus();n.close();};
+        if(tag!=='call')setTimeout(()=>n.close(),5000);
+      }catch(e){}
+    }
+  };
+
+  if(_notifPermission==='granted'){
+    _doShow();
+  }else if(_notifPermission==='default'){
+    Notification.requestPermission().then(p=>{_notifPermission=p;if(p==='granted')_doShow();});
+  }
 }
 
 
