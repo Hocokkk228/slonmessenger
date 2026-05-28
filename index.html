@@ -1445,20 +1445,24 @@ async function doLogin(){
       errEl.textContent='Неверный пароль';errEl.style.display='block';return;
     }
 
-    // Если входим в ДРУГОЙ аккаунт — чистим локальные данные
-    if(myUsername&&myUsername!==raw){
-      _clearLocalForNewAccount();
-    }
+    // Если входим в ДРУГОЙ аккаунт — данные хранятся раздельно по username, ничего чистить не нужно
 
     // Вход успешен
     myUsername=raw;myPassword=storedHash;
     LS.set('sl_username',raw);
-    LS.set('sl_pass_'+raw,storedHash); // кэшируем локально
-    LS.set('sl_session',{username:raw,hash:storedHash,ts:Date.now()});
+    LS.set('sl_pass_'+raw,storedHash);
+    // Сессия с флагом verified и ключом по username
+    const sess={username:raw,verified:true,ts:Date.now()};
+    LS.set('sl_session_'+raw,sess);
+    LS.set('sl_session',sess); // обратная совместимость
 
+    // Загружаем данные этого аккаунта
+    loadStorage(); // перечитывает с префиксом нового username
     $('usernameOverlay').classList.remove('show');
     setMyLabel();updateProfileDisplay();rebuildSidebar();
     initFirebaseMode();
+    // Подгружаем профиль с Firebase (ник/аватарка могут быть обновлены на другом устройстве)
+    _fetchAndApplyMyProfile();
   }finally{
     if(btn){btn.textContent=origText;btn.disabled=false;}
   }
@@ -1489,24 +1493,18 @@ async function doRegister(){
       errEl.style.display='block';return;
     }
 
-    const hash=await hashPassword(pass);
-
-    // Если на устройстве уже был другой аккаунт — чистим
-    if(myUsername&&myUsername!==raw){
-      _clearLocalForNewAccount();
-    }
-
-    // Сохраняем пароль в Firebase и локально
-    await _fbSetPasswordHash(raw,hash);
-
     myUsername=raw;myPassword=hash;
-    // Новый аккаунт — генерируем новый internal ID
     myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     LS.set('sl_iid',myInternalId);
-
     LS.set('sl_username',raw);
-    LS.set('sl_session',{username:raw,hash,ts:Date.now()});
+    const sess={username:raw,verified:true,ts:Date.now()};
+    LS.set('sl_session_'+raw,sess);
+    LS.set('sl_session',sess);
+    // Сохраняем пароль
+    await _fbSetPasswordHash(raw,hash);
 
+    // Загружаем данные нового аккаунта (пустые)
+    loadStorage();
     $('usernameOverlay').classList.remove('show');
     setMyLabel();updateProfileDisplay();rebuildSidebar();
     initFirebaseMode();
@@ -1532,7 +1530,9 @@ async function doSetPassword(){
     const hash=await hashPassword(pass);
     myPassword=hash;
     await _fbSetPasswordHash(myUsername,hash);
-    LS.set('sl_session',{username:myUsername,hash,ts:Date.now()});
+    const sess={username:myUsername,verified:true,ts:Date.now()};
+    LS.set('sl_session_'+myUsername,sess);
+    LS.set('sl_session',sess);
     $('usernameOverlay').classList.remove('show');
     toast('Пароль установлен 🔒');
     initFirebaseMode();
@@ -1542,7 +1542,9 @@ async function doSetPassword(){
 }
 
 function skipSetPassword(){
-  LS.set('sl_session',{username:myUsername,hash:'',ts:Date.now()});
+  const sess={username:myUsername,verified:true,ts:Date.now()};
+  LS.set('sl_session_'+myUsername,sess);
+  LS.set('sl_session',sess);
   $('usernameOverlay').classList.remove('show');
   initFirebaseMode();
 }
@@ -1576,7 +1578,9 @@ async function doChangePassword(){
   const newHash=await hashPassword(nw);
   myPassword=newHash;
   await _fbSetPasswordHash(myUsername,newHash);
-  LS.set('sl_session',{username:myUsername,hash:newHash,ts:Date.now()});
+  const sess={username:myUsername,verified:true,ts:Date.now()};
+  LS.set('sl_session_'+myUsername,sess);
+  LS.set('sl_session',sess);
   closeModal();toast('Пароль изменён 🔒');
 }
 
@@ -1611,6 +1615,24 @@ function showUsernameOverlay(){
   }else{
     showAuthRegister();
   }
+}
+
+// Загружаем свой профиль из Firebase (ник/аватарка/bio актуальные)
+async function _fetchAndApplyMyProfile(){
+  if(!_fbReady()||!window._fbDb||!myUsername)return;
+  try{
+    const snap=await new Promise(res=>{
+      window._fbOnValue(window._fbRef(window._fbDb,'profiles/'+myUsername),s=>res(s),{onlyOnce:true});
+    });
+    const d=snap?.val();
+    if(!d)return;
+    let changed=false;
+    if(d.nick&&d.nick!==myNick){myNick=d.nick;changed=true;}
+    if(d.avatar&&d.avatar!==myAvatar){myAvatar=d.avatar;changed=true;}
+    if(d.bio&&d.bio!==myBio){myBio=d.bio;changed=true;}
+    if(d.profileBg&&d.profileBg!==myProfileBg){myProfileBg=d.profileBg;changed=true;}
+    if(changed){updateProfileDisplay();setMyLabel();saveAll();}
+  }catch(e){console.warn('fetchMyProfile:',e);}
 }
 
 // ── TOAST ──
@@ -1877,79 +1899,88 @@ function saveAll(){
 
   const co={};for(const[k,v]of Object.entries(chatHist))co[k]=prep(v);
   const go={};for(const[k,v]of Object.entries(grpHist))go[k]=prep(v);
+  const p=_getAccountPrefix(myUsername);
 
   const _trySave=()=>{
     try{
-      localStorage.setItem('sl_chats',JSON.stringify(co));
-      localStorage.setItem('sl_grpH',JSON.stringify(go));
-      localStorage.setItem('sl_groups',JSON.stringify(groups));
-      localStorage.setItem('sl_names',JSON.stringify(peerNames));
-      localStorage.setItem('sl_avs',JSON.stringify(peerAvatars));
-      localStorage.setItem('sl_nick',JSON.stringify(myNick));
-      localStorage.setItem('sl_bio',JSON.stringify(myBio));
-      localStorage.setItem('sl_av',JSON.stringify(myAvatar));
-      localStorage.setItem('sl_pbg',JSON.stringify(myProfileBg));
+      localStorage.setItem(p+'chats',JSON.stringify(co));
+      localStorage.setItem(p+'grpH',JSON.stringify(go));
+      localStorage.setItem(p+'groups',JSON.stringify(groups));
+      localStorage.setItem(p+'names',JSON.stringify(peerNames));
+      localStorage.setItem(p+'avs',JSON.stringify(peerAvatars));
+      localStorage.setItem(p+'nick',JSON.stringify(myNick));
+      localStorage.setItem(p+'bio',JSON.stringify(myBio));
+      localStorage.setItem(p+'av',JSON.stringify(myAvatar));
+      localStorage.setItem(p+'pbg',JSON.stringify(myProfileBg));
+      localStorage.setItem(p+'elephant',JSON.stringify(hasElephantBadge));
+      localStorage.setItem(p+'arch',JSON.stringify(archivedChats));
+      localStorage.setItem(p+'piids',JSON.stringify(peerIids));
+      localStorage.setItem(p+'pbgs2',JSON.stringify(peerProfileBgs));
+      // Настройки устройства — без префикса
       localStorage.setItem('sl_mic',JSON.stringify(selMic));
       localStorage.setItem('sl_spk',JSON.stringify(selSpk));
       localStorage.setItem('sl_cam',JSON.stringify(selCam));
-      localStorage.setItem('sl_elephant',JSON.stringify(hasElephantBadge));
-      localStorage.setItem('sl_arch',JSON.stringify(archivedChats));
-      localStorage.setItem('sl_piids',JSON.stringify(peerIids));
-      localStorage.setItem('sl_pbgs2',JSON.stringify(peerProfileBgs));
       return true;
     }catch(e){
-      if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'){
-        return false;
-      }
-      return true; // другие ошибки игнорируем
+      if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')return false;
+      return true;
     }
   };
 
   if(!_trySave()){
-    // Квота переполнена — обрезаем историю вдвое и пробуем снова
-    console.warn('LS quota exceeded, trimming history...');
+    console.warn('LS quota exceeded, trimming...');
     for(const k of Object.keys(co))co[k]=(co[k]||[]).slice(-50);
     for(const k of Object.keys(go))go[k]=(go[k]||[]).slice(-50);
-    // Убираем аватарки контактов (они занимают много)
     const trimmedAvs={};
-    for(const[k,v]of Object.entries(peerAvatars)){
-      if(v&&v.length<5000)trimmedAvs[k]=v; // только маленькие
-    }
-    try{localStorage.setItem('sl_avs',JSON.stringify(trimmedAvs));}catch(e){}
+    for(const[k,v]of Object.entries(peerAvatars)){if(v&&v.length<5000)trimmedAvs[k]=v;}
+    try{localStorage.setItem(p+'avs',JSON.stringify(trimmedAvs));}catch(e){}
     if(!_trySave()){
-      // Крайняя мера — очищаем аватарки и обрезаем до 20 сообщений
-      console.error('LS quota still exceeded, emergency trim');
-      try{localStorage.removeItem('sl_avs');}catch(e){}
+      console.error('LS quota emergency trim');
+      try{localStorage.removeItem(p+'avs');}catch(e){}
       for(const k of Object.keys(co))co[k]=(co[k]||[]).slice(-20);
       _trySave();
     }
   }
 }
 
+function _getAccountPrefix(username){
+  // Данные каждого аккаунта хранятся с префиксом чтобы не мешаться
+  return username?'sl_u_'+username+'_':'sl_';
+}
+
 function loadStorage(){
-  chatHist=LS.get('sl_chats',{ai:[]});
-  grpHist=LS.get('sl_grpH',{});
-  groups=LS.get('sl_groups',{});
-  peerNames=LS.get('sl_names',{});
-  peerAvatars=LS.get('sl_avs',{});
-  myNick=LS.get('sl_nick','');myBio=LS.get('sl_bio','');
-  myAvatar=LS.get('sl_av',null);
-  myProfileBg=LS.get('sl_pbg','bg0');
-  selMic=LS.get('sl_mic','');selSpk=LS.get('sl_spk','');selCam=LS.get('sl_cam','');
-  hasElephantBadge=LS.get('sl_elephant',false);
-  archivedChats=LS.get('sl_arch',{});
+  // Сначала читаем username (он не зависит от аккаунта — это текущий вошедший)
   myUsername=LS.get('sl_username','');
   myPassword=LS.get('sl_pass_'+myUsername,'');
-  // Скрытый постоянный ID — генерируем один раз навсегда
+
+  // Скрытый постоянный ID устройства (один на устройство, не на аккаунт)
   myInternalId=LS.get('sl_iid','');
-  peerIids=LS.get('sl_piids',{});
-  peerProfileBgs=LS.get('sl_pbgs2',{});
   if(!myInternalId){
     myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     LS.set('sl_iid',myInternalId);
   }
+
+  // Данные аккаунта — читаем с префиксом username если он есть
+  const p=_getAccountPrefix(myUsername);
+  chatHist=LS.get(p+'chats',LS.get('sl_chats',{ai:[]}));
+  grpHist=LS.get(p+'grpH',LS.get('sl_grpH',{}));
+  groups=LS.get(p+'groups',LS.get('sl_groups',{}));
+  peerNames=LS.get(p+'names',LS.get('sl_names',{}));
+  peerAvatars=LS.get(p+'avs',LS.get('sl_avs',{}));
+  myNick=LS.get(p+'nick',LS.get('sl_nick',''));
+  myBio=LS.get(p+'bio',LS.get('sl_bio',''));
+  myAvatar=LS.get(p+'av',LS.get('sl_av',null));
+  myProfileBg=LS.get(p+'pbg',LS.get('sl_pbg','bg0'));
+  hasElephantBadge=LS.get(p+'elephant',LS.get('sl_elephant',false));
+  archivedChats=LS.get(p+'arch',LS.get('sl_arch',{}));
+  peerIids=LS.get(p+'piids',LS.get('sl_piids',{}));
+  peerProfileBgs=LS.get(p+'pbgs2',LS.get('sl_pbgs2',{}));
+
+  // Настройки устройства (не привязаны к аккаунту)
+  selMic=LS.get('sl_mic','');selSpk=LS.get('sl_spk','');selCam=LS.get('sl_cam','');
+
   if(!chatHist.ai)chatHist.ai=[];
-  // Бэкфилл ts для старых сообщений (приближение: если есть time, считаем что сегодня)
+  // Бэкфилл ts для старых сообщений
   const tdy=new Date();tdy.setHours(0,0,0,0);
   const tdyMs=tdy.getTime();
   for(const h of Object.values(chatHist)){
@@ -1961,7 +1992,7 @@ function loadStorage(){
           const [hh,mm]=m.time.split(':').map(Number);
           m.ts=tdyMs+hh*3600000+mm*60000;
         }else{
-          m.ts=Date.now()-(h.length-i)*60000; // приближение
+          m.ts=Date.now()-(h.length-i)*60000;
         }
       }
     }
@@ -2051,9 +2082,11 @@ function initFirebaseMode(){
   Object.keys(peerNames).forEach(pid=>{_watchPresence(pid);_fetchProfile(pid);});
   setTimeout(()=>{
     Object.keys(peerNames).forEach(pid=>_fbSilentConnect(pid));
-    _initSlonChannel(); // Инициализируем системный канал
+    _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
+  // Синхронизируем свой профиль с Firebase
+  setTimeout(()=>_fetchAndApplyMyProfile(),1200);
 }
 
 // ── СЛОН-КАНАЛ: системные новости ──
@@ -4115,9 +4148,14 @@ function updateScreenShareBtn(){
 function createGroup(name,members){
   const gid='g_'+Date.now();
   groups[gid]={name,members:[myUsername,...members],admin:myUsername};grpHist[gid]=[];
-  const inv={type:'group_invite',gid,name,members:groups[gid].members,admin:myUsername};
-  members.forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,inv);});
-  addSbGroup(gid);openChat(gid);sysMsg(gid,'Группа "'+name+'" создана!');saveAll();
+  const inv={type:'group_invite',gid,name,members:groups[gid].members,admin:myUsername,
+    adminNick:myNick||('@'+myUsername),adminAvatar:myAvatar||null};
+  // Шлём через Firebase — доставит даже оффлайн-участникам
+  members.forEach(pid=>{
+    if(_fbMode)_fbSend(pid,inv);
+    else if(conns[pid]?.open)sendData(conns[pid],inv);
+  });
+  addSbGroup(gid);openChat(gid);sysMsg(gid,'Группа "'+name+'" создана! Участников: '+(members.length+1));saveAll();
 }
 function recvGrpInvite(data){
   if(groups[data.gid])return;
@@ -4256,6 +4294,15 @@ function updateChatHeader(){
     $('chStatus').className='ch-status';
     $('chActs').innerHTML=`<button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
     mob.style.display='none';
+  }else if(id===SLON_CHANNEL_ID){
+    // SLON-канал — особый вид, без статуса "в сети"
+    $('chAv').innerHTML='<span style="font-size:22px;line-height:38px">🐘</span>';
+    $('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
+    $('chName').textContent='🐘 SLON Новости';
+    $('chStatus').innerHTML='<span style="font-size:11px">📢 Официальный канал</span>';
+    $('chStatus').className='ch-status';
+    $('chActs').innerHTML='';
+    mob.style.display='none';
   }else if(id.startsWith('g_')){
     const g=groups[id]||{};
     $('chAv').innerHTML='';$('chAv').textContent='👥';
@@ -4288,7 +4335,7 @@ function updateChatHeader(){
 }
 function updateReconBanner(){
   const id=activeChat;
-  if(id==='ai'||id.startsWith('g_')||_fbMode||conns[id]?.open||currentView==='profile'){
+  if(id==='ai'||id===SLON_CHANNEL_ID||id.startsWith('g_')||_fbMode||conns[id]?.open||currentView==='profile'){
     $('reconBanner').classList.remove('show');return;
   }
   $('reconWho').textContent='@'+(peerNames[id]||id);
@@ -4555,23 +4602,29 @@ function doAddContact(){
 }
 
 function showCreateGroup(){
-  const online=Object.entries(conns).filter(([,c])=>c?.open).map(([pid])=>pid);
-  if(!online.length){toast('Сначала добавь контакты онлайн');return;}
-  const checks=online.map(pid=>`
-    <label class="cb-row">
-      <input type="checkbox" value="${pid}" id="chk-${pid}">
-      <span>${esc(peerNames[pid]||('@'+pid))}</span>
-    </label>`).join('');
+  const allContacts=Object.keys(peerNames).filter(pid=>
+    pid&&pid!==myUsername&&!pid.startsWith('g_')&&pid!==SLON_CHANNEL_ID
+  );
+  if(!allContacts.length){toast('Сначала добавь хотя бы один контакт');return;}
+  const checks=allContacts.map(pid=>{
+    const isOnline=!!(_fbConns[pid]||conns[pid]?.open);
+    return`<label class="cb-row" style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid var(--border)">
+      <input type="checkbox" value="${pid}" style="width:16px;height:16px;flex-shrink:0">
+      <span style="flex:1">${esc(peerNames[pid]||('@'+pid))}</span>
+      <span style="font-size:11px;color:${isOnline?'var(--green)':'var(--text2)'}">${isOnline?'● онлайн':'○ оффлайн'}</span>
+    </label>`;
+  }).join('');
   showModal(`
     <div class="m-title">👥 Создать группу</div>
     <input class="m-inp" id="grpNameInp" placeholder="Название группы" maxlength="40">
-    <div class="m-sec">Участники:</div>
-    ${checks}
+    <div style="margin-top:12px;margin-bottom:4px;font-size:12px;color:var(--text2)">Участники — оффлайн получат приглашение при входе:</div>
+    <div style="max-height:220px;overflow-y:auto;padding:4px 0">${checks}</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-ok" onclick="doCreateGroup()">Создать</button>
     </div>
   `);
+  setTimeout(()=>$('grpNameInp')?.focus(),100);
 }
 function doCreateGroup(){
   const name=($('grpNameInp')?.value||'').trim();
@@ -5936,51 +5989,45 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('usernameOverlay').classList.add('show');
     showAuthRegister();
   }else{
-    const session=LS.get('sl_session',null);
+    // Читаем сессию по username-ключу (новый формат) или по общему (старый)
+    const session=LS.get('sl_session_'+myUsername,null)||LS.get('sl_session',null);
     const sessionFresh=session&&session.username===myUsername&&
-      (Date.now()-session.ts)<30*24*60*60*1000;
-    const localHash=LS.get('sl_pass_'+myUsername,'');
+      (Date.now()-session.ts)<30*24*60*60*1000; // 30 дней
 
-    if(sessionFresh&&session.hash&&session.hash===localHash){
-      // Активная сессия — входим без пароля, верифицируем с Firebase в фоне
-      myPassword=localHash;
+    if(sessionFresh&&session.verified){
+      // Активная сессия — входим без пароля
+      myPassword=LS.get('sl_pass_'+myUsername,'');
       initPeer();
-      // Фоновая проверка: не изменился ли пароль на другом устройстве
+      // Фоновая проверка что пароль не изменился на другом устройстве
       setTimeout(async()=>{
-        const fbHash=await _fbGetPasswordHash(myUsername).catch(()=>null);
-        if(fbHash&&fbHash!==localHash){
-          toast('Сессия истекла — войди снова',5000);
-          setTimeout(()=>{doLogout();},3000);
-        }else if(fbHash){
-          LS.set('sl_pass_'+myUsername,fbHash);
-          myPassword=fbHash;
-        }
-      },2000);
-    }else if(sessionFresh&&!session.hash){
-      // Старая сессия без пароля (зарегистрировался до системы паролей)
-      // Проверяем есть ли пароль в Firebase
+        try{
+          const fbHash=await _fbGetPasswordHash(myUsername);
+          if(fbHash&&myPassword&&fbHash!==myPassword){
+            toast('Пароль изменён — войди снова',5000);
+            setTimeout(()=>doLogout(),2000);
+          }else if(fbHash){
+            LS.set('sl_pass_'+myUsername,fbHash);
+            myPassword=fbHash;
+          }
+        }catch(e){}
+      },3000);
+    }else{
+      // Нет сессии или старый формат — проверяем Firebase
       $('usernameOverlay').classList.add('show');
-      showSetPassword(myUsername);
-      // Но сначала проверяем Firebase — вдруг пароль уже установлен
       _fbGetPasswordHash(myUsername).then(fbHash=>{
         if(fbHash){
-          // Пароль уже есть в Firebase — показываем экран входа
+          // Пароль зарегистрирован — экран входа
           showAuthLogin();
           const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
+        }else{
+          // Пароля нет — предлагаем установить (уже зарегистрирован без пароля)
+          showSetPassword(myUsername);
         }
-        // Иначе остаёмся на экране установки пароля
-      }).catch(()=>{});
-    }else{
-      // Сессии нет или истекла — экран входа
-      $('usernameOverlay').classList.add('show');
-      if(myUsername){
-        // Знаем username — сразу на экран пароля
+      }).catch(()=>{
+        // Firebase недоступен — показываем логин с тем что есть
         showAuthLogin();
-        const inp=$('loginUsernameInp');
-        if(inp)inp.value=myUsername;
-      }else{
-        showAuthRegister();
-      }
+        const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
+      });
     }
   }
 
