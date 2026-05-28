@@ -198,8 +198,31 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .cs-minimize-btn:hover{background:rgba(255,255,255,.22);}
 .call-vid-wrap{width:100%;flex:1;position:relative;display:none;background:#000;overflow:hidden;}
 .call-vid-wrap.show{display:flex;align-items:center;justify-content:center;}
-#remoteVideo{width:100%;height:100%;object-fit:contain;touch-action:pinch-zoom;transform-origin:center center;}
+#remoteVideo{width:100%;height:100%;object-fit:contain;touch-action:none;transform-origin:center center;transition:transform .1s;}
 .screen-share-active #remoteVideo{object-fit:contain;}
+/* Оверлей управления поверх демки/видео — показывается по тапу */
+.vid-tap-overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none;opacity:0;transition:opacity .25s;}
+.vid-tap-overlay.visible{opacity:1;pointer-events:auto;}
+.vid-overlay-controls{background:linear-gradient(transparent,rgba(0,0,0,.65));padding:16px 20px 20px;display:flex;flex-direction:column;gap:12px;}
+.vid-overlay-btns{display:flex;align-items:center;justify-content:center;gap:20px;}
+.vid-overlay-btn{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
+.vid-overlay-btn svg{width:22px;height:22px;fill:#fff;}
+.vid-overlay-btn.end{background:rgba(239,68,68,.8);}
+.vid-overlay-btn.active-off{background:rgba(239,68,68,.6);}
+.vol-row{display:flex;align-items:center;gap:10px;padding:0 4px;}
+.vol-row svg{width:18px;height:18px;fill:rgba(255,255,255,.8);flex-shrink:0;}
+#volSlider{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.3);outline:none;cursor:pointer;}
+#volSlider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+/* Горизонтальный режим — callScreen на весь экран */
+@media (orientation:landscape) and (max-height:500px){
+  .call-screen.show{position:fixed!important;inset:0!important;z-index:9999!important;flex-direction:row!important;background:#000!important;}
+  .call-screen.show .cs-topbar{display:none!important;}
+  .call-screen.show .cs-controls{display:none!important;}
+  .call-screen.show #callAudUI{display:none!important;}
+  .call-screen.show .call-vid-wrap.show{flex:1!important;height:100%!important;width:100%!important;}
+  .call-screen.show .vid-tap-overlay.visible .vid-overlay-controls{padding-bottom:env(safe-area-inset-bottom,20px);}
+  .call-screen.show #localVideo{width:100px!important;height:75px!important;border-radius:8px!important;}
+}
 .vid-zoom-hint{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;}
 .vid-switch-hint{position:absolute;top:36px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);font-size:11px;padding:4px 10px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap;}
 .vid-switch-hint.show{opacity:1;}
@@ -781,6 +804,22 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
       </div>
       <div class="vid-zoom-hint" id="vidZoomHint">🤏 Сведите/разведите для зума</div>
       <div class="vid-switch-hint" id="vidSwitchHint">👆👆 Двойной тап — сменить камеру/экран</div>
+      <!-- Оверлей управления (показывается по тапу) -->
+      <div class="vid-tap-overlay" id="vidTapOverlay">
+        <div class="vid-overlay-controls">
+          <div class="vol-row">
+            <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            <input type="range" id="volSlider" min="0" max="1" step="0.02" value="1" oninput="_setCallVolume(this.value)">
+            <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM16.5 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          </div>
+          <div class="vid-overlay-btns">
+            <div class="cbtn-wrap"><button class="vid-overlay-btn" id="ovMuteBtn" onclick="toggleMute()"><svg><use href="#i-mic"/></svg></button><div class="cbtn-lbl" style="color:rgba(255,255,255,.7);font-size:10px">Микро</div></div>
+            <div class="cbtn-wrap"><button class="vid-overlay-btn" id="ovCamBtn" onclick="toggleCam()"><svg><use href="#i-video"/></svg></button><div class="cbtn-lbl" style="color:rgba(255,255,255,.7);font-size:10px">Камера</div></div>
+            <div class="cbtn-wrap"><button class="vid-overlay-btn" id="ovScreenBtn" onclick="toggleScreenShare()"><svg><use href="#i-screen-share"/></svg></button><div class="cbtn-lbl" style="color:rgba(255,255,255,.7);font-size:10px">Экран</div></div>
+            <div class="cbtn-wrap"><button class="vid-overlay-btn end" onclick="endCall()"><svg><use href="#i-phone-off"/></svg></button><div class="cbtn-lbl" style="color:rgba(255,255,255,.7);font-size:10px">Сброс</div></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="cs-center" id="callAudUI">
       <div class="call-av" id="callAv"><svg><use href="#i-person"/></svg></div>
@@ -1285,35 +1324,34 @@ function saveUsername(){
   setMyLabel();
   updateProfileDisplay();
 
-  // Если Firebase готов — сразу инициализируем (одинаково для первой регистрации и смены)
+  // Если Firebase готов — сразу инициализируем
   if(_fbReady()){
-    // Если уже в FB-режиме — просто перепереключим listener на новый username
     if(_fbMode){
-      // Отписываемся от старого username (если он был)
+      // Уже подключены — обновляем username
       if(oldUsername&&oldUsername!==myUsername){
         try{_fbStopListen(oldUsername);}catch(e){}
       }
       _fbListen(myUsername);
       _startMyPresence();
       _publishMyProfile(oldUsername||undefined);
-      // Известным контактам шлём hello с новыми данными
       Object.keys(peerNames).forEach(pid=>{
         _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
           username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',oldUsername:oldUsername||undefined});
       });
       if(!isFirstRegistration)toast('Юзернейм изменён: @'+myUsername);
-      return;
+    }else{
+      // Первая инициализация
+      initFirebaseMode();
     }
-    // Ещё не в FB-режиме — поднимаем полностью
-    initFirebaseMode();
     return;
   }
 
-  // Firebase ещё грузится — ждём готовности и поднимаемся
+  // Firebase ещё не загрузился — ждём
   setNet(false,'Подключение…');
-  window.addEventListener('firebaseReady',()=>{
-    if(myUsername)initFirebaseMode();
-  },{once:true});
+  // Используем именованную функцию чтобы не создавать лишних listener'ов
+  const _onFbReady=()=>{if(myUsername&&!_fbMode)initFirebaseMode();};
+  window.removeEventListener('firebaseReady',_onFbReady);
+  window.addEventListener('firebaseReady',_onFbReady,{once:true});
 }
 
 // Останавливаем listener на старый username (на случай смены)
@@ -4245,24 +4283,45 @@ function beginRec(stream,mode){
   if(sp){sp.style.display=mode==='slon'?'block':'none';}
   $('recTimerEl').textContent='0:00';
   $('recModal').classList.add('show');
+
+  // Определяем поддерживаемый mimeType
   const mimeTypes=mode==='slon'
-    ?['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
+    ?['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=h264,aac','video/mp4']
     :['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'];
   let mime='';
-  for(const m of mimeTypes){if(MediaRecorder.isTypeSupported(m)){mime=m;break;}}
-  mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
-  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
-  mediaRecorder.start(100);
+  for(const m of mimeTypes){
+    try{if(MediaRecorder.isTypeSupported(m)){mime=m;break;}}catch(e){}
+  }
+  // Запоминаем итоговый mime чтобы использовать его при сборке blob
+  const _recMime=mime||( mode==='slon'?'video/webm':'audio/webm');
+
+  try{
+    mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+  }catch(e){
+    // Fallback без mimeType
+    try{mediaRecorder=new MediaRecorder(stream);}
+    catch(e2){toast('Запись не поддерживается');return;}
+  }
+
+  mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recChunks.push(e.data);};
+  mediaRecorder._recMime=_recMime; // сохраняем для сборки
+  mediaRecorder.start(200); // 200ms чанки — достаточно, без лишних вызовов
+
   recTimer=setInterval(()=>{
     recSecs++;
     $('recTimerEl').textContent=Math.floor(recSecs/60)+':'+String(recSecs%60).padStart(2,'0');
-    if(recSecs>=120)stopAndSendRec(); // авто-стоп 2 мин
+    if(recSecs>=120)stopAndSendRec();
   },1000);
+
   const btn=$('voiceRecBtn');if(btn)btn.classList.add('rec-active');
-  // Показываем живой превью во время записи слонкружка
+
+  // Живой превью
   if(mode==='slon'){
     const preview=$('slonPreview');
-    if(preview){preview.srcObject=stream;preview.play().catch(()=>{});}
+    if(preview){
+      preview.srcObject=stream;
+      preview.play().catch(()=>{});
+    }
   }
 }
 
@@ -4276,9 +4335,10 @@ function cancelRec(){
 function _stopRec(){
   if(recTimer){clearInterval(recTimer);recTimer=null;}
   if(mediaRecorder){
-    try{mediaRecorder.stream?.getTracks().forEach(t=>t.stop());}catch(e){}
-    try{mediaRecorder.stop();}catch(e){}
+    const mr=mediaRecorder;
     mediaRecorder=null;
+    try{mr.stream?.getTracks().forEach(t=>t.stop());}catch(e){}
+    try{mr.stop();}catch(e){}
   }
 }
 
@@ -4287,25 +4347,38 @@ function stopAndSendRec(){
   $('recModal').classList.remove('show');
   const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
   if(recTimer){clearInterval(recTimer);recTimer=null;}
+
   const _stream=mediaRecorder.stream;
   const _mode=recMode;
-  mediaRecorder.onstop=()=>{
-    // Stop preview
+  const _recMime=mediaRecorder._recMime||(_mode==='slon'?'video/webm':'audio/webm');
+  const _mr=mediaRecorder;
+  mediaRecorder=null; // сбрасываем до stop() чтобы не было двойного вызова
+
+  _mr.onstop=()=>{
     const preview=$('slonPreview');
-    if(preview){preview.srcObject=null;}
+    if(preview){preview.srcObject=null;preview.style.display='none';}
     if(_stream)_stream.getTracks().forEach(t=>t.stop());
-    const blob=new Blob(recChunks,{type:recChunks[0]?.type||'audio/webm'});
+
+    if(!recChunks.length){toast('Запись пустая');return;}
+    // Берём тип из первого непустого чанка, fallback на _recMime
+    const blobMime=recChunks[0].type||_recMime;
+    const blob=new Blob(recChunks,{type:blobMime});
+    recChunks=[];
     const dur=recSecs;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const data=e.target.result;
-      if(_mode==='slon')sendSlonMsg(data,dur,blob.type);
-      else sendVoiceMsg(data,dur,blob.type);
-    };
-    reader.readAsDataURL(blob);
+
+    // Для слонкружков конвертируем в Blob URL сразу (не data URL)
+    // чтобы избежать проблем с чёрным экраном
+    if(_mode==='slon'){
+      const blobUrl=URL.createObjectURL(blob);
+      sendSlonMsg(blobUrl,dur,blobMime,true); // true = isUrl (не data:)
+    }else{
+      const reader=new FileReader();
+      reader.onload=e=>sendVoiceMsg(e.target.result,dur,blobMime);
+      reader.readAsDataURL(blob);
+    }
   };
-  try{mediaRecorder.stop();}catch(e){}
-  mediaRecorder=null;
+
+  try{_mr.stop();}catch(e){console.warn('MediaRecorder stop error:',e);}
 }
 
 function sendVoiceMsg(dataUrl,dur,mimeType){
@@ -4320,15 +4393,28 @@ function sendVoiceMsg(dataUrl,dur,mimeType){
   saveAll();
 }
 
-function sendSlonMsg(dataUrl,dur,mimeType){
+function sendSlonMsg(dataUrl,dur,mimeType,isBlobUrl=false){
   const mid='sc'+Date.now();
   const ts=Date.now();
-  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),slonData:dataUrl,slonDur:dur};
+  // Если передан Blob URL — используем его напрямую, не конвертируем
+  const slonData=dataUrl;
+  const msg={id:mid,sender:'me',ts,time:fmtTime(ts),slonData,slonDur:dur,isUrl:isBlobUrl};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🐘 Слонкружок');
-  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open))
-    sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
+  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
+    if(isBlobUrl){
+      // Blob URL → конвертируем в base64 для отправки
+      fetch(dataUrl).then(r=>r.blob()).then(blob=>{
+        const reader=new FileReader();
+        reader.onload=e=>sendMediaChunked(
+          _fbMode?activeChat:conns[activeChat],'slon',mid,e.target.result,dur,mimeType);
+        reader.readAsDataURL(blob);
+      }).catch(e=>console.warn('slon fetch error:',e));
+    }else{
+      sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
+    }
+  }
   saveAll();
 }
 
@@ -4588,44 +4674,112 @@ document.addEventListener('click',()=>$('chatCtxMenu')?.classList.remove('show')
 // ─────────────────────────────────────────────────────
 
 
-// ── PINCH-TO-ZOOM для remoteVideo ──
+// ── VIDEO CONTROLS: pinch-zoom, tap overlay, volume, landscape ──
 (function(){
-  let scale=1,lastDist=0,startScale=1;
-  const getvid=()=>$('remoteVideo');
+  let _scale=1,_lastDist=0,_startScale=1,_tx=0,_ty=0;
+  let _overlayTimer=null;
+  let _overlayVisible=false;
+
   function dist(t){
     const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;
     return Math.hypot(dx,dy);
   }
+  function applyZoom(){
+    const v=$('remoteVideo');if(!v)return;
+    v.style.transform=_scale===1?'':'scale('+_scale+') translate('+_tx+'px,'+_ty+'px)';
+  }
+  function isInVidWrap(el){
+    const w=$('callVidWrap');return w&&w.contains(el)&&w.classList.contains('show');
+  }
+
+  // Тап-оверлей: показать/скрыть по одному тапу
+  function showOverlay(){
+    const ov=$('vidTapOverlay');if(!ov)return;
+    _overlayVisible=true;ov.classList.add('visible');
+    clearTimeout(_overlayTimer);
+    _overlayTimer=setTimeout(hideOverlay,4000);
+  }
+  function hideOverlay(){
+    const ov=$('vidTapOverlay');if(!ov)return;
+    _overlayVisible=false;ov.classList.remove('visible');
+    clearTimeout(_overlayTimer);
+  }
+
+  // Тап на видео-зону — показать/скрыть overlay
+  // Исключаем двойные тапы и pinch
+  let _tapCount=0,_tapTimer=null;
+  document.addEventListener('click',e=>{
+    if(!isInVidWrap(e.target))return;
+    // Клики на самом overlay не скрывают его
+    const ov=$('vidTapOverlay');
+    if(ov&&ov.contains(e.target)&&e.target!==ov)return;
+    _tapCount++;
+    clearTimeout(_tapTimer);
+    _tapTimer=setTimeout(()=>{
+      if(_tapCount===1){
+        _overlayVisible?hideOverlay():showOverlay();
+      }else if(_tapCount>=2){
+        // Двойной тап — сбросить зум
+        _scale=1;_tx=0;_ty=0;applyZoom();
+      }
+      _tapCount=0;
+    },250);
+  });
+
+  // Pinch-zoom — только 2 пальца в vid-wrap
   document.addEventListener('touchstart',e=>{
-    if(!$('callVidWrap')?.classList.contains('show'))return;
-    if(e.touches.length===2){lastDist=dist(e.touches);startScale=scale;e.preventDefault();}
+    if(!isInVidWrap(e.target))return;
+    if(e.touches.length===2){
+      _lastDist=dist(e.touches);_startScale=_scale;
+      e.preventDefault();
+    }
   },{passive:false});
   document.addEventListener('touchmove',e=>{
-    if(!$('callVidWrap')?.classList.contains('show'))return;
+    if(!isInVidWrap(e.target))return;
     if(e.touches.length===2){
       const d=dist(e.touches);
-      scale=Math.min(4,Math.max(1,startScale*(d/lastDist)));
-      const v=getvid();if(v)v.style.transform='scale('+scale+')';
+      _scale=Math.min(5,Math.max(1,_startScale*(d/_lastDist)));
+      applyZoom();
       e.preventDefault();
     }
   },{passive:false});
   document.addEventListener('touchend',e=>{
-    if(e.touches.length<2&&scale>1){
-      // Показываем подсказку первый раз
+    if(e.touches.length<2&&_scale>1){
       const h=$('vidZoomHint');
       if(h&&!h._shown){h._shown=true;h.classList.add('show');setTimeout(()=>h.classList.remove('show'),2000);}
     }
-  });
-  // Double-tap reset
-  let lastTap=0;
-  document.addEventListener('touchend',e=>{
-    if(!$('callVidWrap')?.classList.contains('show'))return;
-    const now=Date.now();
-    if(now-lastTap<300&&e.touches.length===0){scale=1;const v=getrid();if(v)v.style.transform='';} 
-    lastTap=now;
-  });
-  function getrid(){return $('remoteVideo');}
+  },{passive:true});
+
+  // Ориентация экрана — fullscreen при landscape
+  function handleOrientation(){
+    const cs=$('callScreen');if(!cs)return;
+    const isLandscape=window.innerWidth>window.innerHeight&&window.innerHeight<500;
+    if(isLandscape&&cs.classList.contains('show')){
+      // Пробуем fullscreen API
+      if(document.documentElement.requestFullscreen&&!document.fullscreenElement){
+        document.documentElement.requestFullscreen().catch(()=>{});
+      }
+    }else{
+      if(document.fullscreenElement&&document.exitFullscreen){
+        document.exitFullscreen().catch(()=>{});
+      }
+    }
+  }
+  window.addEventListener('orientationchange',()=>setTimeout(handleOrientation,300));
+  window.addEventListener('resize',()=>handleOrientation());
+
+  // Экспортируем showOverlay для использования в setupCallUI
+  window._showVidOverlay=showOverlay;
+  window._hideVidOverlay=hideOverlay;
 })();
+
+// Громкость в звонке
+function _setCallVolume(val){
+  const a=$('remAudio'),v=$('remoteVideo');
+  const vol=parseFloat(val);
+  if(a)a.volume=vol;
+  if(v)v.volume=vol;
+}
 
 
 // ════════════════════════════════════════════════════════
@@ -5072,19 +5226,9 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   if(!myUsername){
     showUsernameOverlay();
-    // Когда юзернейм выбран — запускаем Firebase listener сразу
-    window.addEventListener('firebaseReady',()=>{
-      if(myUsername)_fbListen(myUsername);
-    },{once:true});
+    // НЕ вешаем listener здесь — saveUsername сам вызовет initFirebaseMode
   }else{
     initPeer();
-    // Если PeerJS не поднялся за 8 секунд — переключаемся на Firebase
-    setTimeout(()=>{
-      if(!peer?.open&&!_fbMode){
-        console.warn('PeerJS timeout — switching to Firebase mode');
-        initFirebaseMode();
-      }
-    },8000);
   }
 
   openChat('ai');
