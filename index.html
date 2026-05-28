@@ -2223,15 +2223,28 @@ function _initSlonChannel(){
       saveAll();
     });
     // Слушаем удаления постов
+    window._fbOnChildAdded(window._fbRef(window._fbDb,'slon_channel/deleted'),snap=>{
+      const deletedId=snap.key;
+      if(!deletedId)return;
+      // Убираем из локальной истории (и при перезагрузке тоже)
+      if(chatHist[SLON_CHANNEL_ID]){
+        const before=chatHist[SLON_CHANNEL_ID].length;
+        chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(
+          m=>m.id!==deletedId&&m.channelPostId!==deletedId
+        );
+        if(chatHist[SLON_CHANNEL_ID].length!==before){
+          if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
+          saveAll();
+        }
+      }
+    });
+    // Слушаем удаления из posts-ноды (для onChildRemoved на живых сессиях)
     window._fbOnChildRemoved(window._fbRef(window._fbDb,'slon_channel/posts'),snap=>{
       if(!chatHist[SLON_CHANNEL_ID])return;
       const key=snap.key;
-      const before=chatHist[SLON_CHANNEL_ID].length;
       chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(m=>m.channelPostId!==key&&m.id!==key);
-      if(chatHist[SLON_CHANNEL_ID].length!==before){
-        if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
-        saveAll();
-      }
+      if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
+      saveAll();
     });
     // Слушаем legacy latest (обратная совместимость)
     window._fbOnValue(window._fbRef(window._fbDb,'slon_channel/latest'),snap=>{
@@ -3120,13 +3133,17 @@ async function adminDeleteChannelPost(msg){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   const postKey=msg.channelPostId||msg.id;
   try{
-    // Удаляем из Firebase — onChildRemoved у всех уберёт пост
     if(window._fbDb){
+      // Удаляем из posts
       await window._fbRemove(window._fbRef(window._fbDb,'slon_channel/posts/'+postKey));
+      // Пишем в deleted — это постоянный список, все устройства при старте его прочитают
+      // и удалят пост из localStorage
+      await window._fbSet(window._fbRef(window._fbDb,'slon_channel/deleted/'+postKey),true);
+      await window._fbSet(window._fbRef(window._fbDb,'slon_channel/deleted/'+msg.id),true);
     }
-    // Локально тоже убираем
+    // Локально
     if(chatHist[SLON_CHANNEL_ID]){
-      chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(m=>m.id!==msg.id);
+      chatHist[SLON_CHANNEL_ID]=chatHist[SLON_CHANNEL_ID].filter(m=>m.id!==msg.id&&m.channelPostId!==postKey);
     }
     if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
     saveAll();
