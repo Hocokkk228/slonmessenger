@@ -3792,33 +3792,35 @@ async function _toggleCamScreen(){
 // Обработка каждого нового remote-трека (вызывается из ontrack)
 function _handleRemoteTrack(track){
   if(!_remoteStream)_remoteStream=new MediaStream();
-  // Добавляем трек в единый stream (если ещё не там)
   if(!_remoteStream.getTracks().some(t=>t.id===track.id)){
     _remoteStream.addTrack(track);
   }
-  // Когда трек "замолкает" (replaceTrack(null) на той стороне)
+  // onmute/onunmute — вызываем _updateRemoteVideoUI для ОБОИХ типов треков
   track.onmute=()=>{
     console.log('remote track muted:',track.kind);
-    if(track.kind==='video')_updateRemoteVideoUI();
+    _updateRemoteVideoUI();
   };
-  // Когда трек "оживает" (новый replaceTrack)
   track.onunmute=()=>{
     console.log('remote track unmuted:',track.kind);
-    if(track.kind==='video')_updateRemoteVideoUI();
+    // При размьючивании убеждаемся что трек в _remoteStream
+    if(!_remoteStream.getTracks().some(t=>t.id===track.id)){
+      _remoteStream.addTrack(track);
+    }
+    _updateRemoteVideoUI();
+    // Для аудио — перезапускаем воспроизведение
+    if(track.kind==='audio')_tryPlayRemote();
   };
   track.onended=()=>{
     console.log('remote track ended:',track.kind);
     try{_remoteStream.removeTrack(track);}catch(e){}
-    if(track.kind==='video')_updateRemoteVideoUI();
+    _updateRemoteVideoUI();
   };
-  // Привязываем stream к элементам (один раз — потом он сам обновляется)
   const rv=$('remoteVideo'),a=$('remAudio');
   if(rv.srcObject!==_remoteStream)rv.srcObject=_remoteStream;
   if(a.srcObject!==_remoteStream)a.srcObject=_remoteStream;
   a.volume=1.0;
   if(selSpk&&selSpk!=='default'&&typeof a.setSinkId==='function')
     a.setSinkId(selSpk).catch(()=>{});
-  // Пытаемся запустить воспроизведение
   _tryPlayRemote();
   _updateRemoteVideoUI();
   startCallTimer();
@@ -3828,31 +3830,36 @@ function _handleRemoteTrack(track){
 // Обновляем видимость video-обёртки в зависимости от наличия активного remote video
 function _updateRemoteVideoUI(){
   if(!_remoteStream||!activeCall||!_callPC)return;
-  const liveReceiverTracks=[];
+
+  // Собираем ТОЛЬКО видео receiver-треки для UI решения
+  // Аудио-треки НЕ трогаем — ими управляет _handleRemoteTrack
+  const liveVideoReceiverTracks=[];
   _callPC.getTransceivers().forEach(tr=>{
     const t=tr.receiver?.track;
-    if(!t||t.readyState!=='live')return;
+    if(!t||t.kind!=='video'||t.readyState!=='live')return;
     const dir=tr.currentDirection;
-    // currentDirection===null значит negotiation ещё не завершена — разрешаем
-    // 'sendrecv' или 'recvonly' — remote шлёт нам трек
+    // null = negotiation ещё не завершена — разрешаем
     if(dir===null||dir==='sendrecv'||dir==='recvonly'){
-      // Дополнительная проверка: трек не заглушён
-      if(!t.muted||dir===null){
-        liveReceiverTracks.push(t);
-      }
+      liveVideoReceiverTracks.push(t);
     }
   });
-  const liveTrackIds=new Set(liveReceiverTracks.map(t=>t.id));
-  _remoteStream.getTracks().forEach(t=>{
-    if(!liveTrackIds.has(t.id)){
+
+  // Синхронизируем ТОЛЬКО видео-треки в _remoteStream
+  const liveVideoIds=new Set(liveVideoReceiverTracks.map(t=>t.id));
+  // Удаляем устаревшие видео-треки
+  _remoteStream.getVideoTracks().forEach(t=>{
+    if(!liveVideoIds.has(t.id)){
       try{_remoteStream.removeTrack(t);}catch(e){}
     }
   });
-  liveReceiverTracks.forEach(t=>{
+  // Добавляем новые видео-треки
+  liveVideoReceiverTracks.forEach(t=>{
     if(!_remoteStream.getTracks().some(x=>x.id===t.id)){
       _remoteStream.addTrack(t);
     }
   });
+
+  // UI решение на основе наличия видео
   const remoteLiveVideo=_remoteStream.getVideoTracks().some(t=>t.readyState==='live');
   const myCamTracks=localStream?.getVideoTracks()||[];
   const myLiveVideo=myCamTracks.some(t=>t.readyState==='live')||isScreenSharing;
