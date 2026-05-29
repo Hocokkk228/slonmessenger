@@ -521,6 +521,27 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .secret-submit:hover{opacity:.88;}
 
 /* ── VOICE MESSAGE ── */
+/* ── PEER PROFILE OVERLAY ── */
+.peer-prof-overlay{position:fixed;inset:0;z-index:800;display:none;flex-direction:column;background:var(--bg1);overflow-y:auto;}
+.peer-prof-overlay.show{display:flex;}
+.peer-prof-hero{position:relative;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:20px;flex-shrink:0;}
+.peer-prof-hero-bg{position:absolute;inset:0;z-index:0;}
+.peer-prof-av{width:90px;height:90px;border-radius:50%;border:3px solid rgba(255,255,255,.25);overflow:hidden;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;position:relative;z-index:1;margin-bottom:10px;}
+.peer-prof-name{font-size:22px;font-weight:700;color:#fff;text-align:center;position:relative;z-index:1;text-shadow:0 1px 4px rgba(0,0,0,.4);}
+.peer-prof-status{font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:5px;position:relative;z-index:1;margin-top:4px;}
+.peer-prof-back{position:absolute;top:16px;left:16px;z-index:2;background:rgba(0,0,0,.35);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;}
+.peer-prof-actions{display:flex;gap:10px;padding:16px;border-bottom:1px solid var(--border);}
+.peer-prof-act{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;background:var(--bg2);border:none;border-radius:12px;cursor:pointer;color:var(--text1);font-size:11px;font-weight:500;}
+.peer-prof-act svg{width:22px;height:22px;fill:var(--accent);}
+.peer-prof-act.danger{color:var(--red);}
+.peer-prof-act.danger svg{fill:var(--red);}
+/* ── ADMIN CONSOLE ── */
+.admin-console-section{padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
+.admin-console-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;padding:0 4px;}
+.admin-row{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg2);border-radius:12px;cursor:pointer;border:none;width:100%;text-align:left;color:var(--text1);font-size:14px;}
+.admin-row svg{width:20px;height:20px;fill:var(--accent);flex-shrink:0;}
+.admin-row.danger{color:var(--red);}
+.admin-row.danger svg{fill:var(--red);}
 .voice-bub{display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:14px;min-width:190px;max-width:260px;}
 .msg.out .voice-bub{background:var(--msg-out);color:#fff;border-bottom-right-radius:3px;}
 .msg.inc .voice-bub{background:var(--msg-in);border:1px solid var(--border);color:var(--text1);border-bottom-left-radius:3px;}
@@ -832,6 +853,50 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
     <div class="tp-grid" id="mainThemeGrid"></div>
   </div>
 
+<!-- PEER PROFILE OVERLAY -->
+<div class="peer-prof-overlay" id="peerProfOverlay">
+  <div class="peer-prof-hero" id="peerProfHero">
+    <div class="peer-prof-hero-bg" id="peerProfBg"></div>
+    <button class="peer-prof-back" onclick="closePeerProfile()">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <div class="peer-prof-av" id="peerProfAv"></div>
+    <div class="peer-prof-name" id="peerProfName"></div>
+    <div class="peer-prof-status" id="peerProfStatus"></div>
+  </div>
+  <div class="peer-prof-actions" id="peerProfActions"></div>
+  <div class="prof-info-list" id="peerProfInfo"></div>
+  <!-- Блок консоли адмнистратора (показывается только admins) -->
+  <div id="peerAdminSection" style="display:none">
+    <div class="admin-console-section">
+      <div class="admin-console-title">🛡 Консоль администратора</div>
+      <button class="admin-row" id="adminGrantBadgeBtn" onclick="">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <span>Выдать 🐘 слонгалочку</span>
+      </button>
+      <button class="admin-row" id="adminRevokeBadgeBtn" onclick="">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>
+        <span>Забрать 🐘 слонгалочку</span>
+      </button>
+      <button class="admin-row danger" id="adminBanBtn" onclick="">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
+        <span id="adminBanBtnLabel">Заблокировать пользователя</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN CONSOLE (в профиле) -->
+<div class="peer-prof-overlay" id="adminConsoleOverlay">
+  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);">
+    <button onclick="closeAdminConsole()" style="background:none;border:none;cursor:pointer;padding:4px">
+      <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:var(--text1)"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <div style="font-size:17px;font-weight:700">🛡 Консоль администратора</div>
+  </div>
+  <div id="adminConsoleContent" style="padding:16px;display:flex;flex-direction:column;gap:8px;"></div>
+</div>
+
   <div class="incoming" id="incoming">
     <div class="ic-av" id="icAv"><svg><use href="#i-person"/></svg></div>
     <div class="ic-info">
@@ -1110,6 +1175,14 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 
         <!-- Опасная зона -->
         <div class="prof-danger-section">
+          <!-- Консоль администратора (только для admins) -->
+          <div class="prof-info-row" id="adminConsoleRow" style="display:none" onclick="showAdminConsolePage()">
+            <svg class="prof-info-ico" viewBox="0 0 24 24" style="fill:var(--accent)"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/></svg>
+            <div class="prof-info-txt">
+              <div class="prof-info-val" style="color:var(--accent)">🛡 Консоль администратора</div>
+              <div class="prof-info-lbl">Управление пользователями и каналом</div>
+            </div>
+          </div>
           <!-- Уведомления -->
           <div class="prof-info-row" onclick="requestNotifPermission()" id="notifRow">
             <svg class="prof-info-ico" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
@@ -1688,6 +1761,8 @@ let mutedChats={}; // id->true — заглушённые чаты
 let peerIids={}; // pid->internalId
 let peerProfileBgs={};
 let peerBios={}; // pid->bio // pid->bgId
+let blockedUsers={}; // pid->true — заблокированные нами
+let bannedUsers={}; // username->{until,reason} — забаненные администраторами (хранится в Firebase)
 let inMediaBufs={};
 let recChunks=[],recTimer=null,recSecs=0,recMode=null; // 'voice'|'slon'
 let inFiles={},fileStore={};
@@ -1953,6 +2028,7 @@ function saveAll(){
       localStorage.setItem(p+'arch',JSON.stringify(archivedChats));
       localStorage.setItem(p+'pinned',JSON.stringify(pinnedChats));
       localStorage.setItem(p+'muted',JSON.stringify(mutedChats));
+      localStorage.setItem(p+'blocked',JSON.stringify(blockedUsers));
       localStorage.setItem(p+'piids',JSON.stringify(peerIids));
       localStorage.setItem(p+'pbgs2',JSON.stringify(peerProfileBgs));
       // Настройки устройства — без префикса
@@ -2017,6 +2093,7 @@ function loadStorage(){
   archivedChats=LS.get(p+'arch',LS.get('sl_arch',{}));
   pinnedChats=LS.get(p+'pinned',{});
   mutedChats=LS.get(p+'muted',{});
+  blockedUsers=LS.get(p+'blocked',{});
   peerIids=LS.get(p+'piids',LS.get('sl_piids',{}));
   peerProfileBgs=LS.get(p+'pbgs2',LS.get('sl_pbgs2',{}));
 
@@ -2166,10 +2243,13 @@ function initFirebaseMode(){
   _fbListenSent(myUsername);
   // Синхронизация групп между устройствами одного аккаунта
   _fbListenMyGroups();
+  // Проверяем бан-статус текущего пользователя
+  _checkBanStatus();
   // Проверяем слонгалочку через Firebase
   setTimeout(()=>{
     _checkElephantBadgeFirebase();
     if(myUsername==='vadimslonik67')_grantElephantBadge('vadimslonik67');
+    _fetchPeerElephantBadges(); // загружаем галочки у контактов
   },1500);
 }
 
@@ -2320,15 +2400,15 @@ function _fbListen(username){
     // Удаляем сообщение из inbox после прочтения
     window._fbRemove(snap.ref).catch(()=>{});
     const pid=data.from;
-    // Пропускаем свои сообщения — КРОМЕ call_self_sync (синхронизация между устройствами)
     if(!pid)return;
     if(pid===myUsername){
-      // Обрабатываем только call_self_sync от других наших устройств
       if(data.payload?.type==='call_self_sync'){
         onData(myUsername,data.payload);
       }
       return;
     }
+    // Игнорируем сообщения от заблокированных пользователей
+    if(blockedUsers[pid])return;
     // Авто-добавляем в контакты если новый
     if(!peerNames[pid]){
       peerNames[pid]='@'+pid;
@@ -2741,7 +2821,9 @@ function onData(pid,data){
         catch(e){console.warn('ice candidate error:',e);}
       })();
       break;
-    case 'call_self_sync':
+    case 'system_ban':
+      _handleSystemBan(data);
+      break;
       // Сообщение от другого нашего устройства о состоянии звонка
       if(data._device===_myDeviceId)break; // наше собственное — игнорируем
       if(data.action==='answered'||data.action==='rejected'){
@@ -4529,64 +4611,255 @@ function showPeerProfile(pid){
   const bio=peerBios[pid]||'';
   const bgId=peerProfileBgs[pid]||'bg0';
   const bg=BG_COLORS.find(b=>b.id===bgId)||BG_COLORS[0];
+  const isBlocked=!!blockedUsers[pid];
+  const hasElephant=!!peerElephantBadges[pid];
+  const isAdmin=CHANNEL_ADMINS.has(myUsername);
 
-  const avHtml=av
-    ?`<img src="${av}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-    :`<svg style="width:52px;height:52px;fill:rgba(255,255,255,.8)"><use href="#i-person"/></svg>`;
+  // Аватарка
+  const avEl=$('peerProfAv');avEl.innerHTML='';
+  if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;';avEl.appendChild(i);}
+  else{avEl.innerHTML=`<svg style="width:52px;height:52px;fill:rgba(255,255,255,.8)"><use href="#i-person"/></svg>`;}
 
+  // Фон градиент
+  $('peerProfBg').style.background=bg.grad;
+
+  // Имя с галочкой
+  const badge=hasElephant?' 🐘':'';
+  $('peerProfName').textContent=name+badge;
+
+  // Статус
+  const statusEl=$('peerProfStatus');
+  if(isBlocked){
+    statusEl.innerHTML='<span style="color:rgba(255,100,100,.9)">🚫 Заблокирован</span>';
+  }else{
+    statusEl.innerHTML=isOnline
+      ?'<div style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0"></div> В сети'
+      :'<div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex-shrink:0"></div> Не в сети';
+  }
+
+  // Кнопки действий
+  const acts=$('peerProfActions');
+  acts.innerHTML=`
+    <button class="peer-prof-act" onclick="closePeerProfile();openChat('${pid}')">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      Написать
+    </button>
+    <button class="peer-prof-act" onclick="closePeerProfile();startCallWithPerm('${pid}',false)">
+      <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+      Звонок
+    </button>
+    <button class="peer-prof-act" onclick="closePeerProfile();startCallWithPerm('${pid}',true)">
+      <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      Видео
+    </button>
+    <button class="peer-prof-act danger" onclick="toggleBlockUser('${pid}')">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
+      ${isBlocked?'Разблокировать':'Заблокировать'}
+    </button>
+  `;
+
+  // Инфо-поля
+  const infoEl=$('peerProfInfo');
+  infoEl.innerHTML=`
+    <div class="prof-info-row" onclick="navigator.clipboard.writeText('@${pid}').then(()=>toast('Скопировано!'))">
+      <svg class="prof-info-ico"><use href="#i-username"/></svg>
+      <div class="prof-info-txt">
+        <div class="prof-info-val" style="font-family:monospace">@${esc(pid)}</div>
+        <div class="prof-info-lbl">Юзернейм · нажми чтобы скопировать</div>
+      </div>
+      <svg style="width:16px;height:16px;fill:var(--text2);flex-shrink:0"><use href="#i-copy"/></svg>
+    </div>
+    ${bio?`<div class="prof-info-row" style="cursor:default;">
+      <svg class="prof-info-ico"><use href="#i-info"/></svg>
+      <div class="prof-info-txt">
+        <div class="prof-info-val">${esc(bio)}</div>
+        <div class="prof-info-lbl">Bio</div>
+      </div>
+    </div>`:''}
+    <div class="prof-info-row" style="cursor:default;">
+      <svg class="prof-info-ico"><use href="#i-person"/></svg>
+      <div class="prof-info-txt">
+        <div class="prof-info-val">${esc(name)}${badge}</div>
+        <div class="prof-info-lbl">Имя</div>
+      </div>
+    </div>
+  `;
+
+  // Консоль администратора
+  const adminSec=$('peerAdminSection');
+  if(isAdmin&&pid!==myUsername){
+    adminSec.style.display='';
+    $('adminGrantBadgeBtn').onclick=()=>adminGrantBadge(pid);
+    $('adminRevokeBadgeBtn').onclick=()=>adminRevokeBadge(pid);
+    $('adminBanBtn').onclick=()=>adminBanUser(pid);
+    // Обновляем лейбл бана
+    const banInfo=bannedUsers[pid];
+    if(banInfo&&banInfo.until>Date.now()){
+      $('adminBanBtnLabel').textContent='Разбанить пользователя';
+      $('adminBanBtn').onclick=()=>adminUnbanUser(pid);
+    }else{
+      $('adminBanBtnLabel').textContent='Заблокировать пользователя';
+      $('adminBanBtn').onclick=()=>adminBanUser(pid);
+    }
+  }else{
+    adminSec.style.display='none';
+  }
+
+  $('peerProfOverlay').classList.add('show');
+}
+function closePeerProfile(){$('peerProfOverlay').classList.remove('show');}
+function closeAdminConsole(){$('adminConsoleOverlay').classList.remove('show');}
+
+// ── БЛОКИРОВКА пользователей (локальная) ──
+function toggleBlockUser(pid){
+  if(blockedUsers[pid]){
+    delete blockedUsers[pid];
+    toast('Пользователь разблокирован');
+  }else{
+    showModal(`
+      <div class="m-title">🚫 Заблокировать @${esc(pid)}?</div>
+      <div class="m-info">Ты больше не будешь получать сообщения, звонки и запросы от этого пользователя.</div>
+      <div class="m-btns">
+        <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+        <button class="btn-danger" onclick="doBlockUser('${pid}')">Заблокировать</button>
+      </div>
+    `);
+    return;
+  }
+  saveAll();
+  closePeerProfile();
+}
+function doBlockUser(pid){
+  blockedUsers[pid]=true;
+  saveAll();closeModal();closePeerProfile();
+  toast('🚫 @'+pid+' заблокирован');
+}
+
+// ── СЛОНГАЛОЧКИ — пир у которого есть ──
+let peerElephantBadges={}; // pid->bool
+
+// Проверяем слонгалочки контактов при старте
+async function _fetchPeerElephantBadges(){
+  if(!_fbReady()||!window._fbDb)return;
+  const pids=Object.keys(peerNames).filter(p=>!p.startsWith('g_')&&p!==SLON_CHANNEL_ID&&p!==myUsername);
+  for(const pid of pids){
+    try{
+      const snap=await new Promise(res=>{
+        window._fbOnValue(window._fbRef(window._fbDb,'elephant_badges/'+pid),s=>res(s),{onlyOnce:true});
+      });
+      if(snap?.val()===true){peerElephantBadges[pid]=true;}
+    }catch(e){}
+  }
+}
+
+// ── ADMIN: выдача/отзыв слонгалочки ──
+async function adminGrantBadge(pid){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  try{
+    await window._fbSet(window._fbRef(window._fbDb,'elephant_badges/'+pid),true);
+    peerElephantBadges[pid]=true;
+    toast('🐘 Слонгалочка выдана @'+pid);
+    closePeerProfile();
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+async function adminRevokeBadge(pid){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  try{
+    await window._fbRemove(window._fbRef(window._fbDb,'elephant_badges/'+pid));
+    delete peerElephantBadges[pid];
+    toast('Слонгалочка отозвана у @'+pid);
+    closePeerProfile();
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+
+// ── ADMIN: бан пользователей ──
+async function adminBanUser(pid){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div style="margin:-16px -16px 0;border-radius:16px 16px 0 0;overflow:hidden;">
-      <div class="prof-hero2" style="min-height:200px;">
-        <div class="prof-hero2-bg" style="background:${bg.grad}"></div>
-        <div class="prof-av2-wrap" style="cursor:default;">
-          <div class="prof-av2">${avHtml}</div>
-        </div>
-        <div class="prof-name2">${esc(name)}</div>
-        <div class="prof-status2">
-          ${isOnline?`<div class="prof-dot2"></div> В сети`:`<div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex-shrink:0;"></div> Не в сети`}
-        </div>
-      </div>
+    <div class="m-title">🔨 Забанить @${esc(pid)}</div>
+    <div class="m-info">Выбери срок блокировки:</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <button class="admin-row" onclick="doAdminBan('${pid}',1)">1 час</button>
+      <button class="admin-row" onclick="doAdminBan('${pid}',24)">1 день</button>
+      <button class="admin-row" onclick="doAdminBan('${pid}',168)">7 дней</button>
+      <button class="admin-row" onclick="doAdminBan('${pid}',720)">30 дней</button>
+      <button class="admin-row danger" onclick="doAdminBan('${pid}',-1)">Навсегда</button>
     </div>
-    <div class="prof-info-list" style="margin:0 -16px;border-radius:0;">
-      <div class="prof-info-row" style="cursor:default;">
-        <svg class="prof-info-ico"><use href="#i-person"/></svg>
-        <div class="prof-info-txt">
-          <div class="prof-info-val">${esc(name)}</div>
-          <div class="prof-info-lbl">Имя</div>
-        </div>
-      </div>
-      <div class="prof-info-row" onclick="navigator.clipboard.writeText('@${pid}').then(()=>toast('Скопировано!'))" title="Нажми для копирования">
-        <svg class="prof-info-ico"><use href="#i-username"/></svg>
-        <div class="prof-info-txt">
-          <div class="prof-info-val" style="font-family:monospace">@${esc(pid)}</div>
-          <div class="prof-info-lbl">Юзернейм</div>
-        </div>
-        <svg style="width:16px;height:16px;fill:var(--text2);flex-shrink:0"><use href="#i-copy"/></svg>
-      </div>
-      ${bio?`<div class="prof-info-row" style="cursor:default;">
-        <svg class="prof-info-ico"><use href="#i-info"/></svg>
-        <div class="prof-info-txt">
-          <div class="prof-info-val">${esc(bio)}</div>
-          <div class="prof-info-lbl">О себе</div>
-        </div>
-      </div>`:''}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn-ok" style="flex:1;" onclick="closeModal();startCallWithPerm('${pid}',false)">
-        ${icoSvg('i-phone')} Позвонить
-      </button>
-      <button class="btn-ok" style="flex:1;background:linear-gradient(135deg,#0369a1,#4338ca);" onclick="closeModal();startCallWithPerm('${pid}',true)">
-        ${icoSvg('i-video')} Видео
-      </button>
-    </div>
-    <div class="m-btns" style="margin-top:8px;">
-      <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
-      <button class="btn-ok" onclick="closeModal();openChat('${pid}')">
-        ${icoSvg('i-chat')} Написать
-      </button>
-    </div>
+    <div class="m-btns" style="margin-top:8px"><button class="btn-cancel" onclick="closeModal()">Отмена</button></div>
   `);
 }
+async function doAdminBan(pid,hours){
+  closeModal();closePeerProfile();
+  const until=hours===-1?9999999999999:Date.now()+hours*3600000;
+  try{
+    await window._fbSet(window._fbRef(window._fbDb,'bans/'+pid),{until,by:myUsername,ts:Date.now()});
+    bannedUsers[pid]={until,by:myUsername};
+    // Шлём уведомление о бане через inbox
+    _fbSend(pid,{type:'system_ban',until,hours});
+    toast('🔨 @'+pid+' заблокирован'+(hours===-1?' навсегда':' на '+hours+'ч'));
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+async function adminUnbanUser(pid){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  try{
+    await window._fbRemove(window._fbRef(window._fbDb,'bans/'+pid));
+    delete bannedUsers[pid];
+    closePeerProfile();
+    toast('✅ @'+pid+' разбанен');
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+
+// Проверяем забанен ли текущий пользователь
+async function _checkBanStatus(){
+  if(!_fbReady()||!window._fbDb||!myUsername)return;
+  try{
+    const snap=await new Promise(res=>{
+      window._fbOnValue(window._fbRef(window._fbDb,'bans/'+myUsername),s=>res(s),{onlyOnce:true});
+    });
+    const d=snap?.val();
+    if(d&&d.until>Date.now()){
+      // Забанен — блокируем интерфейс
+      const until=d.until===9999999999999?'навсегда':new Date(d.until).toLocaleString('ru');
+      document.body.innerHTML=`
+        <div style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:24px">
+          <div style="text-align:center;max-width:340px">
+            <div style="font-size:60px;margin-bottom:16px">🔨</div>
+            <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px">Аккаунт заблокирован</div>
+            <div style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.5">Твой аккаунт <b>@${esc(myUsername)}</b> заблокирован до <b>${until}</b>.<br><br>Если считаешь это ошибкой — обратись к администраторам.</div>
+          </div>
+        </div>`;
+    }
+  }catch(e){}
+}
+
+// Показываем бан-уведомление при получении system_ban
+function _handleSystemBan(data){
+  const until=data.until===9999999999999?'навсегда':new Date(data.until).toLocaleString('ru');
+  document.body.innerHTML=`
+    <div style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="text-align:center;max-width:340px">
+        <div style="font-size:60px;margin-bottom:16px">🔨</div>
+        <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px">Аккаунт заблокирован</div>
+        <div style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.5">Твой аккаунт заблокирован до <b>${until}</b>.</div>
+      </div>
+    </div>`;
+}
+
+// ── КНОПКА КОНСОЛИ В ПРОФИЛЕ ──
+function showAdminConsolePage(){
+  const c=$('adminConsoleContent');
+  c.innerHTML=`
+    <div class="admin-console-title" style="margin-bottom:4px">Управление каналом</div>
+    <button class="admin-row" onclick="showChannelPublish();closeAdminConsole()">
+      <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Опубликовать пост в канале
+    </button>
+    <div class="admin-console-title" style="margin-top:12px;margin-bottom:4px">Пользователи</div>
+    <div style="color:var(--text2);font-size:13px;padding:8px 4px">Открой профиль пользователя чтобы выдать слонгалочку или заблокировать его.</div>
+  `;
+  $('adminConsoleOverlay').classList.add('show');
+}
+
 function updateChatHeader(){
   const id=activeChat;
   if(currentView==='profile')return;
@@ -4629,7 +4902,7 @@ function updateChatHeader(){
       $('chAv').style.background='linear-gradient(135deg,var(--accent),var(--accent2))';
       $('chAv').innerHTML=icoSvg('i-person');
     }
-    $('chName').textContent=peerNames[id]||('@'+id);
+    $('chName').textContent=(peerNames[id]||('@'+id))+(peerElephantBadges[id]?' 🐘':'');
     $('chStatus').innerHTML=ok
       ?`<div class="status-dot online" style="width:7px;height:7px"></div> В сети`
       :`<div class="status-dot offline" style="width:7px;height:7px"></div> Не в сети`;
@@ -4694,8 +4967,10 @@ function setSbStatus(pid,ok){
   if(activeChat===pid){updateChatHeader();updateReconBanner();}
 }
 function updateSbName(pid){
-  const el=$('sbn-'+pid);if(el)el.textContent=(peerNames[pid]||('@'+pid)).slice(0,18);
-  if(activeChat===pid)$('chName').textContent=peerNames[pid]||('@'+pid);
+  const badge=peerElephantBadges[pid]?' 🐘':'';
+  const name=(peerNames[pid]||('@'+pid))+badge;
+  const el=$('sbn-'+pid);if(el)el.textContent=name.slice(0,20);
+  if(activeChat===pid)$('chName').textContent=name;
 }
 function updateSbAvatar(pid){
   const c=$('sav-'+pid);if(!c)return;const av=peerAvatars[pid];if(!av)return;
@@ -4765,6 +5040,9 @@ function updateProfileDisplay(){
   const bv=$('profBioVal');if(bv)bv.textContent=myBio||'Не задано';
   const iv=$('profIdVal');if(iv)iv.textContent='@'+myUsername;
   const lu=$('profileLogoutUser');if(lu)lu.textContent=myUsername;
+  // Консоль администратора — только для admins
+  const adminRow=$('adminConsoleRow');
+  if(adminRow)adminRow.style.display=CHANNEL_ADMINS.has(myUsername)?'':'none';
   // New profile v2 elements
   const bv2=$('profBioVal2');if(bv2)bv2.textContent=myBio||'Добавить описание…';
   // Hero bg
