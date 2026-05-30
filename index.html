@@ -272,7 +272,8 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .cbtn.end{width:68px;height:68px;background:linear-gradient(135deg,var(--call-end),var(--call-end2));box-shadow:0 4px 20px rgba(220,38,38,.5);}
 .cbtn.end svg{width:28px;height:28px;}
 .cbtn.end:hover{box-shadow:0 6px 28px rgba(220,38,38,.7);}
-.cbtn.active-off{background:rgba(220,38,38,.65);}
+.cbtn.active-off{background:rgba(255,255,255,.12);position:relative;}
+.cbtn.active-off::after{content:'';position:absolute;top:50%;left:50%;width:2px;height:60%;background:#f87171;transform:translate(-50%,-50%) rotate(45deg);border-radius:2px;pointer-events:none;}
 .cbtn.screen-active{background:rgba(59,130,246,.7);}
 .cbtn-lbl{font-size:10px;color:rgba(255,255,255,.45);font-weight:600;text-align:center;letter-spacing:.3px;}
 
@@ -659,6 +660,63 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .prof-danger-section{margin-top:8px;}
 .danger-row .prof-info-val{color:var(--red)!important;}
 
+
+/* ── VOICE ROOMS ── */
+.voice-rooms-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;display:flex;align-items:flex-end;justify-content:center;}
+.voice-rooms-panel{background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:72vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -4px 32px rgba(0,0,0,.4);}
+.voice-rooms-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);}
+.voice-rooms-title{font-weight:700;font-size:16px;}
+.voice-rooms-close{background:none;border:none;font-size:22px;color:var(--text2);cursor:pointer;line-height:1;padding:0 2px;}
+.voice-rooms-list{flex:1;overflow-y:auto;padding:8px 12px;}
+.voice-room-item{display:flex;align-items:center;gap:12px;padding:11px 10px;border-radius:12px;cursor:pointer;transition:background .15s;}
+.voice-room-item:hover,.voice-room-item.active-mine{background:var(--hover);}
+.voice-room-ico{width:40px;height:40px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.voice-room-ico svg{width:20px;height:20px;fill:var(--text2);}
+.voice-room-ico.active-room{background:rgba(74,222,128,.15);}
+.voice-room-ico.active-room svg{fill:#4ade80;}
+.voice-room-info{flex:1;min-width:0;}
+.voice-room-name{font-weight:600;font-size:14px;}
+.voice-room-meta{font-size:11px;color:var(--text2);margin-top:2px;}
+.voice-room-join{font-size:12px;color:var(--accent);font-weight:600;flex-shrink:0;padding:4px 10px;border-radius:8px;border:1px solid var(--accent);}
+
+/* ── VOICE ROOM SCREEN ── */
+.vr-screen{position:fixed;inset:0;background:#0a0a0f;z-index:550;display:flex;flex-direction:column;}
+.vr-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(0,0,0,.5);flex-shrink:0;}
+.vr-topbar-ico{width:28px;height:28px;border-radius:6px;background:rgba(74,222,128,.2);display:flex;align-items:center;justify-content:center;}
+.vr-topbar-ico svg{width:16px;height:16px;fill:#4ade80;}
+.vr-topbar-title{font-weight:700;font-size:14px;flex:1;}
+.vr-topbar-timer{font-size:12px;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
+.vr-topbar-min{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;padding:4px 8px;font-size:12px;border-radius:6px;}
+.vr-topbar-min:hover{background:rgba(255,255,255,.1);}
+.vr-grid{flex:1;display:grid;gap:4px;padding:4px;overflow:hidden;min-height:0;}
+.vr-grid.p1{grid-template-columns:1fr;}
+.vr-grid.p2{grid-template-columns:1fr 1fr;}
+.vr-grid.p3,.vr-grid.p4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;}
+.vr-grid.p5,.vr-grid.p6{grid-template-columns:1fr 1fr 1fr;}
+.vr-tile{position:relative;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:80px;}
+.vr-tile-bg{position:absolute;inset:0;}
+.vr-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;border-radius:14px;background:#000;}
+.vr-tile video.hidden{display:none;}
+.vr-tile-av{position:relative;z-index:3;width:64px;height:64px;border-radius:50%;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.5);border:3px solid rgba(255,255,255,.25);}
+.vr-tile-av img{width:100%;height:100%;object-fit:cover;}
+.vr-tile-av-icon{width:100%;height:100%;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;}
+.vr-tile-av-icon svg{width:32px;height:32px;fill:rgba(255,255,255,.8);}
+.vr-tile-info{position:absolute;bottom:0;left:0;right:0;z-index:4;padding:20px 10px 8px;background:linear-gradient(transparent,rgba(0,0,0,.7));display:flex;align-items:center;gap:6px;}
+.vr-tile-name{color:#fff;font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+.vr-tile-mic{width:16px;height:16px;flex-shrink:0;}
+.vr-tile-mic.muted{fill:#f87171;}
+.vr-tile-mic.active{fill:#4ade80;}
+.vr-tile.speaking .vr-tile-av{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.4);}
+.vr-controls{display:flex;justify-content:center;align-items:center;gap:12px;padding:12px 16px;background:rgba(0,0,0,.5);flex-shrink:0;}
+/* Мини-войс (свёрнутый) */
+.vr-mini{position:fixed;bottom:80px;right:16px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:500;cursor:pointer;box-shadow:var(--shadow);min-width:180px;}
+.vr-mini-ico{width:32px;height:32px;border-radius:8px;background:rgba(74,222,128,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.vr-mini-ico svg{width:18px;height:18px;fill:#4ade80;}
+.vr-mini-info{flex:1;min-width:0;}
+.vr-mini-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vr-mini-timer{font-size:11px;color:var(--text2);}
+.vr-mini-end{background:#ef4444;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.vr-mini-end svg{width:16px;height:16px;fill:#fff;}
 </style>
 </head>
 <body data-theme="dark">
@@ -2295,9 +2353,15 @@ function rebuildSidebar(){
   });
   updateArchiveHeader();
 
-  // Восстанавливаем каналы из localStorage
-  Object.entries(myChannels).forEach(([cid,meta])=>_addChannelToSidebar(cid,meta));
-  Object.entries(subscribedChannels).forEach(([cid,meta])=>_addChannelToSidebar(cid,meta));
+  // Восстанавливаем каналы из localStorage и запускаем слушателей
+  Object.entries(myChannels).forEach(([cid,meta])=>{
+    _addChannelToSidebar(cid,meta);
+    if(meta.username&&window._fbDb)setTimeout(()=>_listenUserChannel(cid,meta.username),1000);
+  });
+  Object.entries(subscribedChannels).forEach(([cid,meta])=>{
+    _addChannelToSidebar(cid,meta);
+    if(meta.username&&window._fbDb)setTimeout(()=>_listenUserChannel(cid,meta.username),1000);
+  });
   // Превью последних сообщений
   for(const[id,hist]of Object.entries(chatHist)){
     if(id==='ai'||!hist?.length)continue;
@@ -2369,10 +2433,17 @@ function initFirebaseMode(){
   _fbListenSent(myUsername);
   // Синхронизация групп между устройствами одного аккаунта
   _fbListenMyGroups();
+  // Запускаем Firebase-слушатели групповых сообщений
+  setTimeout(_fbListenAllGrpMsgs, 1500);
   // Проверяем бан-статус текущего пользователя
   _checkBanStatus();
   _loadAdminsFromFirebase();
-  setTimeout(_loadMyChannels,2000);
+  setTimeout(()=>{
+    _loadMyChannels();
+    // Перезапускаем слушателей каналов (Firebase мог не быть готов при rebuildSidebar)
+    Object.entries(myChannels).forEach(([cid,meta])=>{ if(meta.username)_listenUserChannel(cid,meta.username); });
+    Object.entries(subscribedChannels).forEach(([cid,meta])=>{ if(meta.username)_listenUserChannel(cid,meta.username); });
+  },2000);
   // Загружаем список забаненных для admins
   if(CHANNEL_ADMINS.has(myUsername)&&window._fbDb){
     window._fbOnValue(window._fbRef(window._fbDb,"bans"),snap=>{
@@ -2975,10 +3046,9 @@ function onData(pid,data){
       toast('🛡 Тебе выданы права администратора SLON!');
       const ar=$('adminConsoleRow');if(ar)ar.style.display='';
       break;
-    case 'grp_call_incoming':
-    case 'grp_call_join':
-    case 'grp_call_leave':
-      _handleGrpCallMsg(pid,data);
+    case 'voice_join':
+    case 'voice_leave':
+      _handleVoiceMsg(pid,data);
       break;
       // Сообщение от другого нашего устройства о состоянии звонка
       if(data._device===_myDeviceId)break; // наше собственное — игнорируем
@@ -3027,6 +3097,49 @@ function onData(pid,data){
       break;
     case 'group_msg':
       recvGrpMsg(data);
+      break;
+    case 'group_add':
+      // Нас добавили в группу
+      if(!groups[data.gid]){
+        groups[data.gid]={name:data.name||'Группа',members:data.members||[myUsername],admin:pid};
+        if(!grpHist[data.gid])grpHist[data.gid]=[];
+        addSbGroup(data.gid);
+        sysMsg(data.gid,'@'+pid+' добавил тебя в группу');
+        saveAll();
+        _fbListenGrpMsgsForNew(data.gid);
+        if(activeChat===data.gid)updateChatHeader();
+        toast('👥 Тебя добавили в «'+(data.name||'группу')+'»');
+      }
+      break;
+    case 'group_update':
+      if(groups[data.gid]){
+        if(data.members)groups[data.gid].members=data.members;
+        if(data.canInvite)groups[data.gid].canInvite=data.canInvite;
+        saveAll();
+        if(activeChat===data.gid)updateChatHeader();
+      }
+      break;
+    case 'group_profile_update':
+      if(groups[data.gid]){
+        const grp=groups[data.gid];
+        if(data.name)grp.name=data.name;
+        if(data.desc!==undefined)grp.desc=data.desc;
+        if(data.avatar!==undefined)grp.avatar=data.avatar;
+        if(data.bgColor!==undefined)grp.bgColor=data.bgColor;
+        if(data.bgPattern!==undefined)grp.bgPattern=data.bgPattern;
+        saveAll();
+        if(activeChat===data.gid)updateChatHeader();
+      }
+      break;
+    case 'group_kick':
+      if(groups[data.gid]){
+        // Нас выгнали
+        delete groups[data.gid];delete grpHist[data.gid];
+        $('si-'+data.gid)?.remove();
+        saveAll();
+        if(activeChat===data.gid){openChat('ai');}
+        toast('👥 Тебя удалили из группы');
+      }
       break;
     case 'media_start':{
       inMediaBufs[data.id]={kind:data.kind,dur:data.dur||0,mime:data.mime||'',
@@ -3141,10 +3254,25 @@ function onData(pid,data){
 // ── MESSAGES ──
 function sendMsg(){
   const inp=$('msgInp'),txt=inp.value.trim();if(!txt)return;
-  // SLON-канал — для admins открываем публикацию, для остальных блокируем
+  // SLON-канал
   if(activeChat===SLON_CHANNEL_ID){
     if(CHANNEL_ADMINS.has(myUsername)){showChannelPublish();inp.value='';}
     else{toast('📢 Это канал — сюда нельзя писать');inp.value='';}
+    return;
+  }
+  // Пользовательский канал
+  if(activeChat.startsWith('ch_')){
+    const chMeta=myChannels[activeChat]||subscribedChannels[activeChat]||{};
+    if(chMeta.owner===myUsername){
+      // Владелец — публикуем пост напрямую
+      const postId='post_'+Date.now();const ts=Date.now();
+      if(window._fbDb&&chMeta.username){
+        window._fbSet(window._fbRef(window._fbDb,'user_channels/'+chMeta.username+'/posts/'+postId),
+          {id:postId,text:txt,ts,author:myUsername}).catch(()=>{});
+      }
+      // Firebase onChildAdded сам добавит сообщение — не дублируем вручную
+      inp.value='';resizeInp(inp);
+    }else{toast('📢 Только владелец может публиковать посты');inp.value='';}
     return;
   }
   // Режим редактирования
@@ -3714,11 +3842,20 @@ async function sendFileTo(fid,name,mime,isImg,data,ts){
   };
 
   if(activeChat.startsWith('g_')){
+    const gid=activeChat;
+    const g=groups[gid]||{};
     const promises=[];
-    groups[activeChat]?.members?.forEach(pid=>{
+    g.members?.forEach(pid=>{
       if(pid!==myUsername&&(_fbMode||conns[pid]?.open))promises.push(doSend(conns[pid]||pid,pid));
     });
     await Promise.all(promises);
+    // Публикуем в grp_msgs чтобы участники онлайн позже тоже видели
+    if(window._fbDb&&_fbMode){
+      window._fbSet(window._fbRef(window._fbDb,'grp_msgs/'+gid+'/'+fid),{
+        id:fid,type:'file',gid,sid:myUsername,nick:myNick||('@'+myUsername),
+        avatar:myAvatar||null,fileName:name,fileMime:mime,fileIsImg:isImg,ts:ts||Date.now()
+      }).catch(()=>{});
+    }
   }else if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
     await doSend(conns[activeChat]||activeChat,activeChat);
   }
@@ -4111,6 +4248,66 @@ function swapPip(){
   toast(_pipSwapped?'Вы на экране':'Собеседник на экране');
 }
 
+
+// Обработка каждого нового remote-трека (вызывается из ontrack)
+
+// Обновляем видимость video-обёртки в зависимости от наличия активного remote video
+
+// Универсальная попытка запустить воспроизведение remote audio/video
+// (некоторые браузеры блокируют autoplay даже после user gesture при renegotiation)
+
+// Совместимость со старым кодом
+
+
+// ── Кнопка МИКРОФОН ──
+
+// ── Кнопка КАМЕРА ──
+// В видеозвонке: включает/выключает трек.
+// В аудиозвонке: добавляет камеру → показывает видео-обёртку.
+
+// Возвращает список активных RTCPeerConnection (и для обычного звонка, и для войса)
+// Шлём renegotiation offer всем активным PCs
+
+
+// ── Кнопка ДЕМОНСТРАЦИЯ ЭКРАНА ──
+
+
+async function stopScreenShare(){
+  if(screenShareStream){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;}
+  isScreenSharing=false;updateScreenShareBtn();
+  const lv=$('localVideo');if(lv){lv.srcObject=null;lv.style.display='none';}
+  for(const[pid,pc] of _getActivePCs()){
+    try{
+      // Убираем screen audio
+      const audS=pc.getSenders().find(s=>s._isScreenAudio);
+      if(audS)try{await audS.replaceTrack(null);}catch(e){}
+      // Видео: возвращаем камеру или recvonly
+      const vTr=pc.getTransceivers().find(t=>t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+      const camTracks=localStream?.getVideoTracks()||[];
+      const hasActiveCam=camTracks.length>0&&camTracks[0].readyState==='live';
+      if(hasActiveCam&&vTr){
+        try{await vTr.sender.replaceTrack(camTracks[0]);}catch(e){}
+        try{vTr.direction='sendrecv';}catch(e){}
+      }else if(vTr){
+        try{await vTr.sender.replaceTrack(null);}catch(e){}
+        try{vTr.direction='recvonly';}catch(e){}
+      }
+      const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+      if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+    }catch(e){console.warn('stop screen renegotiate',pid,e);}
+  }
+  const camTracks=localStream?.getVideoTracks()||[];
+  if(camTracks.length>0&&camTracks[0].readyState==='live'){
+    const lv2=$('localVideo');lv2.srcObject=localStream;lv2.play().catch(()=>{});lv2.style.display='';
+    if(!_vr){$('pipSelfInfo').style.display='none';}
+  }
+  if(_vr)_vrUpdateSelfTile(false);
+  else _updateRemoteVideoUI();
+  toast('Демонстрация экрана остановлена');
+}
+
+
 async function _toggleCamScreen(){
   if(!activeCall)return;
   const sh=$('vidSwitchHint');
@@ -4170,7 +4367,8 @@ function _updateRemoteVideoUI(){
   // Собираем ТОЛЬКО видео receiver-треки для UI решения
   // Аудио-треки НЕ трогаем — ими управляет _handleRemoteTrack
   const liveVideoReceiverTracks=[];
-  _callPC.getTransceivers().forEach(tr=>{
+  if(!_callPC)return;
+  (_callPC).getTransceivers().forEach(tr=>{
     const t=tr.receiver?.track;
     if(!t||t.kind!=='video'||t.readyState!=='live')return;
     const dir=tr.currentDirection;
@@ -4287,6 +4485,7 @@ function minimizeCall(){callMinimized=true;$('callScreen').classList.remove('sho
 function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show');$('callScreen').classList.add('show');}
 
 function endCall(){
+  if(_vr){leaveVoiceRoom();return;}
   if(activeCall?.peerId){
     const msgType=activeCall.answered?'call_end':'call_cancel';
     const callId=activeCall.callId;
@@ -4334,10 +4533,13 @@ function endCallCleanup(){playHangupSound();stopRingSound();
 
 // ── Кнопка МИКРОФОН ──
 function toggleMute(){
-  if(!localStream)return;
+  const stream=(_vr?.localStream)||localStream;
+  if(!stream)return;
   isMuted=!isMuted;
-  localStream.getAudioTracks().forEach(t=>t.enabled=!isMuted);
+  stream.getAudioTracks().forEach(t=>t.enabled=!isMuted);
+  if(_vr)_vr.muted=isMuted;
   updateMuteBtn();
+  _vrSyncButtons();
 }
 function updateMuteBtn(){
   const btn=$('muteBtn'),lbl=$('muteLbl'),mc=$('mcMuteBtn');
@@ -4350,7 +4552,7 @@ function updateMuteBtn(){
 // В видеозвонке: включает/выключает трек.
 // В аудиозвонке: добавляет камеру → показывает видео-обёртку.
 async function toggleCam(){
-  if(!activeCall)return;
+  if(!activeCall&&!_vr)return;
 
   // Если идёт демонстрация экрана — переключаемся на камеру (stopScreen→startCam)
   if(isScreenSharing){
@@ -4374,35 +4576,53 @@ async function toggleCam(){
   // Меняем direction трансивера на 'recvonly' — это РЕАЛЬНО меняет SDP и собеседник
   // увидит что видео ушло (а не просто muted). replaceTrack(null) такого не делает.
   // Ищем видео-трансивер строго — никогда не берём аудио
-  const transceiver=_callPC?.getTransceivers().find(tr=>{
-    if(tr.sender._isVideoSender)return true;
-    if(tr.sender._isScreenAudio)return false;
-    if(tr.receiver?.track?.kind==='video')return true;
-    if(tr.sender?.track?.kind==='video')return true;
-    return false;
-  });
-  if(transceiver){
-    try{await transceiver.sender.replaceTrack(null);}catch(e){}
-    try{transceiver.direction='recvonly';}catch(e){console.warn('set direction recvonly:',e);}
-    // Renegotiation теперь физически меняет SDP
+  for(const[pid,pc] of _getActivePCs()){
     try{
-      const offer=await _callPC.createOffer();
-      await _callPC.setLocalDescription(offer);
-      _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
+      const tr=pc.getTransceivers().find(t=>
+        t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+      if(tr){
+        try{await tr.sender.replaceTrack(null);}catch(e){}
+        try{tr.direction='recvonly';}catch(e){}
+      }
+      const offer=await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
     }catch(e){console.warn('cam off renegotiate:',e);}
   }
   // Скрываем своё локальное превью
-  const lv=$('localVideo');lv.srcObject=null;lv.style.display='none';
-  // Скрыть кнопку переворота
-  const fbw=$('flipCamWrap');if(fbw)fbw.style.display='none';
+  if(!_vr){
+    const lv=$('localVideo');lv.srcObject=null;lv.style.display='none';
+    const fbw=$('flipCamWrap');if(fbw)fbw.style.display='none';
+  }else{
+    _vrUpdateSelfTile(false);
+  }
   updateCamBtn();
   // UI решается централизованно
   _updateRemoteVideoUI();
   toast('Камера выключена');
 }
 
+// Возвращает список активных RTCPeerConnection (и для обычного звонка, и для войса)
+function _getActivePCs(){
+  if(_vr) return Object.entries(_vr.pcs); // [[pid, pc], ...]
+  if(_callPC) return [['peer', _callPC]];
+  return [];
+}
+// Шлём renegotiation offer всем активным PCs
+async function _renegotiateAll(){
+  for(const [pid, pc] of _getActivePCs()){
+    try{
+      const offer=await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+    }catch(e){console.warn('renegotiate error:',e);}
+  }
+}
+
 async function _activateCam(){
-  if(!activeCall||!_callPC){toast('Нет активного звонка');return;}
+  if(!activeCall&&!_vr){toast('Нет активного звонка');return;}
   try{
     const vc=selCam&&selCam!=='default'
       ?{deviceId:{ideal:selCam},facingMode:{ideal:_camFacing||'user'}}
@@ -4411,60 +4631,44 @@ async function _activateCam(){
     const videoTrack=camStream.getVideoTracks()[0];
     if(!videoTrack){toast('Камера не найдена');return;}
 
-    // Очищаем старые видео-треки из localStream
+    // Добавляем трек в localStream
     if(localStream){
       localStream.getVideoTracks().forEach(t=>{t.stop();localStream.removeTrack(t);});
       localStream.addTrack(videoTrack);
     }else{
       localStream=new MediaStream([videoTrack]);
+      if(_vr)_vr.localStream=localStream;
     }
 
-    // Ищем видео-трансивер СТРОГО по типу трека через receiver или по маркеру
-    // НИКОГДА не берём трансивер у которого неизвестный kind
-    const videoTransceiver=_callPC.getTransceivers().find(tr=>{
-      if(tr.sender._isVideoSender)return true;
-      if(tr.sender._isScreenAudio)return false;
-      // Проверяем по receiver — он всегда знает свой kind
-      if(tr.receiver?.track?.kind==='video')return true;
-      // Проверяем по текущему треку sender'а
-      if(tr.sender?.track?.kind==='video')return true;
-      return false;
-    });
-
-    let needsRenegotiation=false;
-    if(videoTransceiver){
-      const sender=videoTransceiver.sender;
-      await sender.replaceTrack(videoTrack);
-      sender._isVideoSender=true;
-      // Возвращаем direction если был recvonly/inactive
-      if(videoTransceiver.direction==='recvonly'||videoTransceiver.direction==='inactive'){
-        try{videoTransceiver.direction='sendrecv';}catch(e){}
-        needsRenegotiation=true;
-      }
-    }else{
-      // Нет видео-трансивера (аудиозвонок) — добавляем новый
-      const newSender=_callPC.addTrack(videoTrack,localStream);
-      if(newSender)newSender._isVideoSender=true;
-      needsRenegotiation=true;
-    }
-
-    if(needsRenegotiation){
+    // Renegotiate со всеми активными PCs
+    for(const[pid,pc] of _getActivePCs()){
       try{
-        const offer=await _callPC.createOffer();
-        await _callPC.setLocalDescription(offer);
-        _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
-      }catch(re){console.warn('renegotiate cam:',re);}
+        const tr=pc.getTransceivers().find(t=>
+          t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        if(tr){
+          await tr.sender.replaceTrack(videoTrack);
+          tr.sender._isVideoSender=true;
+          if(tr.direction==='recvonly'||tr.direction==='inactive')try{tr.direction='sendrecv';}catch(e){}
+        }else{
+          const s=pc.addTrack(videoTrack,localStream);
+          if(s)s._isVideoSender=true;
+        }
+        const offer=await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+        else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+      }catch(e){console.warn('cam on renegotiate:',e);}
     }
 
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
     lv.style.display='';
-    $('pipSelfInfo').style.display='none';
+    if(!_vr)$('pipSelfInfo').style.display='none';
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
     isCamOff=false;updateCamBtn();
     const fbw=$('flipCamWrap');
     if(fbw){const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);fbw.style.display=isMob?'':'none';}
-    _updateRemoteVideoUI();
+    if(!_vr)_updateRemoteVideoUI();
     toast('Камера включена');
   }catch(e){
     console.error('_activateCam error:',e);
@@ -4475,177 +4679,67 @@ function updateCamBtn(){
   const btn=$('camBtn'),lbl=$('camLbl');
   if(btn){btn.innerHTML=icoSvg(isCamOff?'i-video-off':'i-video');btn.className='cbtn'+(isCamOff?' active-off':'');}
   if(lbl)lbl.textContent=isCamOff?'Вкл камеру':'Камера';
+  // Войс кнопки
+  const vb=$('vrCamBtn');if(vb){vb.innerHTML=icoSvg(isCamOff?'i-video-off':'i-video');vb.className='cbtn'+(isCamOff?' active-off':'');}
+  if(_vr)_vrUpdateSelfTile(!isCamOff&&!isScreenSharing);
 }
 
 // ── Кнопка ДЕМОНСТРАЦИЯ ЭКРАНА ──
 async function toggleScreenShare(){
-  if(!activeCall){toast('Нет активного звонка');return;}
+  if(!activeCall&&!_vr){toast('Нет активного звонка');return;}
   if(isScreenSharing){stopScreenShare();return;}
-  if(!_callPC){toast('Нет WebRTC соединения');return;}
-
+  const pcs=_getActivePCs();
+  // Разрешаем начать демку даже без соединений — новые участники получат трек при входе
   try{
-    if(!navigator.mediaDevices?.getDisplayMedia){
-      toast('Демонстрация экрана не поддерживается этим браузером');return;
-    }
-    // Простые констрейнты — без systemAudio (он экспериментальный и валит вызов в некоторых браузерах)
-    screenShareStream=await navigator.mediaDevices.getDisplayMedia({
-      video:true,
-      audio:true
-    });
-
-    // Если браузер дал аудио экрана — добавляем как доп. трек (не заменяем микрофон)
-    const screenAudioTracks=screenShareStream.getAudioTracks();
-    console.log('[Screen share] Video tracks:',screenShareStream.getVideoTracks().length,
-                'Audio tracks:',screenAudioTracks.length);
-    if(screenAudioTracks.length===0){
-      // Звук экрана недоступен (юзер не отметил "Share audio", или ОС не поддерживает)
-      console.warn('[Screen share] NO AUDIO captured. Chrome desktop only, must share a TAB (not window/screen) and tick "Share audio" checkbox.');
-    }else{
-      console.log('[Screen share] Audio track:',screenAudioTracks[0].label,'enabled:',screenAudioTracks[0].enabled);
-    }
-    if(screenAudioTracks.length>0){
-      const existingScreenAudio=_callPC.getSenders().find(s=>s._isScreenAudio);
-      if(existingScreenAudio){
-        // Уже был screen-audio sender (от прошлой демки) — переиспользуем
-        try{await existingScreenAudio.replaceTrack(screenAudioTracks[0]);}catch(e){console.warn('reuse screen audio:',e);}
-      }else{
-        try{
-          const audioSender=_callPC.addTrack(screenAudioTracks[0],screenShareStream);
-          if(audioSender)audioSender._isScreenAudio=true;
-        }catch(e){console.warn('add screen audio:',e);}
-      }
-    }
-
+    if(!navigator.mediaDevices?.getDisplayMedia){toast('Демонстрация экрана не поддерживается');return;}
+    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
     const screenTrack=screenShareStream.getVideoTracks()[0];
-    if(!screenTrack){
-      screenShareStream.getTracks().forEach(t=>t.stop());
-      screenShareStream=null;
-      toast('Не удалось получить видео экрана');
-      return;
-    }
+    if(!screenTrack){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;toast('Нет видео экрана');return;}
+    const screenAudioTracks=screenShareStream.getAudioTracks();
 
-    // Ищем видео-трансивер СТРОГО — через receiver.track.kind или маркер
-    const videoTransceiver=_callPC.getTransceivers().find(tr=>{
-      if(tr.sender._isVideoSender)return true;
-      if(tr.sender._isScreenAudio)return false;
-      if(tr.receiver?.track?.kind==='video')return true;
-      if(tr.sender?.track?.kind==='video')return true;
-      return false;
-    });
-
-    let needsRenegotiation=false;
-    if(videoTransceiver){
-      await videoTransceiver.sender.replaceTrack(screenTrack);
-      videoTransceiver.sender._isVideoSender=true;
-      if(videoTransceiver.direction==='recvonly'||videoTransceiver.direction==='inactive'){
-        try{videoTransceiver.direction='sendrecv';}catch(e){}
-        needsRenegotiation=true;
-      }
-      if(screenAudioTracks.length>0)needsRenegotiation=true;
-    }else{
-      const newSender=_callPC.addTrack(screenTrack,screenShareStream);
-      if(newSender)newSender._isVideoSender=true;
-      needsRenegotiation=true;
-    }
-
-    // Восстанавливаем direction screen-audio трансивера если был recvonly
-    if(screenAudioTracks.length>0){
-      const audSender=_callPC.getSenders().find(s=>s._isScreenAudio);
-      const audTr=_callPC.getTransceivers().find(t=>t.sender===audSender);
-      if(audTr&&(audTr.direction==='recvonly'||audTr.direction==='inactive')){
-        try{audTr.direction='sendrecv';}catch(e){}
-        needsRenegotiation=true;
-      }
-    }
-
-    if(needsRenegotiation){
+    // Renegotiate со всеми PC
+    for(const[pid,pc] of pcs){
       try{
-        const offer=await _callPC.createOffer();
-        await _callPC.setLocalDescription(offer);
-        _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
-      }catch(re){console.warn('renegotiate screen:',re);}
+        // Audio трек экрана
+        if(screenAudioTracks.length>0){
+          const existAud=pc.getSenders().find(s=>s._isScreenAudio);
+          if(existAud){try{await existAud.replaceTrack(screenAudioTracks[0]);}catch(e){}}
+          else{try{const s=pc.addTrack(screenAudioTracks[0],screenShareStream);if(s)s._isScreenAudio=true;}catch(e){}}
+        }
+        // Видео трек экрана
+        const vTr=pc.getTransceivers().find(t=>
+          t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        if(vTr){
+          await vTr.sender.replaceTrack(screenTrack);
+          vTr.sender._isVideoSender=true;
+          if(vTr.direction==='recvonly'||vTr.direction==='inactive')try{vTr.direction='sendrecv';}catch(e){}
+        }else{
+          const s=pc.addTrack(screenTrack,screenShareStream);if(s)s._isVideoSender=true;
+        }
+        const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+        if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+        else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+      }catch(e){console.warn('screen share renegotiate',pid,e);}
     }
 
     // Локальное превью
     const lv=$('localVideo');lv.srcObject=new MediaStream([screenTrack]);lv.play().catch(()=>{});
     lv.style.display='';
-    $('pipSelfInfo').style.display='none';
-    $('callVidWrap').classList.add('show');
-    $('callAudUI').style.display='none';
-
-    isScreenSharing=true;
-    updateScreenShareBtn();
-    _updateRemoteVideoUI();
-    if(screenAudioTracks.length>0)toast('🖥 Экран + звук');
-    else toast('🖥 Экран (без звука — отметь «Поделиться звуком» в Chrome)');
-    // Если пользователь нажмёт "Stop sharing" в браузере — корректно остановимся
+    if(!_vr){$('pipSelfInfo').style.display='none';$('callVidWrap').classList.add('show');$('callAudUI').style.display='none';}
+    else{_vrUpdateSelfTile(true);}
+    isScreenSharing=true;updateScreenShareBtn();
+    if(!_vr)_updateRemoteVideoUI();
     screenTrack.onended=()=>stopScreenShare();
-
+    toast('🖥 Экран'+(screenAudioTracks.length>0?' + звук':''));
   }catch(e){
-    screenShareStream=null;
+    screenShareStream?.getTracks().forEach(t=>t.stop());screenShareStream=null;
     if(e.name==='NotAllowedError')toast('Доступ к экрану запрещён');
-    else if(e.name==='NotFoundError')toast('Нет доступного экрана для захвата');
     else toast('Ошибка демонстрации: '+(e.message||e.name));
     console.error('Screen share error:',e);
   }
 }
 
-async function stopScreenShare(){
-  if(screenShareStream){
-    screenShareStream.getTracks().forEach(t=>t.stop());
-    screenShareStream=null;
-  }
-  isScreenSharing=false;
-  updateScreenShareBtn();
-  const lv=$('localVideo');if(lv){lv.srcObject=null;lv.style.display='none';}
 
-  if(!activeCall||!_callPC){_updateRemoteVideoUI();return;}
-
-  // Убираем screen-audio sender
-  const screenAudioSender=_callPC.getSenders().find(s=>s._isScreenAudio);
-  if(screenAudioSender){
-    try{await screenAudioSender.replaceTrack(null);}catch(e){}
-  }
-
-  // Ищем видео-трансивер строго
-  const videoTransceiver=_callPC.getTransceivers().find(tr=>{
-    if(tr.sender._isVideoSender)return true;
-    if(tr.sender._isScreenAudio)return false;
-    if(tr.receiver?.track?.kind==='video')return true;
-    if(tr.sender?.track?.kind==='video')return true;
-    return false;
-  });
-
-  const camTracks=localStream?.getVideoTracks()||[];
-  const hasActiveCam=camTracks.length>0&&camTracks[0].readyState==='live';
-
-  if(hasActiveCam&&videoTransceiver){
-    // Возвращаем камеру в видео-трансивер
-    try{await videoTransceiver.sender.replaceTrack(camTracks[0]);}catch(e){}
-    if(videoTransceiver.direction!=='sendrecv'){
-      try{videoTransceiver.direction='sendrecv';}catch(e){}
-    }
-    const lv2=$('localVideo');lv2.srcObject=localStream;lv2.play().catch(()=>{});
-    lv2.style.display='';$('pipSelfInfo').style.display='none';
-  }else{
-    // Ни камеры ни экрана — направление в recvonly и renegotiation
-    if(videoTransceiver){
-      try{await videoTransceiver.sender.replaceTrack(null);}catch(e){}
-      try{videoTransceiver.direction='recvonly';}catch(e){}
-    }
-    const screenAudioTr=_callPC.getTransceivers().find(t=>t.sender===screenAudioSender);
-    if(screenAudioTr){
-      try{screenAudioTr.direction='recvonly';}catch(e){}
-    }
-    try{
-      const offer=await _callPC.createOffer();
-      await _callPC.setLocalDescription(offer);
-      _callSend(activeCall.peerId,{type:'webrtc_offer',sdp:_callPC.localDescription.toJSON()});
-    }catch(e){console.warn('screen-off renegotiate:',e);}
-  }
-  _updateRemoteVideoUI();
-  toast('Демонстрация экрана остановлена');
-}
 
 function updateScreenShareBtn(){
   const btn=$('screenShareBtn'),lbl=$('screenShareLbl');
@@ -4715,14 +4809,33 @@ function recvGrpInvite(data){
 }
 function sendGrpMsg(gid,text){
   const g=groups[gid];if(!g)return;
-  const msg={id:'gm'+Date.now(),sender:'me',text,time:nowTime()};
+  const mid='gm'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  const ts=Date.now();
+  const msg={id:mid,sender:'me',text,time:fmtTime(ts),ts};
   if(!grpHist[gid])grpHist[gid]=[];grpHist[gid].push(msg);appendMsg(msg);scrollDown();
-  updatePreview(gid,'Вы: '+text.slice(0,25));
-  const pkt={type:'group_msg',gid,text,nick:myNick||('@'+myUsername),avatar:myAvatar||null,sid:myUsername,mid:'gm'+Date.now(),time:nowTime()};
-  g.members.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))sendData(conns[pid]||pid,pkt);});saveAll();
+  updatePreview(gid,'Вы: '+text.slice(0,25));saveAll();
+  // Пишем в Firebase группы — надёжнее чем индивидуальные inbox
+  if(window._fbDb&&_fbMode){
+    window._fbSet(window._fbRef(window._fbDb,'grp_msgs/'+gid+'/'+mid),{
+      id:mid,text,ts,sid:myUsername,nick:myNick||('@'+myUsername),
+      avatar:myAvatar||null,gname:g.name||'Группа'
+    }).catch(e=>console.warn('grpMsg write error:',e));
+  }else{
+    // Fallback: индивидуальные inbox
+    const pkt={type:'group_msg',gid,gname:g.name||'Группа',text,nick:myNick||('@'+myUsername),
+      avatar:myAvatar||null,sid:myUsername,mid,time:fmtTime(ts),ts};
+    g.members.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))sendData(conns[pid]||pid,pkt);});
+  }
 }
 function recvGrpMsg(data){
-  if(!groups[data.gid])return;if(!grpHist[data.gid])grpHist[data.gid]=[];
+  if(!data.gid)return;
+  // Автосоздание: если получили сообщение в группу которой нет — создаём минимальную запись
+  if(!groups[data.gid]){
+    groups[data.gid]={name:data.gname||'Группа',members:[myUsername,data.sid||''].filter(Boolean),admin:data.sid||''};
+    if(!$('si-'+data.gid))addSbGroup(data.gid);
+    saveAll();
+  }
+  if(!grpHist[data.gid])grpHist[data.gid]=[];
   const msg={id:data.mid,sender:'inc',senderId:data.sid,name:peerNames[data.sid]||data.nick||('@'+data.sid),avatar:data.avatar||peerAvatars[data.sid]||null,text:data.text,ts:data.ts||Date.now(),time:data.time||nowTime()};
   grpHist[data.gid].push(msg);
   if(activeChat===data.gid){appendMsg(msg);scrollDown();}
@@ -5264,10 +5377,12 @@ function updateChatHeader(){
     mob.style.display='none';
   }else if(id.startsWith('g_')){
     const g=groups[id]||{};
-    $('chAv').innerHTML='';$('chAv').textContent='👥';
-    $('chName').textContent=g.name||'Группа';
+    $('chAv').innerHTML='';$('chAv').style.background='';
+    if(g.avatar){const _gi=document.createElement('img');_gi.src=g.avatar;_gi.style.cssText='width:38px;height:38px;object-fit:cover;border-radius:50%';$('chAv').appendChild(_gi);}
+    else{$('chAv').textContent='👥';$('chAv').style.background='none';}
+    $('chName').textContent=(g.name||'Группа');
     $('chStatus').textContent=(g.members?.length||0)+' участников';$('chStatus').className='ch-status';
-    $('chActs').innerHTML=`<button class="ch-act" onclick="startGroupCall('${id}',false)" title="Голосовой звонок">${icoSvg('i-phone')}</button><button class="ch-act" onclick="startGroupCall('${id}',true)" title="Видеозвонок">${icoSvg('i-video')}</button><button class="ch-act" onclick="showGroupInfo('${id}')">${icoSvg('i-group')}</button><button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
+    $('chActs').innerHTML=`<button class="ch-act" onclick="showVoiceRooms('${id}')" title="Войсы"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button><button class="ch-act" onclick="showGroupProfile('${id}')" title="Профиль группы">${icoSvg('i-person')}</button><button class="ch-act" onclick="showGroupInfo('${id}')" title="Участники">${icoSvg('i-group')}</button><button class="ch-act" onclick="showChatDeleteMenu()">${icoSvg('i-trash')}</button>`;
     mob.style.display='none';
   }else{
     const ok=_fbMode?!!_fbConns[id]:(conns[id]?.open),av=peerAvatars[id];
@@ -5609,17 +5724,219 @@ function doCreateGroup(){
 
 function showGroupInfo(gid){
   const g=groups[gid];if(!g)return;
-  const mems=(g.members||[]).map(pid=>`<div style="padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)">
-    ${esc(peerNames[pid]||('@'+pid))} ${pid===g.admin?'👑':''}${pid===myUsername?'(ты)':''}
-  </div>`).join('');
+  const isOwner=g.admin===myUsername;
+  const canInvite=isOwner||(g.canInvite&&g.canInvite[myUsername]);
+  const mems=(g.members||[]).map(pid=>{
+    const isAdmin=pid===g.admin;
+    const hasInvite=g.canInvite&&g.canInvite[pid];
+    const actions=isOwner&&pid!==myUsername?`
+      <button onclick="grpKick('${gid}','${pid}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;padding:2px 6px" title="Удалить">✕</button>
+      <button onclick="grpToggleInvite('${gid}','${pid}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;padding:2px 6px" title="${hasInvite?'Убрать право приглашать':'Дать право приглашать'}">${hasInvite?'👥✓':'👥+'}</button>`:'';
+    return `<div style="display:flex;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border)">
+      <span style="flex:1">${esc(peerNames[pid]||('@'+pid))} ${isAdmin?'👑':''} ${hasInvite&&!isAdmin?'<span style="font-size:10px;color:var(--accent)">+invite</span>':''} ${pid===myUsername?'<span style="opacity:.5">(ты)</span>':''}</span>
+      <span style="display:flex;gap:2px">${actions}</span>
+    </div>`;
+  }).join('');
+
+  const addBtn=(isOwner||canInvite)?`<button class="btn-ok" style="margin-top:10px;width:100%" onclick="showAddGroupMember('${gid}')">➕ Добавить участника</button>`:'';
+
   showModal(`
     <div class="m-title">👥 ${esc(g.name)}</div>
-    <div class="m-sec">Участники (${g.members?.length||0}):</div>
-    ${mems}
-    <div class="m-btns" style="margin-top:12px">
+    <div style="color:var(--text2);font-size:12px;margin-bottom:8px">${g.members?.length||0} участников</div>
+    <div style="max-height:280px;overflow-y:auto">${mems}</div>
+    ${addBtn}
+    <div class="m-btns" style="margin-top:8px">
       <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
     </div>
   `);
+}
+
+function showGroupProfile(gid){
+  const g=groups[gid];if(!g)return;
+  const isOwner=g.admin===myUsername;
+  const bgStyle=_getProfileBgStyle(g.bg||'bg0',g.bgColor||'',g.bgPattern||'');
+  // Оверлей профиля группы — похож на peerProfOverlay
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s';
+  ov.id='grpProfOv';
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const av=g.avatar?`<img src="${g.avatar}" style="width:72px;height:72px;object-fit:cover;border-radius:50%">`
+    :`<div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:32px">👥</div>`;
+  const memPrev=(g.members||[]).slice(0,4).map(pid=>`<span style="font-size:12px;background:rgba(255,255,255,.15);border-radius:20px;padding:2px 8px">${esc(peerNames[pid]||('@'+pid))}</span>`).join(' ');
+  const editBtn=isOwner?`<button onclick="showGroupProfileEdit('${gid}')" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:14px">✏️ Редактировать профиль</button>`:'';
+  ov.innerHTML=`
+    <div style="width:100%;max-width:480px;border-radius:20px 20px 0 0;overflow:hidden">
+      <div style="height:130px;background:${bgStyle};display:flex;align-items:flex-end;padding:14px 18px;gap:14px">
+        ${av}
+        <div>
+          <div style="color:#fff;font-size:20px;font-weight:700">${esc(g.name||'Группа')}</div>
+          <div style="color:rgba(255,255,255,.7);font-size:13px">${(g.members||[]).length} участников</div>
+        </div>
+      </div>
+      <div style="background:var(--bg2);padding:16px 18px">
+        ${g.desc?`<div style="color:var(--text2);font-size:13px;margin-bottom:12px">${esc(g.desc)}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${memPrev}${(g.members||[]).length>4?`<span style="font-size:12px;color:var(--text2)">+${(g.members||[]).length-4} ещё</span>`:''}</div>
+        ${editBtn}
+        <button onclick="document.getElementById('grpProfOv').remove()" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:var(--bg3);border:none;color:var(--text);cursor:pointer;font-size:14px">Закрыть</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function showGroupProfileEdit(gid){
+  const g=groups[gid];if(!g||g.admin!==myUsername)return;
+  document.getElementById('grpProfOv')?.remove();
+  const curColor=g.bgColor||'#1d4ed8';
+  showModal(`
+    <div class="m-title">✏️ Профиль группы</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div id="grpAvPrev" style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:26px">${g.avatar?`<img src="${g.avatar}" style="width:100%;height:100%;object-fit:cover">`:'👥'}</div>
+      <div style="flex:1">
+        <button class="admin-row" style="width:100%" onclick="document.getElementById('grpAvFileInput').click()">📷 Аватарка группы</button>
+        <input type="file" id="grpAvFileInput" accept="image/*" style="display:none" onchange="grpLoadAvatar('${gid}',this)">
+      </div>
+    </div>
+    <input class="m-inp" id="grpEditName" placeholder="Название группы" maxlength="40" value="${esc(g.name||'')}">
+    <textarea class="m-ta" id="grpEditDesc" placeholder="Описание группы (необязательно)" maxlength="300" style="min-height:60px">${esc(g.desc||'')}</textarea>
+    ${myPremium?`
+    <div class="admin-console-title" style="margin:10px 0 6px">🎨 Фон профиля (Premium)</div>
+    <input type="color" id="grpColorPicker" value="${curColor}" style="width:100%;height:52px;border:none;border-radius:10px;cursor:pointer;margin-bottom:6px">
+    <div id="grpColorPreview" style="height:44px;border-radius:10px;margin-bottom:8px;background:${curColor}"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="admin-row${!g.bgPattern?' sel':''}" style="padding:6px 10px" id="grpPat_">Нет</button>
+      ${PREMIUM_BG_PATTERNS.map(p=>`<button class="admin-row${g.bgPattern===p.id?' sel':''}" style="padding:6px 10px" id="grpPat_${p.id}">${p.emoji} ${p.label}</button>`).join('')}
+    </div>`:'<div style="color:var(--text2);font-size:12px;margin:8px 0">⭐ SLON Premium — кастомный фон профиля</div>'}
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="saveGroupProfile('${gid}')">Сохранить</button>
+    </div>
+  `);
+  // Wiring color picker
+  const cp=$('grpColorPicker'),cpv=$('grpColorPreview');
+  if(cp&&cpv)cp.addEventListener('input',e=>{cpv.style.background=e.target.value;});
+  // Pattern buttons
+  ['', ...PREMIUM_BG_PATTERNS.map(p=>p.id)].forEach(pid=>{
+    const btn=$('grpPat_'+pid);
+    if(btn)btn.onclick=()=>{
+      if(!groups[gid])return;
+      groups[gid].bgPattern=pid;
+      document.querySelectorAll('[id^="grpPat_"]').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+    };
+  });
+}
+
+function grpLoadAvatar(gid,input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+      const ctx=canvas.getContext('2d');
+      const s=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,64,64);
+      const thumb=canvas.toDataURL('image/jpeg',0.8);
+      if(groups[gid])groups[gid].avatar=thumb;
+      const prev=$('grpAvPrev');
+      if(prev)prev.innerHTML=`<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveGroupProfile(gid){
+  const g=groups[gid];if(!g||g.admin!==myUsername)return;
+  const name=($('grpEditName')?.value||'').trim()||g.name;
+  const desc=($('grpEditDesc')?.value||'').trim();
+  const bgColor=myPremium?($('grpColorPicker')?.value||g.bgColor||''):(g.bgColor||'');
+  const bgPattern=myPremium?(g.bgPattern||''):'';
+  g.name=name;g.desc=desc;g.bgColor=bgColor;g.bgPattern=bgPattern;
+  closeModal();saveAll();
+  // Обновляем шапку
+  if(activeChat===gid)updateChatHeader();
+  // Оповещаем участников
+  (g.members||[]).filter(m=>m!==myUsername).forEach(pid=>{
+    _fbSend(pid,{type:'group_profile_update',gid,name,desc,avatar:g.avatar||null,bgColor,bgPattern});
+  });
+  toast('✅ Профиль группы обновлён');
+}
+
+function showAddGroupMember(gid){
+  const g=groups[gid];if(!g)return;
+  const isOwner=g.admin===myUsername;
+  const canInvite=isOwner||(g.canInvite&&g.canInvite[myUsername]);
+  if(!canInvite)return toast('Нет прав приглашать');
+  // Показываем контакты которых ещё нет в группе
+  const existing=new Set(g.members||[]);
+  const available=Object.keys(peerNames).filter(pid=>
+    !existing.has(pid)&&!pid.startsWith('g_')&&pid!==SLON_CHANNEL_ID&&!pid.startsWith('ch_'));
+  if(!available.length)return toast('Нет доступных контактов для добавления');
+  const checks=available.map(pid=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="add-mem-cb" value="${pid}">
+      <span>${esc(peerNames[pid]||('@'+pid))}</span>
+    </label>`).join('');
+  showModal(`
+    <div class="m-title">➕ Добавить в группу</div>
+    <div style="max-height:260px;overflow-y:auto">${checks}</div>
+    <div class="m-btns" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="doAddGroupMembers('${gid}')">Добавить</button>
+    </div>
+  `);
+}
+
+function doAddGroupMembers(gid){
+  const g=groups[gid];if(!g)return;
+  const selected=[...document.querySelectorAll('.add-mem-cb:checked')].map(cb=>cb.value);
+  if(!selected.length)return toast('Выбери хотя бы одного');
+  closeModal();
+  selected.forEach(pid=>{
+    if(!g.members.includes(pid))g.members.push(pid);
+    // Уведомляем нового участника
+    _fbSend(pid,{type:'group_add',gid,name:g.name,members:g.members,by:myUsername});
+    // Уведомляем текущих участников
+    g.members.filter(m=>m!==myUsername&&m!==pid).forEach(m=>{
+      _fbSend(m,{type:'group_update',gid,members:g.members});
+    });
+  });
+  saveAll();
+  toast('✅ Добавлено '+selected.length+' участн.');
+  // Обновляем header
+  if(activeChat===gid)updateChatHeader();
+}
+
+function grpKick(gid,pid){
+  const g=groups[gid];if(!g||g.admin!==myUsername)return;
+  showModal(`
+    <div class="m-title">Удалить из группы</div>
+    <div class="m-info">Удалить @${esc(pid)} из группы «${esc(g.name)}»?</div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-danger" onclick="doGrpKick('${gid}','${pid}')">Удалить</button>
+    </div>
+  `);
+}
+function doGrpKick(gid,pid){
+  closeModal();
+  const g=groups[gid];if(!g)return;
+  g.members=g.members.filter(m=>m!==pid);
+  if(g.canInvite&&g.canInvite[pid])delete g.canInvite[pid];
+  _fbSend(pid,{type:'group_kick',gid});
+  g.members.forEach(m=>{ if(m!==myUsername) _fbSend(m,{type:'group_update',gid,members:g.members}); });
+  saveAll();closeModal();showGroupInfo(gid);
+}
+
+function grpToggleInvite(gid,pid){
+  const g=groups[gid];if(!g||g.admin!==myUsername)return;
+  if(!g.canInvite)g.canInvite={};
+  if(g.canInvite[pid]){delete g.canInvite[pid];toast('@'+pid+' больше не может приглашать');}
+  else{g.canInvite[pid]=true;toast('@'+pid+' теперь может приглашать');}
+  // Уведомляем участников об обновлении
+  g.members.forEach(m=>{if(m!==myUsername)_fbSend(m,{type:'group_update',gid,members:g.members,canInvite:g.canInvite});});
+  saveAll();showGroupInfo(gid);
 }
 
 // ── DEVICES PANEL ──
@@ -6132,14 +6449,17 @@ function stopAndSendRec(){
 function sendVoiceMsg(dataUrl,dur,mimeType){
   const mid='vm'+Date.now();
   const ts=Date.now();
-  // Сохраняем в IDB сразу, используем idb: маркер
   _saveMediaToIdb(mid,'voice',dataUrl).catch(()=>{});
   const msg={id:mid,sender:'me',ts,time:fmtTime(ts),voiceData:'idb:'+mid+':voice',voiceDur:dur};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
-  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open))
+  if(activeChat.startsWith('g_')){
+    // Группа: загружаем один раз, публикуем в grp_msgs
+    _sendGrpMedia(activeChat,mid,'voice',dataUrl,dur,mimeType);
+  }else if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
     sendMediaChunked(_fbMode?activeChat:conns[activeChat],'voice',mid,dataUrl,dur,mimeType);
+  }
   saveAll();
 }
 
@@ -6152,20 +6472,52 @@ function sendSlonMsg(dataUrl,dur,mimeType,isBlobUrl=false){
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🐘 Слонкружок');
-  if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
+  if(activeChat.startsWith('g_')){
+    // Группа
     if(isBlobUrl){
-      // Blob URL → конвертируем в base64 для отправки
       fetch(dataUrl).then(r=>r.blob()).then(blob=>{
         const reader=new FileReader();
-        reader.onload=e=>sendMediaChunked(
-          _fbMode?activeChat:conns[activeChat],'slon',mid,e.target.result,dur,mimeType);
+        reader.onload=e=>_sendGrpMedia(activeChat,mid,'slon',e.target.result,dur,mimeType);
         reader.readAsDataURL(blob);
       }).catch(e=>console.warn('slon fetch error:',e));
-    }else{
-      sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,dataUrl,dur,mimeType);
-    }
+    }else{_sendGrpMedia(activeChat,mid,'slon',dataUrl,dur,mimeType);}
+  }else if(activeChat!=='ai'&&(_fbMode||conns[activeChat]?.open)){
+    if(isBlobUrl){
+      fetch(dataUrl).then(r=>r.blob()).then(blob=>{
+        const reader=new FileReader();
+        reader.onload=e=>sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,e.target.result,dur,mimeType);
+        reader.readAsDataURL(blob);
+      }).catch(e=>console.warn('slon fetch error:',e));
+    }else{sendMediaChunked(_fbMode?activeChat:conns[activeChat],'slon',mid,dataUrl,dur,mimeType);}
   }
   saveAll();
+}
+
+
+// Отправка медиа в группу через RTDB: чанки + grp_msgs уведомление
+async function _sendGrpMedia(gid, mid, kind, dataUrl, dur, mimeType){
+  if(!window._fbDb||!_fbMode)return;
+  const nick=myNick||('@'+myUsername);
+  const avatar=myAvatar||null;
+  const ts=Date.now();
+  try{
+    const db=window._fbDb;
+    const totalChunks=Math.ceil(dataUrl.length/FB_MEDIA_CHUNK);
+    // Храним данные под именем отправителя — все участники читают отсюда
+    const base='grp_media/'+gid+'/'+mid;
+    await window._fbSet(window._fbRef(db,base+'/meta'),
+      {kind,dur,mime:mimeType,nick,avatar,total:totalChunks,from:myUsername,ts});
+    for(let i=0;i<totalChunks;i++){
+      await window._fbSet(window._fbRef(db,base+'/chunks/'+i),
+        dataUrl.slice(i*FB_MEDIA_CHUNK,(i+1)*FB_MEDIA_CHUNK));
+    }
+    // Публикуем уведомление в grp_msgs
+    await window._fbSet(window._fbRef(db,'grp_msgs/'+gid+'/'+mid),{
+      id:mid,type:kind,gid,sid:myUsername,nick,avatar,dur:dur||0,
+      totalChunks,ts
+    });
+    toast(kind==='voice'?'🎙️ Голосовое отправлено':'🐘 Слонкружок отправлен');
+  }catch(e){toast('Ошибка отправки медиа: '+e.message);console.error('_sendGrpMedia:',e);}
 }
 
 // Отправка voice/slon через RTDB chunks (Storage не используется)
@@ -6879,8 +7231,10 @@ async function flipCamera(){
           const oldTrack=localStream.getVideoTracks()[0];
           if(oldTrack){localStream.removeTrack(oldTrack);try{oldTrack.stop();}catch(_){}}
           localStream.addTrack(tr);
-          const sender=_callPC.getSenders().find(s=>s._isVideoSender)||_callPC.getSenders().find(s=>s.track?.kind==='video');
-          if(sender)try{await sender.replaceTrack(tr);}catch(_){}
+          for(const[,pc] of _getActivePCs()){
+            const s=pc.getSenders().find(s=>s._isVideoSender)||pc.getSenders().find(s=>s.track?.kind==='video');
+            if(s)try{await s.replaceTrack(tr);}catch(_){}
+          }
           const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
         }
       }catch(_){}
@@ -6903,10 +7257,10 @@ async function flipCamera(){
   if(oldTrack){localStream.removeTrack(oldTrack);try{oldTrack.stop();}catch(_){}}
   localStream.addTrack(newTrack);
 
-  // Заменяем в sender'е
-  const sender=_callPC.getSenders().find(s=>s._isVideoSender)||_callPC.getSenders().find(s=>s.track?.kind==='video');
-  if(sender){
-    try{await sender.replaceTrack(newTrack);}catch(e){console.warn('flip replaceTrack:',e);}
+  // Заменяем в sender'е (все PC — обычный звонок или войс)
+  for(const[,pc] of _getActivePCs()){
+    const s=pc.getSenders().find(s=>s._isVideoSender)||pc.getSenders().find(s=>s.track?.kind==='video');
+    if(s)try{await s.replaceTrack(newTrack);}catch(e){console.warn('flip replaceTrack:',e);}
   }
   // Локальное превью
   const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
@@ -7562,63 +7916,88 @@ async function doCreateChannel(){
 // ── Настройки канала ──
 function showChannelSettings(channelId){
   const ch=myChannels[channelId];if(!ch)return;
-  const isOwner=ch.owner===myUsername;
-  if(!isOwner)return;
+  if(ch.owner!==myUsername)return;
+  const curColor=ch.bgColor||'#1d4ed8';
   showModal(`
-    <div class="m-title">⚙️ Настройки канала</div>
-    <div class="m-info" style="color:var(--accent);font-family:monospace">@${esc(ch.username)}</div>
+    <div class="m-title">⚙️ Настройки @${esc(ch.username)}</div>
     <input class="m-inp" id="chSetName" placeholder="Название" maxlength="40" value="${esc(ch.name||'')}">
-    <textarea class="m-ta" id="chSetDesc" placeholder="Описание" maxlength="200" style="min-height:70px">${esc(ch.desc||'')}</textarea>
-    <div class="admin-console-title" style="margin:12px 0 6px">🎨 Фон профиля канала</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      ${BG_COLORS.map(b=>`<button class="tp-opt${(ch.bg||'bg0')===b.id?' sel':''}" style="padding:0" onclick="chSetBg('${channelId}','${b.id}')">
-        <div class="tp-prev" style="background:${b.grad}"></div>
-      </button>`).join('')}
+    <textarea class="m-ta" id="chSetDesc" placeholder="Описание" maxlength="200" style="min-height:60px">${esc(ch.desc||'')}</textarea>
+    <div class="admin-console-title" style="margin:10px 0 6px">🖼 Аватарка канала</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div id="chAvPreview" style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:22px">${ch.avatar?`<img src="${ch.avatar}" style="width:100%;height:100%;object-fit:cover">`:'📢'}</div>
+      <button class="admin-row" onclick="document.getElementById('chAvInput').click()">📷 Загрузить</button>
+      <input type="file" id="chAvInput" accept="image/*" style="display:none" onchange="chLoadAvatar('${channelId}',this)">
     </div>
-    <div class="admin-console-title" style="margin:8px 0 6px">📌 Паттерн фона</div>
+    <div class="admin-console-title" style="margin:10px 0 6px">🎨 Цвет фона профиля</div>
+    <input type="color" id="chColorPicker" value="${curColor}" style="width:100%;height:52px;border:none;border-radius:10px;cursor:pointer;margin-bottom:6px">
+    <div id="chColorPreview" style="height:48px;border-radius:10px;margin-bottom:8px;background:${curColor}"></div>
+    <div class="admin-console-title" style="margin:8px 0 6px">📌 Паттерн</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="admin-row${!ch.bgPattern?' sel':''}" style="padding:6px 10px" onclick="chSetPattern('${channelId}','')">Нет</button>
-      ${PREMIUM_BG_PATTERNS.map(p=>`<button class="admin-row${ch.bgPattern===p.id?' sel':''}" style="padding:6px 10px" onclick="chSetPattern('${channelId}','${p.id}')">${p.emoji} ${p.label}</button>`).join('')}
+      <button class="admin-row${!ch.bgPattern?' sel':''}" style="padding:6px 10px" id="chPat_">Нет</button>
+      ${PREMIUM_BG_PATTERNS.map(p=>`<button class="admin-row${ch.bgPattern===p.id?' sel':''}" style="padding:6px 10px" id="chPat_${p.id}">${p.emoji} ${p.label}</button>`).join('')}
     </div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
       <button class="btn-ok" onclick="saveChannelSettings('${channelId}')">Сохранить</button>
     </div>
   `);
+  // Wiring
+  const picker=$('chColorPicker');const prev=$('chColorPreview');
+  if(picker&&prev){picker.addEventListener('input',e=>{prev.style.background=e.target.value;});}
+  // Pattern buttons
+  ['', ...PREMIUM_BG_PATTERNS.map(p=>p.id)].forEach(patId=>{
+    const btn=$('chPat_'+patId);
+    if(btn)btn.onclick=()=>{
+      myChannels[channelId].bgPattern=patId;
+      document.querySelectorAll('[id^="chPat_"]').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+    };
+  });
 }
 
-function chSetBg(channelId,bgId){
-  if(!myChannels[channelId])return;
-  myChannels[channelId].bg=bgId;
-  // Визуально обновляем кнопки
-  document.querySelectorAll('#modalBox .tp-opt').forEach(b=>{
-    b.classList.toggle('sel',b.onclick?.toString().includes("'"+bgId+"'"));
-  });
-}
-function chSetPattern(channelId,patId){
-  if(!myChannels[channelId])return;
-  myChannels[channelId].bgPattern=patId;
-  document.querySelectorAll('#modalBox .admin-row').forEach(b=>{
-    const fn=b.getAttribute('onclick')||'';
-    b.classList.toggle('sel',fn.includes("chSetPattern")&&fn.includes("'"+patId+"'"));
-  });
+function chLoadAvatar(channelId,input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    // Сжимаем до 64px
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+      const ctx=canvas.getContext('2d');
+      const s=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,64,64);
+      const thumb=canvas.toDataURL('image/jpeg',0.8);
+      if(myChannels[channelId])myChannels[channelId].avatar=thumb;
+      const prev=$('chAvPreview');
+      if(prev)prev.innerHTML=`<img src="${thumb}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    };
+    img.src=dataUrl;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function saveChannelSettings(channelId){
   const ch=myChannels[channelId];if(!ch)return;
   const name=($('chSetName')?.value||'').trim()||ch.name;
   const desc=($('chSetDesc')?.value||'').trim();
+  const bgColor=$('chColorPicker')?.value||ch.bgColor||'';
+  const bgPattern=ch.bgPattern||'';
+  const avatar=ch.avatar||null;
   closeModal();
-  const updated={...ch,name,desc};
+  const updated={...ch,name,desc,bgColor,bgPattern,avatar};
   myChannels[channelId]=updated;
   // Обновляем в Firebase
   try{
     await window._fbSet(window._fbRef(window._fbDb,'user_channels/'+ch.username+'/meta'),{
       ...updated,ts:Date.now()
     });
-    // Обновляем в sidebar
-    peerNames[channelId]=updated.name||('@'+ch.username);
-    updateSbName(channelId);
+    // Обновляем локально и в sidebar
+    peerNames[channelId]='📢 '+(updated.name||('@'+ch.username));
+    peerAvatars[channelId]=updated.avatar||null;
+    peerProfileBgColors[channelId]=updated.bgColor||'';
+    peerProfilePatterns[channelId]=updated.bgPattern||'';
+    updateSbName(channelId);updateSbAvatar(channelId);
     if(activeChat===channelId)updateChatHeader();
     saveAll();
     toast('✅ Настройки сохранены');
@@ -7646,9 +8025,9 @@ async function publishUserChannelPost(channelId){
   if(!text)return toast('Введи текст поста');
   closeModal();
   if(!window._fbDb)return toast('Нет соединения');
-  const postId='post_'+Date.now();
-  const ts=Date.now();
+  const postId='post_'+Date.now();const ts=Date.now();
   try{
+    // Пишем в Firebase — onChildAdded сам добавит в UI (нет локального дублирования)
     await window._fbSet(window._fbRef(window._fbDb,'user_channels/'+ch.username+'/posts/'+postId),
       {id:postId,text,ts,author:myUsername});
     toast('✅ Опубликовано');
@@ -7711,7 +8090,8 @@ function _addChannelToSidebar(channelId,meta){
 
 // ── Слушаем посты канала в Firebase ──
 function _listenUserChannel(channelId,username){
-  if(_myChannelListeners[channelId]||!window._fbDb)return;
+  if(!window._fbDb||!username)return;
+  if(_myChannelListeners[channelId]){return;} // уже слушаем
   const ref=window._fbRef(window._fbDb,'user_channels/'+username+'/posts');
   const unsub=window._fbOnChildAdded(ref,snap=>{
     const d=snap.val();if(!d||!d.text)return;
@@ -7720,7 +8100,8 @@ function _listenUserChannel(channelId,username){
     if(!chatHist[channelId])chatHist[channelId]=[];
     const ts=d.ts||Date.now();
     const meta=myChannels[channelId]||subscribedChannels[channelId]||{};
-    const msg={id:d.id,sender:'inc',name:'📢 '+(meta.name||username),ts,time:fmtTime(ts),text:d.text};
+    const chAvatar=meta.avatar||peerAvatars[channelId]||null;
+    const msg={id:d.id,sender:'inc',name:'📢 '+(meta.name||username),avatar:chAvatar,ts,time:fmtTime(ts),text:d.text};
     chatHist[channelId].push(msg);
     if(activeChat===channelId){renderChat(channelId);scrollDown();}
     else{addUnread(channelId);toast('📢 Новый пост в @'+username+'!',3000);}
@@ -7789,6 +8170,257 @@ async function _indexChannelOwner(username){
 }
 
 
+
+
+// ════════════════════════════════════════
+// ── ВОЙС UI: плитки участников ──
+// ════════════════════════════════════════
+
+let _vrMinimized = false;
+let _vrCallTimer = null;
+let _vrCallSecs = 0;
+
+// Создать/обновить свою плитку
+function _vrAddSelfTile(){
+  const grid=$('vrGrid');if(!grid)return;
+  let tile=$('vrtile-me');
+  if(!tile){
+    tile=_vrMakeTile('me', myNick||('@'+myUsername), myAvatar||null,
+      myProfileBg||'bg0', myProfileBgColor||'', myProfilePattern||'');
+    grid.appendChild(tile);
+  }
+  _vrUpdateGrid();
+}
+
+// Создать плитку участника
+function _vrEnsurePeerTile(pid){
+  if($('vrtile-'+pid))return;
+  const grid=$('vrGrid');if(!grid)return;
+  const name=peerNames[pid]||('@'+pid);
+  const av=peerAvatars[pid]||null;
+  const bg=peerProfileBgs[pid]||'bg0';
+  const bgC=peerProfileBgColors[pid]||'';
+  const bgP=peerProfilePatterns[pid]||'';
+  grid.appendChild(_vrMakeTile(pid, name, av, bg, bgC, bgP));
+  _vrUpdateGrid();
+}
+
+function _vrMakeTile(pid, name, av, bgId, bgColor, bgPattern){
+  const tile=document.createElement('div');
+  tile.className='vr-tile';tile.id='vrtile-'+pid;
+
+  // Фоновый слой — профиль
+  const bgDiv=document.createElement('div');bgDiv.className='vr-tile-bg';
+  bgDiv.style.background=_getProfileBgStyle(bgId||'bg0',bgColor||'',bgPattern||'');
+  tile.appendChild(bgDiv);
+
+  // Видео элемент
+  const vid=document.createElement('video');
+  vid.autoplay=true;vid.playsInline=true;
+  if(pid==='me')vid.muted=true;
+  vid.className='hidden';vid.id='vrtile-vid-'+pid;
+  tile.appendChild(vid);
+
+  // Аватарка
+  const avWrap=document.createElement('div');avWrap.className='vr-tile-av';avWrap.id='vrtile-av-'+pid;
+  if(av){const img=document.createElement('img');img.src=av;avWrap.appendChild(img);}
+  else{avWrap.innerHTML='<div class="vr-tile-av-icon"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></div>';}
+  tile.appendChild(avWrap);
+
+  // Инфо-бар
+  const info=document.createElement('div');info.className='vr-tile-info';
+  info.innerHTML=`<span class="vr-tile-name">${esc(name)}</span>
+    <svg class="vr-tile-mic active" viewBox="0 0 24 24" id="vrtile-mic-${pid}"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`;
+  tile.appendChild(info);
+  return tile;
+}
+
+// Обновить видео плитки (включить/выключить video элемент)
+function _vrUpdateTileVideo(pid, stream){
+  const vid=$('vrtile-vid-'+pid);
+  const avWrap=$('vrtile-av-'+pid);
+  if(!vid)return;
+  const hasVideo=stream&&stream.getVideoTracks().filter(t=>t.readyState!=='ended').length>0;
+  if(hasVideo){
+    if(vid.srcObject!==stream){vid.srcObject=stream;vid.muted=(pid==='me');vid.play().catch(()=>{});}
+  }else{
+    // Явно очищаем — убираем замороженный кадр
+    vid.pause();vid.srcObject=null;
+  }
+  vid.classList.toggle('hidden',!hasVideo);
+  if(avWrap)avWrap.style.display=hasVideo?'none':'flex';
+}
+
+// Обновить свою плитку (камера/экран)
+function _vrUpdateSelfTile(hasVideo){
+  const vid=$('vrtile-vid-me');
+  const avWrap=$('vrtile-av-me');
+  if(!vid)return;
+  if(hasVideo){
+    const vStream=isScreenSharing
+      ?new MediaStream(screenShareStream?.getVideoTracks()||[])
+      :localStream;
+    if(vStream&&vStream.getVideoTracks().length>0){
+      vid.srcObject=vStream;vid.muted=true;vid.play().catch(()=>{});
+      vid.classList.remove('hidden');
+      if(avWrap)avWrap.style.display='none';
+      return;
+    }
+  }
+  vid.pause();vid.srcObject=null;vid.classList.add('hidden');
+  if(avWrap)avWrap.style.display='flex';
+}
+
+// Обновить mic-иконку
+function _vrUpdateMic(pid, muted){
+  const mic=$('vrtile-mic-'+pid);
+  if(mic){mic.classList.toggle('muted',muted);mic.classList.toggle('active',!muted);}
+  const tile=$('vrtile-'+pid);
+  if(tile)tile.classList.toggle('speaking',!muted);
+}
+
+// Обновить сетку
+function _vrUpdateGrid(){
+  const grid=$('vrGrid');if(!grid)return;
+  const n=Math.max(1,grid.children.length);
+  grid.className='vr-grid p'+Math.min(n,6);
+}
+
+// Удалить плитку участника
+function _vrRemoveTile(pid){
+  $('vrtile-'+pid)?.remove();
+  _vrUpdateGrid();
+}
+
+// Показать войс экран
+function _vrSetupUI2(roomName){
+  const g=groups[_vr?.gid]||{};
+  $('vrTopTitle').textContent=(g.name||'Группа')+' · '+roomName;
+  $('vrMiniName').textContent=roomName;
+  $('vrGrid').innerHTML='';
+  _vrMinimized=false;
+  $('vrScreen').style.display='flex';
+  $('vrMini').style.display='none';
+  // Таймер
+  if(_vrCallTimer)clearInterval(_vrCallTimer);
+  _vrCallSecs=0;
+  _vrCallTimer=setInterval(()=>{
+    _vrCallSecs++;
+    const m=String(Math.floor(_vrCallSecs/60)).padStart(2,'0');
+    const s=String(_vrCallSecs%60).padStart(2,'0');
+    $('vrTopTimer').textContent=$('vrMiniTimer').textContent=m+':'+s;
+  },1000);
+  _vrAddSelfTile();
+  // Синхронизируем кнопки с текущим состоянием
+  updateMuteBtn();updateCamBtn();updateScreenShareBtn();
+}
+
+function vrMinimize(){
+  _vrMinimized=true;
+  $('vrScreen').style.display='none';
+  $('vrMini').style.display='flex';
+}
+function vrExpand(){
+  _vrMinimized=false;
+  $('vrScreen').style.display='flex';
+  $('vrMini').style.display='none';
+}
+
+// Обновить кнопки войса (перенаправляем id кнопок)
+function _vrSyncButtons(){
+  // muteBtn, camBtn, screenShareBtn уже ссылаются на кнопки callScreen
+  // Но нам нужно синхронизировать состояние с врscreen кнопками
+  const vrMute=$('vrMuteBtn');const vrCam=$('vrCamBtn');const vrScreen=$('vrScreenBtn');
+  if(vrMute)vrMute.className='cbtn'+(isMuted?' active-off':'');
+  if(vrCam)vrCam.className='cbtn'+(isCamOff?' active-off':'');
+  if(vrScreen)vrScreen.className='cbtn'+(isScreenSharing?' active-off':'');
+}
+
+
+
+// Слушаем сообщения всех групп через Firebase RTDB
+let _grpMsgListeners={}; // gid -> unsub
+function _fbListenAllGrpMsgs(){
+  if(!window._fbDb)return;
+  Object.keys(groups).forEach(gid=>_fbListenGrpMsgs(gid));
+}
+function _fbListenGrpMsgs(gid){
+  if(_grpMsgListeners[gid]||!window._fbDb)return;
+  const ref=window._fbRef(window._fbDb,'grp_msgs/'+gid);
+  const unsub=window._fbOnChildAdded(ref,snap=>{
+    const d=snap.val();
+    if(!d||!d.sid||d.sid===myUsername)return; // своё уже добавили
+    if(!d.id)return;
+    if(!grpHist[gid])grpHist[gid]=[];
+    if(grpHist[gid].some(m=>m.id===d.id))return; // дедупликация
+    // Медиа-сообщения (voice/slon)
+    if(d.type==='voice'||d.type==='slon'||d.type==='file'){
+      _recvGrpMedia(gid,d);return;
+    }
+    if(!groups[gid]){
+      groups[gid]={name:d.gname||'Группа',members:[myUsername,d.sid].filter(Boolean),admin:d.sid};
+      if(!$('si-'+gid))addSbGroup(gid);saveAll();
+    }
+    const ts=d.ts||Date.now();
+    const msg={id:d.id,sender:'inc',senderId:d.sid,
+      name:peerNames[d.sid]||d.nick||('@'+d.sid),
+      avatar:d.avatar||peerAvatars[d.sid]||null,
+      text:d.text,ts,time:fmtTime(ts)};
+    grpHist[gid].push(msg);
+    if(activeChat===gid){appendMsg(msg);scrollDown();}
+    else{addUnread(gid);if(!mutedChats[gid])toast((groups[gid]?.name||'Группа')+': '+msg.name+': '+d.text.slice(0,35));}
+    saveAll();
+    // Удаляем старые сообщения из Firebase (старше 7 дней) чтобы не копить
+    if(ts<Date.now()-7*86400000)window._fbRemove(snap.ref).catch(()=>{});
+  });
+  _grpMsgListeners[gid]=unsub;
+}
+
+// Приём голосового/слонкружка из группы через RTDB
+async function _recvGrpMedia(gid,d){
+  if(!groups[gid]){
+    groups[gid]={name:d.gname||'Группа',members:[myUsername,d.sid].filter(Boolean),admin:d.sid};
+    if(!$('si-'+gid))addSbGroup(gid);saveAll();
+  }
+  if(!grpHist[gid])grpHist[gid]=[];
+  if(grpHist[gid].some(m=>m.id===d.id))return;
+  // Загружаем чанки из RTDB
+  const ts=d.ts||Date.now();
+  const base='grp_media/'+gid+'/'+d.id;
+  try{
+    const metaSnap=await _fbOnce(base+'/meta');
+    const meta=metaSnap?.val();if(!meta)return;
+    const parts=[];
+    for(let i=0;i<meta.total;i++){
+      const cs=await _fbOnce(base+'/chunks/'+i);
+      parts.push(cs?.val()||'');
+    }
+    const dataUrl=parts.join('');
+    // Сохраняем в IDB
+    await _saveMediaToIdb(d.id,d.type,dataUrl);
+    const msg={id:d.id,sender:'inc',senderId:d.sid,
+      name:peerNames[d.sid]||d.nick||('@'+d.sid),
+      avatar:d.avatar||peerAvatars[d.sid]||null,
+      ts,time:fmtTime(ts)};
+    if(d.type==='voice'){
+      msg.voiceData='idb:'+d.id+':voice';
+      msg.voiceDur=meta.dur||0;
+    }else{
+      msg.slonData='idb:'+d.id+':slon';
+      msg.slonDur=meta.dur||0;
+    }
+    grpHist[gid].push(msg);
+    if(activeChat===gid){appendMsg(msg);scrollDown();}
+    else{addUnread(gid);toast((groups[gid]?.name||'Группа')+': '+(d.type==='voice'?'🎙️ Голосовое':'🐘 Слонкружок'));}
+    saveAll();
+  }catch(e){console.warn('_recvGrpMedia error:',e);}
+}
+
+// Вызываем при получении group_invite/group_add
+function _fbListenGrpMsgsForNew(gid){
+  if(!_grpMsgListeners[gid])_fbListenGrpMsgs(gid);
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   loadStorage();
   initDesktopNotif();
@@ -7845,31 +8477,519 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   openChat('ai');
 });
+
+// ════════════════════════════════════════════════════════════════
+// ── ВОЙСЫ — голосовые комнаты в группах (Discord-style) ──
+// Firebase: voice_rooms/{gid}/{roomId} = {name, createdBy, ts}
+// Участники: voice_rooms/{gid}/{roomId}/online/{username} = {ts, nick}
+// Mesh WebRTC: при входе шлём voice_join в inbox всех участников
+// ════════════════════════════════════════════════════════════════
+
+let _vr = null; // активный войс-рум
+// _vr = { gid, roomId, roomName, pcs:{pid:RTCPeerConnection},
+//         streams:{pid:MediaStream}, localStream, muted, camOff }
+let _vrRoomListeners = {}; // gid -> unsub  (слушаем список комнат)
+let _vrParticipantListeners = {}; // gid/roomId -> unsub
+let _vrSignalUnsub = null;
+let _vrCurrentGid = null; // какая группа сейчас открыта в панели войсов
+
+const _VR_ICE = [
+  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+];
+
+// ── Открыть панель войсов группы ──
+function showVoiceRooms(gid){
+  _vrCurrentGid = gid;
+  const g = groups[gid] || {};
+  $('voiceRoomsTitle').textContent = '🔊 ' + (g.name || 'Войсы');
+  $('voiceRoomsOverlay').style.display = 'flex';
+  _renderVoiceRoomsList(gid);
+  _listenVoiceRooms(gid);
+}
+function hideVoiceRooms(){ $('voiceRoomsOverlay').style.display = 'none'; }
+
+// ── Рендерим список войсов ──
+function _renderVoiceRoomsList(gid){
+  const list = $('voiceRoomsList'); if(!list) return;
+  list.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px">Загрузка…</div>';
+  if(!window._fbDb){ list.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px">Нет соединения</div>'; return; }
+  // Читаем все войсы группы
+  _fbOnce('voice_rooms/'+gid).then(snap=>{
+    const rooms = snap?.val() || {};
+    list.innerHTML = '';
+    if(!Object.keys(rooms).length){
+      list.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;font-size:13px">Войсов пока нет. Создай первый!</div>';
+      return;
+    }
+    Object.entries(rooms).forEach(([roomId, room])=>{
+      if(!room || !room.name) return;
+      _renderVoiceRoomItem(list, gid, roomId, room);
+    });
+  });
+}
+
+function _renderVoiceRoomItem(list, gid, roomId, room){
+  const isActive = _vr?.gid===gid && _vr?.roomId===roomId;
+  const onlineCount = room.online ? Object.keys(room.online).length : 0;
+  const activeSince = room.activeSince ? _formatActiveSince(room.activeSince) : null;
+  const meta = onlineCount > 0
+    ? `${onlineCount} участн. · ${activeSince||'активен'}`
+    : 'Нет участников';
+  const item = document.createElement('div');
+  item.className = 'voice-room-item' + (isActive?' active':'');
+  item.dataset.roomId = roomId;
+  item.innerHTML = `
+    <div class="voice-room-ico${onlineCount>0?' active-room':''}">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+    </div>
+    <div class="voice-room-info">
+      <div class="voice-room-name">${esc(room.name)}</div>
+      <div class="voice-room-meta">${esc(meta)}</div>
+    </div>
+    <div class="voice-room-join">${isActive?'В эфире':'Войти'}</div>
+  `;
+  item.onclick = () => { hideVoiceRooms(); joinVoiceRoom(gid, roomId, room.name); };
+  list.appendChild(item);
+}
+
+function _formatActiveSince(ts){
+  const diff = Math.floor((Date.now()-ts)/1000);
+  if(diff < 60) return diff+'с';
+  if(diff < 3600) return Math.floor(diff/60)+'мин';
+  return Math.floor(diff/3600)+'ч';
+}
+
+// Слушаем изменения комнат в реальном времени
+function _listenVoiceRooms(gid){
+  if(_vrRoomListeners[gid]) return;
+  if(!window._fbDb) return;
+  const ref = window._fbRef(window._fbDb, 'voice_rooms/'+gid);
+  const unsub = window._fbOnValue(ref, snap=>{
+    if(_vrCurrentGid !== gid || $('voiceRoomsOverlay').style.display==='none') return;
+    const rooms = snap?.val() || {};
+    const list = $('voiceRoomsList'); if(!list) return;
+    list.innerHTML = '';
+    if(!Object.keys(rooms).length){
+      list.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;font-size:13px">Войсов пока нет. Создай первый!</div>';
+      return;
+    }
+    Object.entries(rooms).forEach(([roomId, room])=>{ if(room?.name) _renderVoiceRoomItem(list,gid,roomId,room); });
+  });
+  _vrRoomListeners[gid] = unsub;
+}
+
+// ── Создание войса ──
+function showCreateVoiceRoom(){
+  const gid = _vrCurrentGid; if(!gid) return;
+  showModal(`
+    <div class="m-title">🔊 Создать войс</div>
+    <input class="m-inp" id="vrNameInp" placeholder="Название (Основной, Gaming, Музыка…)" maxlength="30">
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="doCreateVoiceRoom()">Создать</button>
+    </div>
+  `);
+  setTimeout(()=>$('vrNameInp')?.focus(),100);
+}
+async function doCreateVoiceRoom(){
+  const gid = _vrCurrentGid; if(!gid) return;
+  const name = ($('vrNameInp')?.value||'').trim();
+  if(!name) return toast('Введи название');
+  closeModal();
+  if(!window._fbDb) return toast('Нет соединения');
+  const roomId = 'vr_'+Date.now().toString(36);
+  try{
+    await window._fbSet(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId),
+      {name, createdBy:myUsername, ts:Date.now(), online:{}});
+    toast('🔊 Войс «'+name+'» создан');
+    showVoiceRooms(gid);
+  }catch(e){ toast('Ошибка: '+e.message); }
+}
+
+// ── Войти в войс ──
+function joinVoiceRoom(gid, roomId, roomName){
+  if(activeCall) return toast('Сначала заверши текущий звонок');
+  if(_vr){ leaveVoiceRoom(); }
+  getMediaStream(false) // начинаем с аудио, камеру можно включить позже
+    .then(stream => _vrJoin(gid, roomId, roomName, stream))
+    .catch(e => { if(e.message!=='skipped') toast('Нет доступа к микрофону'); });
+}
+
+async function _vrJoin(gid, roomId, roomName, stream){
+  _vr = { gid, roomId, roomName, pcs:{}, streams:{}, localStream:stream,
+          muted:false, camOff:true, _onlineUnsub:null };
+  localStream = stream;
+
+  if(window._fbDb){try{
+    // Пишем себя в онлайн-список
+    const onRef = window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/online/'+myUsername);
+    await window._fbSet(onRef, {nick:myNick||('@'+myUsername), ts:Date.now()});
+
+    // activeSince: ставим только если мы первые (нет других в online)
+    const snapOnline = await _fbOnce('voice_rooms/'+gid+'/'+roomId+'/online');
+    const onlineNow = snapOnline?.val()||{};
+    const othersOnline = Object.keys(onlineNow).filter(p=>p!==myUsername);
+    if(othersOnline.length === 0){
+      // Мы первые — ставим новый activeSince
+      window._fbSet(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/activeSince'), Date.now());
+    }
+
+    window.addEventListener('beforeunload', _vrCleanupOnUnload);
+
+    // ── Ключевой фикс: слушаем onChildAdded вместо onlyOnce ──
+    // onChildAdded сразу отдаёт существующих участников + новых в реальном времени
+    const onlineRef = window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/online');
+    const addedUnsub = window._fbOnChildAdded(onlineRef, snap=>{
+      const pid = snap.key;
+      if(!pid || pid === myUsername || !_vr) return;
+      _vrEnsurePeerTile(pid); // плитка — всегда
+      // PC НЕ создаём отсюда — только джоинер инициирует (см. voice_join)
+    });
+
+    // onChildRemoved — участник ушёл
+    const removedUnsub = window._fbOnChildRemoved(onlineRef, snap=>{
+      const pid = snap.key;
+      if(pid && pid !== myUsername){
+        _vrRemovePeer(pid);
+        _vrRemoveTile(pid);
+      }
+      // Если больше никого нет — сбросить activeSince
+      _fbOnce('voice_rooms/'+gid+'/'+roomId+'/online').then(s=>{
+        const left = Object.keys(s?.val()||{}).filter(p=>p!==myUsername);
+        if(left.length === 0 && window._fbDb){
+          window._fbRemove(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/activeSince')).catch(()=>{});
+        }
+      });
+    });
+
+    if(_vr) _vr._onlineUnsub = ()=>{ try{addedUnsub();}catch(e){} try{removedUnsub();}catch(e){} };
+  }catch(e){console.warn('vrJoin firebase error:',e);}}
+
+  // Показываем UI
+  _vrSetupUI2(roomName);
+
+  // Сообщаем всем участникам группы (они увидят тост-приглашение)
+  const g = groups[gid] || {};
+  (g.members||[]).filter(m=>m!==myUsername).forEach(pid=>{
+    _fbSend(pid,{type:'voice_join',gid,roomId,roomName,from:myUsername,nick:myNick||('@'+myUsername)});
+  });
+
+  _vrListenSignals(gid, roomId);
+
+  // Джоинер читает кто уже в комнате и инициирует соединения
+  // Запускаем несколько раз чтобы поймать участников при задержке Firebase
+  const _vrConnectExisting = ()=>{
+    if(!_vr||_vr.gid!==gid||_vr.roomId!==roomId)return;
+    _fbOnce('voice_rooms/'+gid+'/'+roomId+'/online').then(snap=>{
+      const d=snap?.val()||{};
+      Object.keys(d).filter(p=>p!==myUsername).forEach(p=>{
+        if(_vr&&!_vr.pcs[p]){
+          _vrEnsurePeerTile(p);
+          _vrCreatePc(p, true); // джоинер = initiator
+        }
+      });
+    });
+  };
+  if(window._fbDb){
+    _vrConnectExisting(); // сразу
+    setTimeout(_vrConnectExisting, 2000); // повтор через 2с
+    setTimeout(_vrConnectExisting, 5000); // повтор через 5с
+  }
+}
+
+
+// ── WebRTC PeerConnection для войса ──
+async function _vrCreatePc(pid, isInitiator){
+  if(!_vr||_vr.pcs[pid]) return;
+  const pc = new RTCPeerConnection({iceServers:[
+    {urls:'stun:stun.cloudflare.com:3478'},
+    {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+  ]});
+  _vr.pcs[pid] = pc;
+
+  // Добавляем локальные треки
+  const _vrBaseStream = _vr.localStream || localStream;
+  if(_vrBaseStream){
+    _vrBaseStream.getAudioTracks().forEach(t=>pc.addTrack(t, _vrBaseStream));
+    if(!isCamOff && _vrBaseStream.getVideoTracks().length>0){
+      _vrBaseStream.getVideoTracks().forEach(t=>pc.addTrack(t, _vrBaseStream));
+    }else if(isScreenSharing && screenShareStream){
+      screenShareStream.getVideoTracks().forEach(t=>pc.addTrack(t, screenShareStream));
+    }
+  }
+
+  pc.onicecandidate = e=>{
+    if(e.candidate) _vrSignal(pid, {type:'ice', candidate:e.candidate.toJSON()});
+  };
+
+  pc.ontrack = e=>{
+    if(!_vr) return;
+    if(!_vr.streams[pid]) _vr.streams[pid] = new MediaStream();
+    const track = e.track;
+    if(!_vr.streams[pid].getTracks().find(t=>t.id===track.id)){
+      _vr.streams[pid].addTrack(track);
+    }
+    _vrEnsurePeerTile(pid);
+    if(track.kind==='audio') _vrAttachAudio(pid);
+    if(track.kind==='video'){
+      _vrUpdateTileVideo(pid, _vr.streams[pid]);
+      setTimeout(()=>_vrUpdateTileVideo(pid, _vr.streams[pid]), 500);
+    }
+    track.onunmute = ()=>_vrUpdateTileVideo(pid, _vr.streams[pid]);
+    track.onended = ()=>{
+      if(!_vr) return;
+      if(_vr.streams[pid]) _vr.streams[pid].removeTrack(track);
+      // Если больше нет видеотреков — показываем аватарку
+      if(track.kind==='video') _vrUpdateTileVideo(pid, _vr.streams[pid]||new MediaStream());
+    };
+    track.onmute = ()=>{
+      if(track.kind==='video') setTimeout(()=>_vrUpdateTileVideo(pid, _vr.streams[pid]||new MediaStream()), 300);
+    };
+  };
+
+  pc.onconnectionstatechange = ()=>{
+    if(!_vr) return;
+    if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
+      _vrRemovePeer(pid);
+      _vrRemoveTile(pid);
+    }
+    if(pc.connectionState==='connected'){
+      const pids = Object.keys(_vr.pcs).map(p=>peerNames[p]||('@'+p));
+      $('callSub') && ($('callSub').textContent = pids.join(', ')||'В войсе');
+    }
+  };
+
+  _vrEnsurePeerTile(pid);
+
+  if(isInitiator){
+    try{
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      _vrSignal(pid, {type:'offer', sdp: pc.localDescription.toJSON()});
+    }catch(e){ console.warn('vr createOffer error:', e); }
+  }
+}
+
+function _vrAttachAudio(pid){
+  if(!_vr?.streams[pid]) return;
+  let audio=document.getElementById('vr_audio_'+pid);
+  if(!audio){
+    audio=document.createElement('audio');audio.id='vr_audio_'+pid;
+    audio.autoplay=true;document.body.appendChild(audio);
+  }
+  audio.srcObject=_vr.streams[pid];
+}
+
+// Сигналинг через Firebase inbox
+function _vrSignal(toPid, data){
+  if(!_vr||!window._fbDb)return;
+  const path=`vr_signals/${_vr.gid}/${_vr.roomId}/${toPid}/${myUsername}`;
+  window._fbPush(window._fbRef(window._fbDb,path),{
+    sig:data.type, sdp:data.sdp||null, candidate:data.candidate||null, ts:Date.now()
+  });
+}
+
+let _vrSignalListeners=[]; // unsub functions
+function _vrListenSignals(gid, roomId){
+  if(!window._fbDb)return;
+  // Слушаем входящие сигналы: vr_signals/{gid}/{roomId}/{myUsername}/{fromUser} → onChildAdded
+  const myPath=`vr_signals/${gid}/${roomId}/${myUsername}`;
+  // Чистим старые сигналы перед началом
+  window._fbRemove(window._fbRef(window._fbDb,myPath)).catch(()=>{});
+  const myRef=window._fbRef(window._fbDb,myPath);
+  // Слушаем новые узлы (от каждого отправителя)
+  const senderUnsub=window._fbOnChildAdded(myRef, senderSnap=>{
+    const fromUser=senderSnap.key;
+    if(!fromUser||fromUser===myUsername)return;
+    // Слушаем сообщения от этого отправителя
+    window._fbOnChildAdded(senderSnap.ref, msgSnap=>{
+      const d=msgSnap.val();
+      if(!d||!d.sig)return;
+      // Удаляем после прочтения
+      window._fbRemove(msgSnap.ref).catch(()=>{});
+      if(!_vr)return;
+      _vrHandleSignal(fromUser, d);
+    });
+  });
+  _vrSignalListeners.push(senderUnsub);
+  if(_vr)_vr._signalUnsub=()=>{
+    _vrSignalListeners.forEach(u=>{try{u();}catch(e){}});
+    _vrSignalListeners=[];
+    window._fbRemove(window._fbRef(window._fbDb,myPath)).catch(()=>{});
+  };
+}
+
+async function _vrHandleSignal(pid, data){
+  if(!_vr) return;
+  // gid/roomId не нужны — путь Firebase уже гарантирует правильную комнату
+  const sig=data.sig||data.type;
+  if(sig==='offer'){
+    if(!_vr.pcs[pid]) await _vrCreatePc(pid,false);
+    const pc=_vr.pcs[pid];if(!pc)return;
+    try{
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      const answer=await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      _vrSignal(pid,{type:'answer',sdp:pc.localDescription.toJSON()});
+    }catch(e){console.warn('vr answer error',e);}
+  }else if(sig==='answer'){
+    const pc=_vr.pcs[pid];if(!pc)return;
+    try{await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));}catch(e){}
+  }else if(sig==='ice'){
+    const pc=_vr.pcs[pid];if(!pc)return;
+    try{await pc.addIceCandidate(new RTCIceCandidate(data.candidate));}catch(e){}
+  }
+}
+
+function _vrRemovePeer(pid){
+  if(!_vr||!pid)return;
+  if(!_vr.pcs[pid]&&!_vr.streams[pid])return; // уже удалён
+  try{_vr.pcs[pid]?.close();}catch(e){}
+  delete _vr.pcs[pid];delete _vr.streams[pid];
+  const audio=document.getElementById('vr_audio_'+pid);audio?.remove();
+  const pids=Object.keys(_vr.pcs);
+  $('callSub').textContent=pids.length?pids.map(p=>peerNames[p]||('@'+p)).join(', '):'В войсе';
+}
+
+// ── Выйти из войса ──
+function leaveVoiceRoom(){
+  if(!_vr)return;
+  const{gid,roomId}=_vr;
+  // Уведомляем всех
+  const g=groups[gid]||{};
+  (g.members||[]).filter(m=>m!==myUsername).forEach(pid=>{
+    _fbSend(pid,{type:'voice_leave',gid,roomId,from:myUsername});
+  });
+  _vrCleanup();
+}
+function _vrCleanupOnUnload(){ if(_vr)leaveVoiceRoom(); }
+
+function _vrCleanup(){
+  if(!_vr)return;
+  const {gid, roomId} = _vr;
+  // Отписываемся от online listeners
+  try{_vr._onlineUnsub&&_vr._onlineUnsub();}catch(e){}
+  try{_vr._signalUnsub&&_vr._signalUnsub();}catch(e){}
+  // Убираем из Firebase (async — не ждём)
+  if(window._fbDb){
+    window._fbRemove(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/online/'+myUsername)).catch(()=>{});
+    // Чистим все входящие сигналы
+    window._fbRemove(window._fbRef(window._fbDb,'vr_signals/'+gid+'/'+roomId+'/'+myUsername)).catch(()=>{});
+    // Если последний — сбрасываем activeSince
+    setTimeout(()=>{
+      _fbOnce('voice_rooms/'+gid+'/'+roomId+'/online').then(s=>{
+        if(!s?.val()||!Object.keys(s.val()).length){
+          window._fbRemove(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId+'/activeSince')).catch(()=>{});
+        }
+      });
+    }, 500);
+  }
+  // Закрываем PeerConnections
+  Object.values(_vr.pcs).forEach(pc=>{try{pc.close();}catch(e){}});
+  if(_vr.localStream)_vr.localStream.getTracks().forEach(t=>t.stop());
+  localStream=null;
+  // Убираем audio-элементы
+  Object.keys(_vr.pcs||{}).forEach(pid=>document.getElementById('vr_audio_'+pid)?.remove());
+  _vr=null;
+  window.removeEventListener('beforeunload',_vrCleanupOnUnload);
+  if(_vrCallTimer){clearInterval(_vrCallTimer);_vrCallTimer=null;}
+  // Сбрасываем состояние медиа чтобы при следующем входе всё было чисто
+  if(isScreenSharing){
+    screenShareStream?.getTracks().forEach(t=>t.stop());
+    screenShareStream=null;
+    isScreenSharing=false;
+  }
+  isCamOff=true;
+  updateMuteBtn();updateCamBtn();updateScreenShareBtn();
+  $('vrScreen').style.display='none';
+  $('vrMini').style.display='none';
+  playHangupSound();
+}
+
+// ── Обработка входящих войс-сообщений (onData) ──
+function _handleVoiceMsg(pid, data){
+  const{type,gid,roomId}=data;
+  if(type==='voice_join'){
+    // Кто-то вошёл в войс — если мы в той же комнате, шлём оффер
+    if(_vr&&_vr.gid===gid&&_vr.roomId===roomId&&data.from!==myUsername){
+      // Существующий участник = NON-initiator: джоинер сам пришлёт оффер
+      _vrEnsurePeerTile(data.from);
+      if(!_vr.pcs[data.from]) _vrCreatePc(data.from, false);
+      toast('🔊 '+(data.nick||('@'+data.from))+' зашёл в войс');
+    }else if(!_vr){
+      // Уведомление что кто-то в войсе (тост с приглашением)
+      toast('🔊 '+(data.nick||('@'+data.from))+' в войсе «'+(data.roomName||'')+'»');
+    }
+  }else if(type==='voice_leave'){
+    if(_vr&&_vr.gid===gid&&_vr.roomId===roomId&&data.from!==myUsername){
+      _vrRemovePeer(data.from);
+    }
+  }
+}
 </script>
 
 
-<!-- GROUP CALL SCREEN -->
-<div class="grp-call-screen" id="grpCallScreen" style="display:none">
-  <div class="grp-call-topbar">
-    <div class="grp-call-title" id="grpCallTitle">Групповой звонок</div>
-    <div class="grp-call-timer" id="grpCallTimer">00:00</div>
-  </div>
-  <div class="grp-call-grid" id="grpCallGrid"></div>
-  <div class="grp-call-controls">
-    <div class="cbtn-wrap"><button class="cbtn" id="grpMuteBtn" onclick="grpToggleMute()"><svg><use href="#i-mic"/></svg></button><div class="cbtn-lbl">Микро</div></div>
-    <div class="cbtn-wrap"><button class="cbtn" id="grpCamBtn" onclick="grpToggleCam()"><svg><use href="#i-video"/></svg></button><div class="cbtn-lbl">Камера</div></div>
-    <div class="cbtn-wrap"><button class="cbtn end" onclick="leaveGroupCall()"><svg><use href="#i-phone-off"/></svg></button><div class="cbtn-lbl" style="color:#f87171">Выйти</div></div>
+<!-- VOICE ROOMS LIST PANEL -->
+<div class="voice-rooms-overlay" id="voiceRoomsOverlay" style="display:none" onclick="if(event.target===this)hideVoiceRooms()">
+  <div class="voice-rooms-panel">
+    <div class="voice-rooms-header">
+      <div class="voice-rooms-title" id="voiceRoomsTitle">🔊 Войсы</div>
+      <button class="voice-rooms-close" onclick="hideVoiceRooms()">✕</button>
+    </div>
+    <div class="voice-rooms-list" id="voiceRoomsList"></div>
+    <div style="padding:12px">
+      <button class="btn-ok" style="width:100%" onclick="showCreateVoiceRoom()">+ Создать войс</button>
+    </div>
   </div>
 </div>
-<!-- GROUP INCOMING CALL -->
-<div class="incoming" id="grpIncoming" style="display:none">
-  <div class="inc-av" id="grpIncAv"><svg><use href="#i-group"/></svg></div>
-  <div style="flex:1;min-width:0">
-    <div class="inc-name" id="grpIncName">Групповой звонок</div>
-    <div class="inc-sub" id="grpIncSub">Входящий</div>
+<!-- ACTIVE VOICE ROOM SCREEN (переиспользует callScreen, только шапка другая) -->
+
+
+<!-- VOICE ROOM SCREEN -->
+<div class="vr-screen" id="vrScreen" style="display:none">
+  <div class="vr-topbar">
+    <div class="vr-topbar-ico">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+    </div>
+    <div class="vr-topbar-title" id="vrTopTitle">Войс</div>
+    <div class="vr-topbar-timer" id="vrTopTimer">00:00</div>
+    <button class="vr-topbar-min" onclick="vrMinimize()">Свернуть ↓</button>
   </div>
-  <button class="inc-btn accept" onclick="joinGroupCall()"><svg><use href="#i-phone"/></svg></button>
-  <button class="inc-btn reject" onclick="rejectGroupCall()"><svg><use href="#i-phone-off"/></svg></button>
+  <div class="vr-grid p1" id="vrGrid"></div>
+  <div class="vr-controls">
+    <div class="cbtn-wrap">
+      <button class="cbtn" id="vrMuteBtn" onclick="toggleMute()"><svg><use href="#i-mic"/></svg></button>
+      <div class="cbtn-lbl" id="vrMuteLbl">Микро</div>
+    </div>
+    <div class="cbtn-wrap">
+      <button class="cbtn" id="vrCamBtn" onclick="toggleCam()"><svg><use href="#i-video"/></svg></button>
+      <div class="cbtn-lbl" id="vrCamLbl">Камера</div>
+    </div>
+    <div class="cbtn-wrap">
+      <button class="cbtn" id="vrScreenBtn" onclick="toggleScreenShare()"><svg><use href="#i-screen-share"/></svg></button>
+      <div class="cbtn-lbl" id="vrScreenLbl">Экран</div>
+    </div>
+    <div class="cbtn-wrap">
+      <button class="cbtn end" onclick="leaveVoiceRoom()"><svg><use href="#i-phone-off"/></svg></button>
+      <div class="cbtn-lbl" style="color:#f87171">Выйти</div>
+    </div>
+  </div>
+</div>
+<!-- МИНИ ВОЙС -->
+<div class="vr-mini" id="vrMini" style="display:none" onclick="vrExpand()">
+  <div class="vr-mini-ico">
+    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+  </div>
+  <div class="vr-mini-info">
+    <div class="vr-mini-name" id="vrMiniName">Войс</div>
+    <div class="vr-mini-timer" id="vrMiniTimer">00:00</div>
+  </div>
+  <button class="vr-mini-end" onclick="event.stopPropagation();leaveVoiceRoom()">
+    <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+  </button>
 </div>
 
 <!-- RECORD MODAL -->
@@ -7899,5 +9019,3 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 </body>
 </html>
-
-
