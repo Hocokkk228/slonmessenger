@@ -96,18 +96,51 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .sb-story-btn{background:none;border:none;cursor:pointer;padding:0;flex-shrink:0;display:flex;}
 .sb-story-ring{width:34px;height:34px;border-radius:50%;border:2px dashed var(--online);display:flex;align-items:center;justify-content:center;padding:2px;transition:border-color .3s;}
 .sb-story-ring.seen{border-color:var(--text2);border-style:solid;opacity:.7;}
-.sb-story-av{width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-size:13px;font-weight:700;}
+.sb-story-av{width:100%;height:100%;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-size:13px;font-weight:700;}
 .sb-story-av img{width:100%;height:100%;object-fit:cover;}
 /* ── HAMBURGER DROPDOWN MENU — semi-transparent, frosted glass ── */
 .hb-backdrop{position:fixed;inset:0;z-index:949;background:transparent;display:none;}
 .hb-backdrop.show{display:block;}
-.hb-menu{position:absolute;top:52px;left:10px;width:230px;background:var(--bg2);background:color-mix(in srgb,var(--bg2) 82%,transparent);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.4);z-index:950;padding:6px;overflow:hidden;transform-origin:top left;opacity:0;transform:scale(.92) translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .2s cubic-bezier(.32,.72,0,1);}
+.hb-menu{position:absolute;top:52px;left:10px;width:230px;background:var(--bg2);background:color-mix(in srgb,var(--bg2) 82%,transparent);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.4);z-index:950;padding:6px;transform-origin:top left;opacity:0;transform:scale(.92) translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .2s cubic-bezier(.32,.72,0,1);}
+.hb-menu .hb-item{border-radius:10px;}
 .hb-menu.show{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;}
 .hb-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--text1);transition:background .12s;border:none;background:none;width:100%;text-align:left;animation:ddItemIn .18s ease both;}
 .hb-item:hover{background:var(--hover);}
 .hb-item svg{width:19px;height:19px;fill:var(--text2);flex-shrink:0;}
 .hb-item .hb-badge{margin-left:auto;font-size:11px;color:var(--text2);font-weight:600;}
 .hb-sep{height:1px;background:var(--border);margin:5px 4px;}
+/* ── CHANNEL MUTE BAR (замена поля ввода для подписчиков) ── */
+.channel-mute-bar{padding:10px 12px;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:center;flex-shrink:0;}
+.cmb-btn{display:flex;align-items:center;gap:9px;padding:10px 22px;border-radius:24px;border:none;background:var(--bg3);color:var(--text1);font-size:13.5px;font-weight:600;cursor:pointer;transition:background .2s,transform .15s;}
+.cmb-btn:hover{background:var(--hover);}
+.cmb-btn:active{transform:scale(.96);}
+.cmb-btn.muted{background:var(--bg3);color:var(--text2);}
+.cmb-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;position:relative;}
+.cmb-icon svg{width:18px;height:18px;fill:currentColor;position:absolute;transition:opacity .2s,transform .25s cubic-bezier(.32,.72,0,1);}
+.cmb-icon .cmb-on{opacity:1;transform:scale(1) rotate(0);}
+.cmb-icon .cmb-off{opacity:0;transform:scale(.5) rotate(-90deg);}
+.cmb-btn.muted .cmb-on{opacity:0;transform:scale(.5) rotate(90deg);}
+.cmb-btn.muted .cmb-off{opacity:1;transform:scale(1) rotate(0);}
+.hb-profile-row{gap:12px;padding:10px 12px;}
+.hb-profile-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;flex-shrink:0;}
+.hb-profile-av img{width:100%;height:100%;object-fit:cover;}
+.hb-profile-info{flex:1;min-width:0;}
+.hb-profile-name{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text1);}
+.hb-profile-sub{font-size:11.5px;color:var(--text2);}
+/* Flyout submenu (theme) — appears on hover, animated */
+.hb-flyout-wrap{position:relative;}
+.hb-flyout{position:absolute;left:100%;top:-6px;margin-left:6px;width:200px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:6px;opacity:0;transform:scale(.92) translateX(-6px);pointer-events:none;transition:opacity .16s ease,transform .2s cubic-bezier(.32,.72,0,1);transform-origin:left top;z-index:960;}
+.hb-flyout.show{opacity:1;transform:scale(1) translateX(0);pointer-events:auto;}
+@media(max-width:640px){
+  .hb-flyout{left:0;top:100%;margin-left:0;margin-top:6px;width:100%;transform:scale(.92) translateY(-6px);transform-origin:top center;}
+  .hb-flyout.show{transform:scale(1) translateY(0);}
+}
+/* ── CONTACTS PANEL — slides in from left, covers the sidebar exactly ── */
+.contacts-panel{position:absolute;inset:0;background:var(--bg2);border-radius:18px;z-index:40;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .32s cubic-bezier(.32,.72,0,1);overflow:hidden;}
+.contacts-panel.show{transform:translateX(0);}
+.contacts-panel-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.contacts-panel-body{flex:1;overflow-y:auto;padding:8px;scrollbar-width:none;}
+.contacts-panel-body::-webkit-scrollbar{width:0;}
 .sb-search-wrap{flex:1;position:relative;}
 .sb-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:var(--text2);pointer-events:none;}
 .sb-inp{width:100%;background:var(--bg3);border:1.5px solid transparent;border-radius:20px;padding:7px 12px 7px 34px;color:var(--text1);font-size:13px;outline:none;transition:border .2s;}
@@ -329,7 +362,18 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .mcb-dev{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
 
 /* ── CALL SCREEN ── */
-.call-screen{position:fixed;inset:0;background:linear-gradient(160deg,#0a0a1a 0%,#1a0a2e 50%,#0d1a0a 100%);z-index:700;display:none;flex-direction:column;align-items:center;}
+.call-screen{position:fixed;inset:0;z-index:700;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);}
+/* ── CALL CARD: окно звонка (по умолчанию) с плавным морфингом в fullscreen ── */
+.call-card{width:380px;height:600px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);border-radius:28px;background:linear-gradient(160deg,#4c1d95 0%,#6d28d9 45%,#2563eb 100%);display:flex;flex-direction:column;align-items:center;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.55);transition:width .38s cubic-bezier(.32,.72,0,1),height .38s cubic-bezier(.32,.72,0,1),border-radius .38s cubic-bezier(.32,.72,0,1);
+  animation:callCardIn .32s cubic-bezier(.32,.72,0,1) both;}
+@keyframes callCardIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+.call-screen.fullscreen .call-card{width:100vw;height:100vh;max-width:100vw;max-height:100vh;border-radius:0;}
+/* Кнопки topbar (X закрыть, шестерёнка, fullscreen) — круглые прозрачные */
+.cs-x-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.14);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0;}
+.cs-x-btn:hover{background:rgba(255,255,255,.26);}
+.cs-x-btn:active{transform:scale(.9);}
+.cs-x-btn svg{width:18px;height:18px;fill:#fff;}
+.cs-topbar-right{display:flex;gap:6px;}
 .call-screen.show{display:flex;}
 .call-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(88,166,255,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(124,58,237,.08) 0%,transparent 60%);pointer-events:none;}
 .cs-topbar{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;flex-shrink:0;position:relative;z-index:1;}
@@ -398,7 +442,14 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .cbtn svg{width:24px;height:24px;fill:#fff;}
 .cbtn:hover{transform:scale(1.08);background:rgba(255,255,255,.22);}
 .cbtn:active{transform:scale(.95);}
-.cbtn.end{width:68px;height:68px;background:linear-gradient(135deg,var(--call-end),var(--call-end2));box-shadow:0 4px 20px rgba(220,38,38,.5);}
+.cbtn.end{width:68px;height:68px;background:linear-gradient(135deg,var(--call-end),var(--call-end2));box-shadow:0 4px 20px rgba(220,38,38,.5);overflow:hidden;}
+/* Иконка трубки внутри кнопки сброса — при наведении "опускается" как будто сбросили звонок,
+   при уходе курсора плавно возвращается на место (spring-back) */
+.cbtn.end svg{transition:transform .32s cubic-bezier(.34,1.56,.64,1);transform-origin:center;}
+.cbtn.end:hover svg{transform:rotate(135deg) translateY(3px);}
+.vid-overlay-btn.end{overflow:hidden;}
+.vid-overlay-btn.end svg{transition:transform .32s cubic-bezier(.34,1.56,.64,1);transform-origin:center;}
+.vid-overlay-btn.end:hover svg{transform:rotate(135deg) translateY(2px);}
 .cbtn.end svg{width:28px;height:28px;}
 .cbtn.end:hover{box-shadow:0 6px 28px rgba(220,38,38,.7);}
 .cbtn.active-off{background:rgba(255,255,255,.12);position:relative;}
@@ -742,12 +793,13 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .rec-send-btn{padding:10px 22px;background:var(--btn-ok-bg);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
 
 /* ── СHAT CONTEXT MENU ── */
-.chat-ctx-menu{position:fixed;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:6px;min-width:170px;box-shadow:var(--shadow);display:none;}
-.chat-ctx-menu.show{display:block;}
-.ctx-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--text1);transition:background .15s;}
+.chat-ctx-menu{position:fixed;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:6px;min-width:206px;box-shadow:0 12px 40px rgba(0,0,0,.35);transform-origin:top left;opacity:0;transform:scale(.92) translateY(-6px);pointer-events:none;transition:opacity .16s ease,transform .2s cubic-bezier(.32,.72,0,1);}
+.chat-ctx-menu.show{opacity:1;transform:scale(1) translateY(0);pointer-events:auto;}
+.ctx-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--text1);transition:background .12s;animation:ddItemIn .18s ease both;}
 .ctx-item:hover{background:var(--hover);}
 .ctx-item.danger{color:var(--red);}
 .ctx-item svg{width:16px;height:16px;fill:currentColor;flex-shrink:0;}
+.ctx-sep{height:1px;background:var(--border);margin:5px 4px;}
 
 /* ── ARCHIVE SECTION ── */
 .sb-section-hdr{padding:5px 12px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
@@ -1060,6 +1112,14 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 <!-- PEER PROFILE OVERLAY -->
 <div class="hb-backdrop" id="hbBackdrop" onclick="closeHamburgerMenu()"></div>
 <div class="hb-menu" id="hbMenu">
+  <button class="hb-item hb-profile-row" onclick="closeHamburgerMenu();openProfile()">
+    <div class="hb-profile-av" id="hbProfileAv"></div>
+    <div class="hb-profile-info">
+      <div class="hb-profile-name" id="hbProfileName"></div>
+      <div class="hb-profile-sub">Мой профиль</div>
+    </div>
+  </button>
+  <div class="hb-sep"></div>
   <button class="hb-item" onclick="closeHamburgerMenu();toast('Скоро — несколько аккаунтов в приложении')">
     <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
     Добавить аккаунт
@@ -1086,10 +1146,22 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
     <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
     Настройки
   </button>
-  <button class="hb-item" onclick="closeHamburgerMenu();toast('Скоро')">
-    <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-    Ещё
-  </button>
+  <div class="hb-item hb-flyout-wrap" id="hbThemeWrap"
+    onmouseenter="_showHbFlyout()" onmouseleave="_hideHbFlyout()" onclick="event.stopPropagation();_toggleHbFlyout()">
+    <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1s-.45-1-1-1c-.28 0-.53-.11-.71-.29-.18-.19-.29-.44-.29-.71 0-.55.45-1 1-1h1.5c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+    <span style="flex:1">Тема</span>
+    <svg style="width:14px;height:14px;fill:var(--text2)"><use href="#i-back" style="transform:rotate(180deg)"/></svg>
+    <div class="hb-flyout" id="hbFlyout">
+      <button class="hb-item" onclick="closeHamburgerMenu();openThemeOverlay()">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1s-.45-1-1-1c-.28 0-.53-.11-.71-.29-.18-.19-.29-.44-.29-.71 0-.55.45-1 1-1h1.5c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+        Сменить тему
+      </button>
+      <button class="hb-item" onclick="closeHamburgerMenu();toast('Скоро')">
+        <svg viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+        Сообщить об ошибке
+      </button>
+    </div>
+  </div>
 </div>
 <div class="wizard-backdrop" id="wizardBackdrop" onclick="closeWizard()"></div>
 <div class="wizard-overlay" id="wizardOverlay">
@@ -1103,6 +1175,20 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
   <button class="wizard-next" id="wizardNextBtn" onclick="wizardNext()">
     <svg viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
   </button>
+</div>
+
+<!-- NEW THEME PICKER — redesigned for the new interface, matches wizard style -->
+<div class="wizard-backdrop" id="themeOvBackdrop" onclick="closeThemeOverlay()"></div>
+<div class="wizard-overlay theme-ov-overlay" id="themeOvOverlay">
+  <div class="wizard-hdr">
+    <button class="wizard-back" onclick="closeThemeOverlay()">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <div class="wizard-title">🎨 Тема оформления</div>
+  </div>
+  <div class="wizard-body" style="padding-bottom:24px">
+    <div class="tp-grid" id="themeOverlayGrid"></div>
+  </div>
 </div>
 
 <div class="peer-prof-backdrop" id="peerProfBackdrop" onclick="closePeerProfile()"></div>
@@ -1187,14 +1273,23 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 
   <!-- ── CALL SCREEN (аудио + видео) ── -->
   <div class="call-screen" id="callScreen">
+   <div class="call-card" id="callCard">
     <div class="cs-topbar">
+      <button class="cs-x-btn" onclick="minimizeCall()" title="Свернуть">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
       <div class="cs-type-pill" id="csTypePill">
         <svg id="csTypeIco"><use href="#i-phone"/></svg>
         <span id="csTypeText">Звонок</span>
       </div>
-      <button class="cs-minimize-btn" onclick="minimizeCall()">
-        <svg><use href="#i-minimize"/></svg> Свернуть
-      </button>
+      <div class="cs-topbar-right">
+        <button class="cs-x-btn" onclick="showDevPanel()" title="Настройки устройств">
+          <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+        <button class="cs-x-btn" id="csFullscreenBtn" onclick="toggleCallFullscreen()" title="На весь экран">
+          <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+      </div>
     </div>
     <div class="call-vid-wrap" id="callVidWrap">
       <video id="remoteVideo" autoplay playsinline></video>
@@ -1260,13 +1355,9 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
           <button class="cbtn end" onclick="endCall()"><svg><use href="#i-phone-off"/></svg></button>
           <div class="cbtn-lbl" style="color:#f87171">Сброс</div>
         </div>
-        <!-- Настройки -->
-        <div class="cbtn-wrap">
-          <button class="cbtn" onclick="showDevPanel()"><svg><use href="#i-settings"/></svg></button>
-          <div class="cbtn-lbl">Устройства</div>
-        </div>
       </div>
     </div>
+   </div>
   </div>
 
   <div class="mini-call" id="miniCall">
@@ -1294,9 +1385,11 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
           <svg class="sb-search-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           <input class="sb-inp" id="sbSearchInp" placeholder="Поиск…" oninput="filterSb(this.value)">
         </div>
-        <button class="sb-story-btn" id="sbStoryBtn" onclick="_onStoryRingClick()" title="Мой профиль">
+        <button class="sb-story-btn" id="sbStoryBtn" title="Истории (скоро)">
           <div class="sb-story-ring" id="sbStoryRing">
-            <div class="sb-story-av" id="sbStoryAv"></div>
+            <div class="sb-story-av sb-story-empty" id="sbStoryAv">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--text2)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
           </div>
         </button>
       </div>
@@ -1318,11 +1411,11 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
         </div>
         <div class="sb-item" id="si-saved" onclick="openChat('saved')">
           <div class="sb-av" style="background:linear-gradient(135deg,#0ea5e9,#22d3ee)">
-            <div class="sb-av-inner">⭐</div>
+            <div class="sb-av-inner"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#fff"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg></div>
           </div>
           <div class="sb-info">
             <div class="sb-row1">
-              <div class="sb-name">⭐ Избранное</div>
+              <div class="sb-name">Избранное</div>
               <div class="sb-time" id="sbt-saved"></div>
             </div>
             <div class="sb-row2">
@@ -1357,6 +1450,17 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
         <div class="status-dot connecting" id="netDot"></div>
         <div class="net-txt" id="netTxt">Подключение…</div>
       </div>
+
+      <!-- Contacts panel — slides in from the left, covers the sidebar -->
+      <div class="contacts-panel" id="contactsPanel">
+        <div class="contacts-panel-hdr">
+          <button class="wizard-back" onclick="closeContactsPanel()">
+            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <div class="wizard-title">Контакты</div>
+        </div>
+        <div class="contacts-panel-body" id="contactsPanelBody"></div>
+      </div>
     </div>
 
     <div class="chat" id="chatPane">
@@ -1370,6 +1474,8 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
           <div class="ch-status" id="chStatus">AI Ассистент</div>
         </div>
         <div class="ch-acts" id="chActs">
+          <button class="ch-act" id="chPostBtn" title="Опубликовать" style="display:none;background:var(--accent);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;width:auto"></button>
+          <button class="ch-act" id="chChSettingsBtn" title="Настройки канала" style="display:none"></button>
           <button class="ch-act" id="chSearchBtn" title="Поиск" style="display:none" onclick="toast('Поиск в чате — скоро')">
             <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           </button>
@@ -1429,6 +1535,14 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
             <svg width="16" height="16"><use href="#i-send"/></svg>
           </button>
         </div>
+      </div>
+
+      <!-- Показывается ВМЕСТО поля ввода для подписчиков канала (не владельцев) -->
+      <div class="channel-mute-bar" id="channelMuteBar" style="display:none">
+        <button class="cmb-btn" id="channelMuteBtn" onclick="_toggleChannelMute()">
+          <span class="cmb-icon" id="channelMuteIcon"></span>
+          <span id="channelMuteLabel">Уведомления включены</span>
+        </button>
       </div>
 
       <div class="mob-call-bar" id="mobCallBar" style="display:none">
@@ -1722,7 +1836,7 @@ const PREMIUM_BG_PATTERNS=[
 function buildThemeGrids(){
   const cur=LS.get('sl_theme','dark');
   const hasPremium=!!myPremium;
-  [$('mainThemeGrid'),$('profThemeGrid')].forEach(grid=>{
+  [$('mainThemeGrid'),$('profThemeGrid'),$('themeOverlayGrid')].forEach(grid=>{
     if(!grid)return;grid.innerHTML='';
     // Бесплатные
     const freeSection=document.createElement('div');
@@ -1759,7 +1873,19 @@ function toggleThemePanel(){$('themePanel').classList.toggle('show');}
 const photoStore={};
 let _pid=0;
 function storePhoto(d){if(!d)return null;const id='ph_'+(++_pid);photoStore[id]=d;return id;}
-function openPhoto(id){const src=photoStore[id];if(!src){toast('Фото недоступно');return;}$('photoImg').src=src;$('photoView').classList.add('show');}
+async function openPhoto(id){
+  const src=await _resolvePhotoSrc(id);
+  if(!src){toast('Фото недоступно');return;}
+  $('photoImg').src=src;$('photoView').classList.add('show');
+}
+async function _resolvePhotoSrc(id){
+  if(!id)return null;
+  if(id.startsWith('idb:')){
+    const parts=id.split(':');
+    return await _loadMediaFromIdb(parts[1],parts[2]||'photo');
+  }
+  return photoStore[id]||null;
+}
 function closePhoto(){$('photoView').classList.remove('show');setTimeout(()=>{$('photoImg').src='';},300);}
 async function makeThumb(dataUrl,maxPx=400,q=0.75){
   return new Promise(res=>{
@@ -2363,6 +2489,23 @@ function saveAll(){
       // thumb слишком большой — сжимаем до маркера
       clean.photoThumb=clean.photoThumb.slice(0,50000);
     }
+    // Полноразмерное фото живёт только в памяти (photoStore) — пока сессия жива,
+    // дублируем его в IndexedDB, чтобы оно не пропадало после перезагрузки страницы
+    if(clean.photoId&&!clean.photoId.startsWith('idb:')){
+      const fullPhoto=photoStore[clean.photoId];
+      if(fullPhoto){
+        _saveMediaToIdb(clean.id,'photo',fullPhoto);
+        clean.photoId='idb:'+clean.id+':photo';
+      }
+    }
+    // Файлы: то же самое — сохраняем в IndexedDB вместо потери при перезагрузке
+    if(clean.fileDataId&&!clean.fileDataId.startsWith('idb:')){
+      const fullFile=fileStore[clean.fileDataId];
+      if(fullFile){
+        _saveMediaToIdb(clean.id,'file',fullFile);
+        clean.fileDataId='idb:'+clean.id+':file';
+      }
+    }
     // Голосовые/слонкружки:
     // - isUrl=true && blob: → сохраняем в IDB, ставим маркер idb:
     // - isUrl=true && idb: → уже в IDB, оставляем
@@ -2389,18 +2532,16 @@ function saveAll(){
         clean.isUrl=false;
       }
     }
-    // Файлы: fileStore хранится в памяти, при перезагрузке всё равно теряется
-    // Оставляем fileInfo (имя/размер) но убираем fileDataId если нет URL
-    if(clean.fileDataId&&!clean.fileUrl){
-      clean.fileDataId=null;
-      clean._mediaLost=true;
-    }
     return clean;
   }).filter(Boolean);
 
-  const co={};for(const[k,v]of Object.entries(chatHist))co[k]=prep(v);
+  const co={};for(const[k,v]of Object.entries(chatHist))if(k!=='saved')co[k]=prep(v);
   const go={};for(const[k,v]of Object.entries(grpHist))go[k]=prep(v);
   const p=_getAccountPrefix(myUsername);
+  // Избранное сохраняем ОТДЕЛЬНО от общей истории — небольшой объём, не подвержен
+  // обрезке по квоте остальных чатов, поэтому надёжно переживает перезагрузку
+  const savedPrepped=prep(chatHist.saved||[]);
+  try{localStorage.setItem(p+'savedMsgs',JSON.stringify(savedPrepped));}catch(e){console.warn('saved persist error:',e);}
 
   const _trySave=()=>{
     try{
@@ -2502,7 +2643,13 @@ function loadStorage(){
   selMic=LS.get('sl_mic','');selSpk=LS.get('sl_spk','');selCam=LS.get('sl_cam','');
 
   if(!chatHist.ai)chatHist.ai=[];
-  if(!chatHist.saved)chatHist.saved=[];
+  // Избранное читаем из отдельного ключа (изолировано от квоты-обрезки остальных чатов)
+  const savedFromDedicated=LS.get(p+'savedMsgs',null);
+  if(savedFromDedicated&&savedFromDedicated.length){
+    chatHist.saved=savedFromDedicated;
+  }else if(!chatHist.saved){
+    chatHist.saved=[];
+  }
   // Бэкфилл ts для старых сообщений
   const tdy=new Date();tdy.setHours(0,0,0,0);
   const tdyMs=tdy.getTime();
@@ -3529,11 +3676,12 @@ function sendMsg(){
   updatePreview(activeChat,'Вы: '+txt.slice(0,28));saveAll();
   if(activeChat==='ai'){
     $('typing').classList.add('show');scrollDown();
-    const delay=700+Math.random()*900;
-    setTimeout(()=>{
+    const delay=300+Math.random()*300; // короткая задержка + реальное время ответа API
+    setTimeout(async()=>{
+      const replyText=await aiReply(txt); // ждём реальный ответ от Hugging Face (с фолбэком)
       $('typing').classList.remove('show');
       const rts=Date.now();
-      const r={id:'m'+Date.now(),sender:'inc',name:'🐘 СЛОН',text:aiReply(txt),ts:rts,time:fmtTime(rts)};
+      const r={id:'m'+Date.now(),sender:'inc',name:'🐘 СЛОН',text:replyText,ts:rts,time:fmtTime(rts)};
       chatHist.ai.push(r);appendMsg(r);scrollDown();saveAll();
       updatePreview('ai','🐘: '+r.text.slice(0,25));
     },delay);
@@ -3623,7 +3771,10 @@ function appendMsg(msg,container){
   if(msg.photoId){
     const bub=document.createElement('div');bub.className='photo-bub';
     const pid2=msg.photoId;bub.onclick=()=>openPhoto(pid2);
-    const img=document.createElement('img');img.src=photoStore[pid2]||'';img.loading='lazy';
+    const img=document.createElement('img');img.loading='lazy';
+    // Показываем маленький thumb сразу (если есть), полноразмерное фото подгружаем асинхронно (может лежать в IndexedDB после перезагрузки)
+    if(msg.photoThumb)img.src=msg.photoThumb;
+    _resolvePhotoSrc(pid2).then(src=>{if(src)img.src=src;});
     bub.appendChild(img);
     // Прогресс отправки
     const prog=document.createElement('div');prog.className='upload-progress';
@@ -3794,8 +3945,8 @@ async function adminSaveChannelPost(msgId,postKey){
 }
 
 // ── DOWNLOAD HELPERS ──
-function _downloadPhoto(msg){
-  const src=photoStore[msg.photoId];
+async function _downloadPhoto(msg){
+  const src=await _resolvePhotoSrc(msg.photoId);
   if(!src){toast('Фото недоступно');return;}
   const a=document.createElement('a');
   a.href=src;
@@ -4167,9 +4318,18 @@ async function finishFile(fid,pid){
   saveAll();
 }
 
-function dlFile(fdid,name){
-  const src=fileStore[fdid];if(!src){toast('Файл недоступен');return;}
+async function dlFile(fdid,name){
+  const src=await _resolveFileSrc(fdid);
+  if(!src){toast('Файл недоступен');return;}
   const a=document.createElement('a');a.href=src;a.download=name;a.click();
+}
+async function _resolveFileSrc(fdid){
+  if(!fdid)return null;
+  if(fdid.startsWith('idb:')){
+    const parts=fdid.split(':');
+    return await _loadMediaFromIdb(parts[1],parts[2]||'file');
+  }
+  return fileStore[fdid]||null;
 }
 
 // ── PERM ──
@@ -4719,6 +4879,20 @@ function startCallTimer(){
 function minimizeCall(){callMinimized=true;$('callScreen').classList.remove('show');$('miniCall').classList.add('show');}
 function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show');$('callScreen').classList.add('show');}
 
+// Плавное растягивание карточки звонка на весь экран и обратно
+let _callFullscreen=false;
+function toggleCallFullscreen(){
+  _callFullscreen=!_callFullscreen;
+  $('callScreen').classList.toggle('fullscreen',_callFullscreen);
+  const btn=$('csFullscreenBtn');
+  if(btn){
+    btn.innerHTML=_callFullscreen
+      ?'<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>'
+      :'<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
+    btn.title=_callFullscreen?'Свернуть окно':'На весь экран';
+  }
+}
+
 function endCall(){
   if(_vr){leaveVoiceRoom();return;}
   if(activeCall?.peerId){
@@ -4756,7 +4930,8 @@ function endCallCleanup(){playHangupSound();stopRingSound();
   if(callTimer){clearInterval(callTimer);callTimer=null;}
   const a=$('remAudio');a.srcObject=null;a.pause();
   $('remoteVideo').srcObject=null;$('localVideo').srcObject=null;
-  $('callScreen').classList.remove('show');$('miniCall').classList.remove('show');
+  $('callScreen').classList.remove('show');$('callScreen').classList.remove('fullscreen');_callFullscreen=false;
+  $('miniCall').classList.remove('show');
   activeCall=null;isMuted=false;isCamOff=false;callMinimized=false;
   _camFacing='user';
   _remoteStream=null;
@@ -5086,12 +5261,22 @@ function openChat(id){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   $('si-'+id)?.classList.add('active');
   const bw=$('badge-'+id);if(bw)bw.innerHTML='';
-  showChatElements(true);renderChat(id);updateChatHeader();updateReconBanner();
-  _applyChatWallpaper(); // применяем обои
-  if(id!=='ai'&&id!=='saved'&&!id.startsWith('g_')&&!conns[id]?.open&&peer?.open)silentConnect(id);
-  if(window.innerWidth<=640)closeSidebar();
-  $('bn-chats')?.classList.add('active');$('bn-profile')?.classList.remove('active');
-  setTimeout(()=>$('msgInp')?.focus(),100);
+  showChatElements(true);
+  // try/finally — гарантирует что sidebar закроется на мобильных даже если
+  // где-то внутри рендера чата вылетит ошибка (иначе юзер "застревает" в списке чатов)
+  try{
+    renderChat(id);
+    updateChatHeader();
+    updateReconBanner();
+    _applyChatWallpaper();
+    if(id!=='ai'&&id!=='saved'&&!id.startsWith('g_')&&!conns[id]?.open&&peer?.open)silentConnect(id);
+  }catch(e){
+    console.error('[openChat] ошибка при открытии чата:',e);
+  }finally{
+    if(window.innerWidth<=640)closeSidebar();
+    $('bn-chats')?.classList.add('active');$('bn-profile')?.classList.remove('active');
+    setTimeout(()=>$('msgInp')?.focus(),100);
+  }
 }
 function openProfile(){
   currentView='profile';
@@ -5100,7 +5285,13 @@ function openProfile(){
   const chAvEl=$('chAv');chAvEl.innerHTML='';
   if(myAvatar){const i=document.createElement('img');i.src=myAvatar;chAvEl.appendChild(i);}else chAvEl.innerHTML='👤';
   $('chName').textContent='Мой профиль';$('chStatus').textContent='Настройки';
-  $('chStatus').className='ch-status';$('chActs').innerHTML='';
+  $('chStatus').className='ch-status';
+  // НЕ трогаем innerHTML chActs — это уничтожит search/call/dropdown/post/settings
+  // кнопки навсегда, что ломает открытие чатов после посещения профиля.
+  // Просто скрываем всё содержимое ch-acts на время просмотра профиля.
+  $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
+  $('chPostBtn').style.display='none';$('chChSettingsBtn').style.display='none';
+  $('chMoreBtn').closest('.ch-more-wrap').style.display='none';
   $('reconBanner').classList.remove('show');$('mobCallBar').style.display='none';
   updateProfileDisplay();
   if(window.innerWidth<=640)closeSidebar();
@@ -5579,6 +5770,15 @@ function updateChatHeader(){
   const id=activeChat;
   if(currentView==='profile')return;
   const mob=$('mobCallBar');
+  // Сбрасываем каналовые кнопки и поле ввода — иначе они "утекают" в другие чаты
+  const _pb=$('chPostBtn'),_sb=$('chChSettingsBtn');
+  if(_pb)_pb.style.display='none';
+  if(_sb)_sb.style.display='none';
+  const _iw=$('inpWrap'),_mb=$('channelMuteBar');
+  if(_iw)_iw.style.display='';
+  if(_mb)_mb.style.display='none';
+  const _mw=$('chMoreBtn')?.closest('.ch-more-wrap');
+  if(_mw)_mw.style.display='';
   if(id==='ai'){
     $('chAv').textContent='🐘';$('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
     $('chName').textContent='🐘 СЛОН AI';$('chStatus').textContent='AI Ассистент';
@@ -5587,8 +5787,9 @@ function updateChatHeader(){
     _buildChatDropdown('ai','channel');
     mob.style.display='none';
   }else if(id==='saved'){
-    $('chAv').innerHTML='⭐';$('chAv').style.background='linear-gradient(135deg,#0ea5e9,#22d3ee)';
-    $('chName').textContent='⭐ Избранное';$('chStatus').textContent='Только ты видишь эти сообщения';
+    $('chAv').innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#fff"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>';
+    $('chAv').style.background='linear-gradient(135deg,#0ea5e9,#22d3ee)';
+    $('chName').textContent='Избранное';$('chStatus').textContent='Только ты видишь эти сообщения';
     $('chStatus').className='ch-status';
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     const dd3=$('chDropdown');
@@ -5607,9 +5808,12 @@ function updateChatHeader(){
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     const dd2=$('chDropdown');
     if(dd2)dd2.innerHTML=isAdmin?`<button class="ch-dropdown-item" onclick="showChannelPublish();closeChatDropdown()"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg><span>📝 Опубликовать пост</span></button>`:'';
+    if(isAdmin){_pb.innerHTML='📝 Пост';_pb.style.display='';_pb.onclick=()=>showChannelPublish();}
+    _applyChannelInputLock(id,isAdmin);
     mob.style.display='none';
   }else if(id.startsWith('ch_')){
-    // Пользовательский канал
+    // Пользовательский канал — НИКОГДА не перезаписываем chActs.innerHTML целиком,
+    // иначе search/call/dropdown кнопки исчезают из DOM навсегда для всех чатов.
     const chMeta=myChannels[id]||subscribedChannels[id]||{};
     const chAv=chMeta.avatar;
     $('chAv').innerHTML='';
@@ -5618,10 +5822,14 @@ function updateChatHeader(){
     $('chName').textContent=chMeta.name||('@'+(chMeta.username||id));
     $('chStatus').textContent=chMeta.desc||'Канал';$('chStatus').className='ch-status';
     const isOwner=chMeta.owner===myUsername;
-    $('chActs').innerHTML=isOwner
-      ?`<button class="ch-act" onclick="showUserChannelPublish('${id}')" title="Опубликовать" style="background:var(--accent);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600">📝 Пост</button>
-        <button class="ch-act" onclick="showChannelSettings('${id}')">${icoSvg('i-settings')}</button>`
-      :`<button class="ch-act" style="font-size:11px;color:var(--text2);padding:4px 8px">Подписан</button>`;
+    $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
+    if(isOwner){
+      _pb.innerHTML='📝 Пост';_pb.style.display='';_pb.onclick=()=>showUserChannelPublish(id);
+      _sb.innerHTML=icoSvg('i-settings');_sb.style.display='';_sb.onclick=()=>showChannelSettings(id);
+    }
+    _buildChatDropdown(id,'channel');
+    // Скрываем поле ввода для НЕ-владельцев — заменяем на кнопку mute/unmute
+    _applyChannelInputLock(id,isOwner);
     mob.style.display='none';
   }else if(id.startsWith('g_')){
     const g=groups[id]||{};
@@ -6355,13 +6563,34 @@ function toggleHamburgerMenu(e){
   menu.classList.toggle('show');
   bd.classList.toggle('show',opening);
   if(opening){
-    [...menu.querySelectorAll('.hb-item')].forEach((el,i)=>{el.style.animationDelay=(i*0.025)+'s';});
+    _updateHbProfileRow();
+    [...menu.querySelectorAll(':scope > .hb-item')].forEach((el,i)=>{el.style.animationDelay=(i*0.025)+'s';});
     setTimeout(()=>document.addEventListener('click',closeHamburgerMenu,{once:true}),10);
   }
 }
 function closeHamburgerMenu(){
   $('hbMenu')?.classList.remove('show');
   $('hbBackdrop')?.classList.remove('show');
+  _hideHbFlyout();
+}
+function _updateHbProfileRow(){
+  const av=$('hbProfileAv'),nm=$('hbProfileName');
+  if(av){av.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.innerHTML=icoSvg('i-person');}
+  if(nm)nm.textContent=myNick||('@'+myUsername);
+}
+let _hbFlyoutTimer=null;
+function _showHbFlyout(){
+  clearTimeout(_hbFlyoutTimer);
+  $('hbFlyout')?.classList.add('show');
+}
+function _hideHbFlyout(){
+  clearTimeout(_hbFlyoutTimer);
+  _hbFlyoutTimer=setTimeout(()=>$('hbFlyout')?.classList.remove('show'),150);
+}
+function _toggleHbFlyout(){
+  // Тап (мобильные без hover) — переключаем видимость подменю
+  const fl=$('hbFlyout');if(!fl)return;
+  fl.classList.toggle('show');
 }
 function _openArchiveFromMenu(){
   const list=$('archiveList');
@@ -6373,33 +6602,75 @@ function _showContactsList(){
   const contacts=Object.keys(peerNames).filter(pid=>
     pid&&pid!==myUsername&&!pid.startsWith('g_')&&!pid.startsWith('ch_')&&pid!==SLON_CHANNEL_ID
   );
+  const body=$('contactsPanelBody');
   if(!contacts.length){
-    showModal(`<div class="m-title">👥 Контакты</div><div class="sb-global-empty">Пока нет контактов — найди кого-то через поиск</div>
-      <div class="m-btns"><button class="btn-cancel" onclick="closeModal()">Закрыть</button></div>`);
-    return;
+    body.innerHTML=`<div class="sb-global-empty">Пока нет контактов — найди кого-то через поиск</div>`;
+  }else{
+    body.innerHTML=contacts.map((pid,i)=>{
+      const av=peerAvatars[pid];
+      const badge=peerElephantBadges[pid]?' 🐘':'';
+      return `<div class="wiz-member-row" style="animation:sbFadeIn .22s ease both;animation-delay:${i*0.02}s" onclick="closeContactsPanel();openChat('${pid}')">
+        <div class="wiz-member-av">${av?`<img src="${av}">`:icoSvg('i-person')}</div>
+        <div class="wiz-member-info"><div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}${badge}</div></div>
+      </div>`;
+    }).join('');
   }
-  const rows=contacts.map(pid=>{
-    const av=peerAvatars[pid];
-    const badge=peerElephantBadges[pid]?' 🐘':'';
-    return `<div class="wiz-member-row" onclick="closeModal();openChat('${pid}')">
-      <div class="wiz-member-av">${av?`<img src="${av}">`:icoSvg('i-person')}</div>
-      <div class="wiz-member-info"><div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}${badge}</div></div>
-    </div>`;
-  }).join('');
-  showModal(`<div class="m-title">👥 Контакты (${contacts.length})</div>
-    <div class="wiz-member-list" style="max-height:360px">${rows}</div>
-    <div class="m-btns"><button class="btn-cancel" onclick="closeModal()">Закрыть</button></div>`);
+  $('contactsPanel').classList.add('show');
+}
+function closeContactsPanel(){
+  $('contactsPanel')?.classList.remove('show');
+}
+// ── Блокировка ввода для подписчиков канала (не владельцев) ──
+function _applyChannelInputLock(id,isOwner){
+  const inpWrap=$('inpWrap'),muteBar=$('channelMuteBar');
+  if(isOwner){
+    inpWrap.style.display='';
+    muteBar.style.display='none';
+  }else{
+    inpWrap.style.display='none';
+    muteBar.style.display='flex';
+    _renderChannelMuteBtn(id);
+  }
+}
+function _renderChannelMuteBtn(id){
+  const btn=$('channelMuteBtn'),icon=$('channelMuteIcon'),lbl=$('channelMuteLabel');
+  if(!btn)return;
+  const isMuted=!!mutedChats[id];
+  btn.classList.toggle('muted',isMuted);
+  lbl.textContent=isMuted?'Уведомления выключены':'Уведомления включены';
+  icon.innerHTML=`
+    <svg class="cmb-on" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+    <svg class="cmb-off" viewBox="0 0 24 24"><path d="M18 16.08c.67-.06 1.27-.35 1.73-.81L21 14c.49-.49.49-1.28 0-1.77l-4.24-4.24-4.24-4.24L4.27 1.49 3 2.77l4.5 4.5C6.61 8.24 6 9.56 6 11v4c0 1.1-.9 2-2 2v1h9.05l2.86 2.86 1.27-1.27L18 16.08zM7.58 9.35L17 18.76V19H5v-8c0-1.17.45-2.23 1.17-3.02l1.41 1.37zM11 21c1.1 0 2-.9 2-2H9c0 1.1.9 2 2 2zm1.5-14h-1V5.73L15 9.23V11h-2.5z"/></svg>`;
+}
+function _toggleChannelMute(){
+  const id=activeChat;if(!id)return;
+  const btn=$('channelMuteBtn');
+  btn.style.transform='scale(.92)';
+  setTimeout(()=>{btn.style.transform='';},150);
+  if(mutedChats[id])delete mutedChats[id];else mutedChats[id]=true;
+  saveAll();
+  _renderChannelMuteBtn(id);
+  _updateSbMuteIcon(id);
+  toast(mutedChats[id]?'🔕 Уведомления выключены':'🔔 Уведомления включены');
+}
+// ── Новое окно выбора темы ──
+function openThemeOverlay(){
+  buildThemeGrids();
+  $('themeOvBackdrop').classList.add('show');
+  $('themeOvOverlay').classList.add('show');
+}
+function closeThemeOverlay(){
+  $('themeOvBackdrop')?.classList.remove('show');
+  $('themeOvOverlay')?.classList.remove('show');
 }
 function _onStoryRingClick(){
-  const ring=$('sbStoryRing');
-  if(ring&&!ring.classList.contains('seen'))ring.classList.add('seen');
-  openProfile();
+  // Пока не показываем ничего — здесь будут истории контактов
+  toast('Истории контактов скоро появятся 🐘');
 }
 function _updateStoryAvatar(){
+  // Кружок пока пустой — предназначен для чужих историй, не для своей аватарки
   const el=$('sbStoryAv');if(!el)return;
   el.innerHTML='';
-  if(myAvatar){const i=document.createElement('img');i.src=myAvatar;el.appendChild(i);}
-  else el.textContent=(myNick||myUsername||'?').slice(0,1).toUpperCase();
 }
 // ── ИЗБРАННОЕ (Saved Messages) ──
 function _saveMsgToSaved(msg){
@@ -6843,22 +7114,163 @@ async function selectDev(type,deviceId,card){
 }
 
 // ── AI REPLY ──
-function aiReply(txt){
+// ── SLON AI: реальный ИИ через Hugging Face Inference API ──
+// ⚠ Токен лежит прямо в клиентском коде — любой кто откроет исходник страницы
+// сможет его увидеть. Это ок для личного прототипа, но если файл когда-то
+// станет публичным — токен нужно будет отозвать/заменить на HF.
+const HF_API_TOKEN='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';
+const HF_MODEL='mistralai/Mistral-7B-Instruct-v0.2';
+
+const SLON_AI_SYSTEM_PROMPT=`Ты — СЛОН AI 🐘, встроенный помощник мессенджера SLON. Ты разбираешься АБСОЛЮТНО во всех функциях и кнопках приложения и помогаешь пользователю разобраться в любом контексте. Вот полное описание всего что есть в SLON:
+
+ЧАТЫ И СООБЩЕНИЯ: обычный текст, фото, файлы, голосовые сообщения (кнопка микрофона), слонкружки (видео-кружочки как в Telegram, кнопка камеры рядом с микрофоном). У каждого сообщения есть меню (долгое нажатие или кнопка ⋮): скачать, копировать, сохранить в Избранное ⭐, редактировать, закрепить, удалить у себя/у всех.
+
+ЗВОНКИ: аудио и видео звонки (кнопки телефон/камера в шапке чата), демонстрация экрана во время звонка, зум пальцами на видео, тап по видео показывает панель управления (микрофон/камера/демонстрация/сброс), поворот камеры на телефоне.
+
+ГРУППЫ: создаются через круглую кнопку ➕ снизу справа в списке чатов → "Новая группа" → сначала выбираешь участников (поиск + чекбоксы), потом задаёшь название, описание и аватарку группы.
+
+КАНАЛЫ: создаются той же кнопкой ➕ → "Новый канал" → юзернейм, название, описание, аватарка. Владелец публикует посты прямо в чате канала. Каналы теперь доступны ВСЕМ пользователям, не только с Premium (лимит 3 канала без подписки, 10 с подпиской). Найти любой канал или человека можно через глобальный поиск по юзернейму.
+
+SLON PREMIUM ⭐: платная подписка даёт 19 эксклюзивных тем оформления, возможность красить свой профиль в любой RGB-цвет, ставить узор из эмодзи (слон/бегемот/жираф/орёл) на фон профиля и обои чата, больше каналов. Значок ⭐ у пользователя означает что у него Premium.
+
+СЛОНГАЛОЧКА 🐘: особый значок-бейдж, который выдают администраторы за что-то особенное.
+
+АДМИН-КОНСОЛЬ: у администраторов SLON есть возможность банить пользователей на время (замороженный аккаунт получает значок ❄️ и не показывает статус "в сети"), выдавать/забирать Premium и слонгалочку, публиковать в официальном канале SLON.
+
+ИЗБРАННОЕ: личный чат-блокнот только для себя (ярлык-иконка в списке чатов). Туда можно сохранять любые сообщения, фото, файлы, голосовые и слонкружки через кнопку "Сохранить" в меню сообщения. Хранится локально на устройстве.
+
+АРХИВ, ЗАКРЕПИТЬ, ЗАГЛУШИТЬ: правый клик по чату в списке → меню с пунктами: просмотр, отметить непрочитанным, добавить в папку (скоро), закрепить/открепить, включить/выключить уведомления, архивировать, очистить историю, удалить чат.
+
+КОНТАКТЫ: список всех контактов открывается через ☰ (три полоски) в левом верхнем углу → "Контакты", панель выезжает слева и закрывается стрелкой назад.
+
+МЕНЮ ☰ (гамбургер): профиль (аватар+имя сверху), добавить аккаунт (скоро), Избранное, Архивированные чаты, Мои истории (скоро), Контакты, Настройки, Тема (открывает окно выбора темы оформления).
+
+ТЕМЫ: 9 бесплатных (Тёмная, Светлая, Розовая, Фиолет, Океан, Галактика, Природа, Закат, Осень) + 10 премиальных (Полночь, Вишня, Арктика, Вулкан, Изумруд, Неон, Розовое золото, Космос, Золото, Лаванда).
+
+Отвечай по-русски, дружелюбно, живо, с эмодзи 🐘, коротко (2-4 предложения). Если вопрос про конкретную кнопку или функцию — объясни куда нажать и что произойдёт. Если не про мессенджер — просто общайся как дружелюбный собеседник.`;
+
+// Надёжный локальный калькулятор — работает ВСЕГДА, не зависит от API.
+// Ловит "17*21", "сколько будет 17*21", "посчитай 5+3*2" и т.п.
+function _tryLocalMath(txt){
+  let s=txt.toLowerCase();
+  s=s.replace(/сколько (будет|это|равно|получится)|посчитай|вычисли|реши(ть)?|what'?s|calculate|equals?/gi,'');
+  s=s.replace(/[?!.]/g,'');
+  s=s.replace(/,/g,'.');
+  s=s.replace(/\^/g,'**');
+  s=s.trim();
+  if(!s)return null;
+  // Разрешаем только цифры, операторы, скобки, точку, пробелы, **
+  if(!/^[0-9+\-*/().\s]+$/.test(s))return null;
+  if(!/[0-9]/.test(s)||!/[+\-*/]/.test(s))return null;
+  try{
+    const result=Function('"use strict";return ('+s+')')();
+    if(typeof result==='number'&&isFinite(result)){
+      const rounded=Math.round(result*1e6)/1e6;
+      return String(rounded);
+    }
+  }catch(e){}
+  return null;
+}
+
+// Модели, которые пробуем по очереди через современный HF Router (OpenAI-совместимый чат)
+const HF_CHAT_MODELS=[
+  'meta-llama/Llama-3.1-8B-Instruct',
+  'mistralai/Mistral-7B-Instruct-v0.3',
+  'Qwen/Qwen2.5-7B-Instruct'
+];
+
+async function _callHfChatRouter(userText){
+  for(const model of HF_CHAT_MODELS){
+    try{
+      const ctrl=new AbortController();
+      const timeoutId=setTimeout(()=>ctrl.abort(),12000);
+      const resp=await fetch('https://router.huggingface.co/v1/chat/completions',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+HF_API_TOKEN,'Content-Type':'application/json'},
+        signal:ctrl.signal,
+        body:JSON.stringify({
+          model,
+          messages:[
+            {role:'system',content:SLON_AI_SYSTEM_PROMPT},
+            {role:'user',content:userText}
+          ],
+          max_tokens:220,
+          temperature:0.6
+        })
+      });
+      clearTimeout(timeoutId);
+      if(!resp.ok)continue;
+      const data=await resp.json();
+      const text=data?.choices?.[0]?.message?.content;
+      if(text&&text.trim().length>1)return text.trim();
+    }catch(e){
+      console.warn('[SLON AI] router модель не сработала:',model,e.message);
+    }
+  }
+  return null;
+}
+
+// Классический endpoint (второй шанс, другой формат API)
+async function _callHfAi(userText){
+  const prompt=`<s>[INST] ${SLON_AI_SYSTEM_PROMPT}\n\nВопрос пользователя: ${userText} [/INST]`;
+  const resp=await fetch('https://api-inference.huggingface.co/models/'+HF_MODEL,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+HF_API_TOKEN,'Content-Type':'application/json'},
+    body:JSON.stringify({
+      inputs:prompt,
+      parameters:{max_new_tokens:220,temperature:0.7,return_full_text:false},
+      options:{wait_for_model:true}
+    })
+  });
+  if(!resp.ok){
+    const errTxt=await resp.text().catch(()=>'');
+    throw new Error('HF API '+resp.status+': '+errTxt.slice(0,120));
+  }
+  const data=await resp.json();
+  if(Array.isArray(data)&&data[0]?.generated_text){
+    return data[0].generated_text.trim();
+  }
+  if(data?.error)throw new Error(data.error);
+  throw new Error('Unexpected HF response shape');
+}
+
+// Основная точка входа: сначала надёжная математика, потом реальный ИИ (2 попытки), потом заготовка
+async function aiReply(txt){
+  const mathResult=_tryLocalMath(txt);
+  if(mathResult!==null)return txt.trim()+' = '+mathResult+' 🐘';
+
+  try{
+    const reply=await _callHfChatRouter(txt);
+    if(reply)return reply;
+  }catch(e){console.warn('[SLON AI] chat router error:',e.message);}
+
+  try{
+    const reply2=await _callHfAi(txt);
+    if(reply2&&reply2.length>1)return reply2;
+  }catch(e){console.warn('[SLON AI] classic API недоступен, использую заготовку:',e.message);}
+
+  return _aiReplyFallback(txt);
+}
+
+// Заготовки-фразы на случай если API недоступен/модель прогревается/лимит исчерпан
+function _aiReplyFallback(txt){
   const t=txt.toLowerCase();
   if(t.includes('привет')||t.includes('здравствуй')||t.includes('хай'))
     return'Привет! 🐘 Чем могу помочь?';
   if(t.includes('как дела')||t.includes('как ты'))
     return'Отлично, спасибо что спросил! Всегда готов помочь 🐘';
   if(t.includes('slon')||t.includes('слон'))
-    return'SLON — это защищённый P2P мессенджер. Общение идёт напрямую между устройствами без сервера! 🐘';
+    return'SLON — это мессенджер с чатами, звонками, каналами и группами! 🐘';
   if(t.includes('помог')||t.includes('help')||t.includes('что умеешь'))
-    return'Я СЛОН AI! Могу поддержать беседу, пока ты ждёшь друзей онлайн 🐘 Добавь контакт через ➕';
+    return'Я СЛОН AI! Спроси меня про любую кнопку или функцию мессенджера — разберёмся 🐘';
   if(t.includes('звонок')||t.includes('позвони'))
-    return'Для звонка добавь контакт через ➕, дождись чтобы он был онлайн, и нажми кнопку звонка 📞';
-  if(t.includes('юзернейм')||t.includes('username')||t.includes('id'))
-    return'Твой юзернейм показан в верхней панели. Поделись им с другом — он добавит тебя через ➕ Контакт 🐘';
+    return'Для звонка открой чат с контактом и нажми на иконку телефона или камеры в шапке 📞';
+  if(t.includes('канал'))
+    return'Канал создаётся через кнопку ➕ снизу справа в списке чатов → "Новый канал" 📢';
+  if(t.includes('группа'))
+    return'Группа создаётся через кнопку ➕ → "Новая группа", сначала выбираешь участников, потом название 👥';
   if(t.includes('тема')||t.includes('цвет')||t.includes('оформлен'))
-    return'Тему можно менять в ⚙ (иконка палитры) — доступно 9 тем! 🎨';
+    return'Тему можно сменить через ☰ → Тема — там 19 вариантов! 🎨';
   if(t.includes('пока')||t.includes('до свидания')||t.includes('bye'))
     return'Пока-пока! 🐘 Возвращайся!';
   if(t.includes('спасибо')||t.includes('благодар'))
@@ -6869,7 +7281,7 @@ function aiReply(txt){
     'Хм, дай подумаю... 🤔🐘',
     'Отличная мысль! 🐘',
     'Я весь внимание! 🐘',
-    'Согласен с тобой 🐘',
+    'Спроси меня про любую функцию мессенджера 🐘',
   ];
   return replies[Math.floor(Math.random()*replies.length)];
 }
@@ -7560,36 +7972,78 @@ function showChatCtxMenu(e,id){
   const isPinned=!!pinnedChats[id];
   const isMuted=!!mutedChats[id];
   const isChannel=id===SLON_CHANNEL_ID;
+  const isSpecial=id==='ai'||id==='saved'; // нет пина/мьюта/архива для этих
 
-  // Динамически строим меню
-  menu.innerHTML=`
-    ${!isChannel?`
-    <div class="ctx-item" onclick="ctxPinToggle()">
-      <svg viewBox="0 0 24 24"><path d="${isPinned?
-        'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z':
-        'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z'}"/></svg>
-      <span>${isPinned?'📌 Открепить':'📌 Закрепить чат'}</span>
-    </div>
-    <div class="ctx-item" onclick="ctxMuteToggle()">
-      <svg viewBox="0 0 24 24"><path d="${isMuted?
-        'M18 16.08c.67-.06 1.27-.35 1.73-.81L21 14c.49-.49.49-1.28 0-1.77l-4.24-4.24-4.24-4.24L4.27 1.49 3 2.77l4.5 4.5C6.61 8.24 6 9.56 6 11v4c0 1.1-.9 2-2 2v1h9.05l2.86 2.86 1.27-1.27L18 16.08zM7.58 9.35L17 18.76V19H5v-8c0-1.17.45-2.23 1.17-3.02l1.41 1.37zM11 21c1.1 0 2-.9 2-2H9c0 1.1.9 2 2 2zm1.5-14h-1V5.73L15 9.23V11h-2.5z':
-        'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z'}"/></svg>
-      <span>${isMuted?'🔔 Включить уведомления':'🔕 Выключить уведомления'}</span>
-    </div>
-    <div class="ctx-item" onclick="ctxArchiveToggle()">
-      <svg><use href="#i-inbox"/></svg>
-      <span>${isArch?'Из архива':'В архив'}</span>
-    </div>
-    `:''}
-    <div class="ctx-item danger" onclick="ctxDeleteChat()">
-      <svg><use href="#i-trash"/></svg>
-      <span>Удалить чат</span>
-    </div>
-  `;
+  const item=(svgPath,label,fn,danger)=>`<div class="ctx-item${danger?' danger':''}" onclick="${fn}">
+      <svg viewBox="0 0 24 24"><path d="${svgPath}"/></svg><span>${label}</span></div>`;
 
-  menu.style.left=Math.min(e.clientX,window.innerWidth-196)+'px';
-  menu.style.top=Math.min(e.clientY,window.innerHeight-menu.children.length*44)+'px';
+  let html='';
+  if(!isSpecial){
+    html+=item('M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z',
+      'Просмотр','_ctxPreview()');
+    html+=item('M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+      'Отметить как непрочитанное','_ctxMarkUnread()');
+    html+='<div class="ctx-item" onclick="_ctxAddToFolder()"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg><span style="flex:1">Добавить в папку</span><svg style="width:13px;height:13px;fill:var(--text2)"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>';
+    html+='<div class="ctx-sep"></div>';
+    html+=item(isPinned?'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z':'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z',
+      isPinned?'Открепить':'Закрепить чат','ctxPinToggle()');
+    html+=item(isMuted?'M18 16.08c.67-.06 1.27-.35 1.73-.81L21 14c.49-.49.49-1.28 0-1.77l-4.24-4.24-4.24-4.24L4.27 1.49 3 2.77l4.5 4.5C6.61 8.24 6 9.56 6 11v4c0 1.1-.9 2-2 2v1h9.05l2.86 2.86 1.27-1.27L18 16.08zM7.58 9.35L17 18.76V19H5v-8c0-1.17.45-2.23 1.17-3.02l1.41 1.37zM11 21c1.1 0 2-.9 2-2H9c0 1.1.9 2 2 2zm1.5-14h-1V5.73L15 9.23V11h-2.5z':'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+      isMuted?'Включить уведомления':'Выключить уведомления','ctxMuteToggle()');
+    if(!isChannel){
+      html+=item('M20 4H4v2h16V4zm1 4H3v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8zm-9 9l-5-5h3V9h4v3h3l-5 5z',
+        isArch?'Из архива':'В архив','ctxArchiveToggle()');
+    }
+    html+='<div class="ctx-sep"></div>';
+    html+=item('M6 13h12v-2H6v2zm-4 6h20v-2H2v2zM2 5v2h20V5H2z','Очистить историю','ctxClearHistory()');
+  }
+  html+=item('M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+    'Удалить чат','ctxDeleteChat()',true);
+
+  // Строим с stagger-анимацией
+  menu.innerHTML=html;
+  [...menu.children].forEach((el,i)=>{el.style.animationDelay=(i*0.02)+'s';});
+
+  menu.style.left=Math.min(e.clientX,window.innerWidth-206)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-menu.children.length*42-10)+'px';
   menu.classList.add('show');
+}
+
+// ── Новые действия контекстного меню ──
+function _ctxPreview(){
+  $('chatCtxMenu').classList.remove('show');
+  if(!ctxTargetId)return;
+  toast('Предпросмотр скоро появится 👁');
+}
+function _ctxMarkUnread(){
+  $('chatCtxMenu').classList.remove('show');
+  if(!ctxTargetId)return;
+  addUnread(ctxTargetId);
+  toast('Отмечено как непрочитанное');
+}
+function _ctxAddToFolder(){
+  $('chatCtxMenu').classList.remove('show');
+  toast('Папки появятся немного позже 📁');
+}
+function ctxClearHistory(){
+  $('chatCtxMenu').classList.remove('show');
+  if(!ctxTargetId)return;
+  const id=ctxTargetId;
+  showModal(`
+    <div class="m-title">Очистить историю?</div>
+    <div class="m-info">Все сообщения в чате с <b>${esc(peerNames[id]||('@'+id))}</b> будут удалены. Сам чат и контакт останутся.</div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-danger" onclick="_doClearHistory('${id}')">Очистить</button>
+    </div>
+  `);
+}
+function _doClearHistory(id){
+  closeModal();
+  if(id.startsWith('g_'))grpHist[id]=[];else chatHist[id]=[];
+  if(activeChat===id)renderChat(id);
+  updatePreview(id,'');
+  saveAll();
+  toast('История очищена');
 }
 
 function ctxPinToggle(){
