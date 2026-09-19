@@ -75,6 +75,9 @@ function openChat(id){
     renderChat(id);
     updateChatHeader();
     _updateWindowTitle();
+    // В личных чатах аватарки и имена у сообщений не нужны (как в Telegram)
+    $('msgs').classList.toggle('is-group',id.startsWith('g_')||id==='ai');
+    _syncInpState();
     updateReconBanner();
     _applyChatWallpaper();
     if(id!=='ai'&&id!=='saved'&&!id.startsWith('g_')&&!conns[id]?.open&&peer?.open)silentConnect(id);

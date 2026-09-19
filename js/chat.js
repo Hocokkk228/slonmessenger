@@ -466,6 +466,7 @@ function _updatePinnedBar(){
   if(pinned.length>0){
     bar.classList.add('show');
     txt.textContent=(pinned[pinned.length-1].text||'Медиа').slice(0,50);
+    const lbl=$('pinnedLbl');if(lbl)lbl.textContent='Закреплённое сообщение'+(pinned.length>1?' #'+pinned.length:'');
   }else{
     bar.classList.remove('show');
   }
@@ -548,8 +549,14 @@ function showRemoteTyping(pid){
   typingTimers[pid]=setTimeout(()=>$('typing').classList.remove('show'),2800);
 }
 
+// Поле ввода: есть текст → круглая кнопка «отправить», пусто → «микрофон»
+function _syncInpState(){
+  const inp=$('msgInp');$('inpWrap')?.classList.toggle('has-text',!!inp?.value.trim());
+}
+
 function onTyping(el){
   resizeInp(el);
+  _syncInpState();
   if(activeChat!=='ai'&&activeChat!=='saved'&&!activeChat.startsWith('g_')&&(_fbMode||conns[activeChat]?.open))
     sendData(conns[activeChat]||activeChat,{type:'typing'});
 }
@@ -716,6 +723,7 @@ function scrollDown(){
 function resizeInp(el){
   el.style.height='auto';
   el.style.height=Math.min(el.scrollHeight,100)+'px';
+  if(el.id==='msgInp')_syncInpState();
 }
 
 function handleKey(e){

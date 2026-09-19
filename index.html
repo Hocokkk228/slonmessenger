@@ -628,7 +628,11 @@
         <button class="recon-btn" onclick="reconnectCurrent()">Подключиться</button>
       </div>
 
-      <div class="pinned-bar" id="pinnedBar" onclick="scrollToPinned()">📌 <span id="pinnedText"></span></div>
+      <div class="pinned-bar" id="pinnedBar" onclick="scrollToPinned()">
+        <div class="pin-line"></div>
+        <div class="pin-txt"><div class="pin-lbl" id="pinnedLbl">Закреплённое сообщение</div><span id="pinnedText"></span></div>
+        <svg class="pin-ico" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+      </div>
       <div class="msgs" id="msgs">
         <div class="sys">Добро пожаловать в SLON 🐘</div>
         <div class="msg inc">
@@ -654,14 +658,17 @@
           </button>
           <textarea class="inp-txt" id="msgInp" rows="1" placeholder="Сообщение…"
             onkeydown="handleKey(event)" oninput="onTyping(this)"></textarea>
-          <button class="inp-icon-btn" id="voiceRecBtn" onclick="startVoiceRec()" title="Голосовое">
-            <svg><use href="#i-mic"/></svg>
-          </button>
           <button class="inp-icon-btn" id="slonRecBtn" onclick="startSlonRec()" title="Слонкружок">
             <svg><use href="#i-video"/></svg>
           </button>
-          <button class="send-btn" onclick="sendMsg()">
-            <svg width="16" height="16"><use href="#i-send"/></svg>
+        </div>
+        <!-- Круглая кнопка как в Telegram: микрофон, пока пусто; отправка, когда есть текст -->
+        <div class="inp-action">
+          <button class="inp-round inp-mic" id="voiceRecBtn" onclick="startVoiceRec()" title="Голосовое">
+            <svg><use href="#i-mic"/></svg>
+          </button>
+          <button class="inp-round send-btn" onclick="sendMsg();_syncInpState()" title="Отправить">
+            <svg><use href="#i-send"/></svg>
           </button>
         </div>
       </div>
