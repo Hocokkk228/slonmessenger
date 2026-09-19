@@ -1062,17 +1062,6 @@ function _deleteChatFull(id){
 const _CHAT_CREATING_TYPES=new Set(['msg','media_start','media_url','media_rtdb','file_start','call_incoming','call_offer','group_invite','group_add']);
 function _mayCreateChat(payload){return !!payload&&_CHAT_CREATING_TYPES.has(payload.type);}
 
-// Сторож видео звонка: если видео собеседника «показывается», но кадров нет — пересобираем поток
-setInterval(()=>{
-  if(typeof activeCall==='undefined'||!activeCall)return;
-  const rv=$('remoteVideo'),w=$('callVidWrap');
-  if(!rv||!w||!w.classList.contains('show'))return;
-  if(rv.readyState<2||rv.videoWidth===0){
-    rv._stall=(rv._stall||0)+1;
-    if(rv._stall>=2){rv._stall=0;rv._needRefresh=true;try{_updateRemoteVideoUI();}catch(e){}}
-  }else rv._stall=0;
-},1500);
-
 // ── ЗАПУСК ──
 document.addEventListener('DOMContentLoaded',()=>{
   _perfLoad();
