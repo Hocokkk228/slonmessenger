@@ -68,6 +68,8 @@ function requestNotifPermission(){
 
 function showDesktopNotif(title, body, iconUrl, tag){
   if(!('Notification' in window))return;
+  // Настройки → Уведомления: веб-уведомления выключены (звонки показываем всегда)
+  if(myNotif.web===false&&tag!=='call')return;
   const _doShow=()=>{
     const iconSvg='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>';
     const icon=iconUrl||iconSvg;

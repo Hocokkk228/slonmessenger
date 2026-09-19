@@ -74,6 +74,7 @@ function openChat(id){
   try{
     renderChat(id);
     updateChatHeader();
+    _updateWindowTitle();
     updateReconBanner();
     _applyChatWallpaper();
     if(id!=='ai'&&id!=='saved'&&!id.startsWith('g_')&&!conns[id]?.open&&peer?.open)silentConnect(id);
@@ -188,7 +189,7 @@ function updateChatHeader(){
     $('chName').textContent=(peerNames[id]||('@'+id))+(peerElephantBadges[id]?' 🐘':'');
     $('chStatus').innerHTML=ok
       ?`<div class="status-dot online" style="width:7px;height:7px"></div> В сети`
-      :`<div class="status-dot offline" style="width:7px;height:7px"></div> Не в сети`;
+      :`<div class="status-dot offline" style="width:7px;height:7px"></div> ${esc(_lastSeenText(id))}`;
     $('chStatus').className='ch-status'+(ok?'':' off');
     // Show search + call buttons, rebuild dropdown
     $('chSearchBtn').style.display='flex';

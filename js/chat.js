@@ -154,12 +154,12 @@ function recvMsg(pid,text,nick,avatar,mid,ts){
   }
   if(activeChat===pid){
     appendMsg(msg);scrollDown();
-    if(document.visibilityState!=='visible'){
+    if(document.visibilityState!=='visible'&&_notifOn('private')){
       playNotifSound();
-      showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);
+      showDesktopNotif(peerNames[pid]||('@'+pid),_notifText('private',text).slice(0,60),peerAvatars[pid]||null);
     }
   }
-  else{addUnread(pid);if(!mutedChats[pid]){playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),text.slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+text.slice(0,50));}}
+  else{addUnread(pid);if(!mutedChats[pid]&&_notifOn('private')){playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),_notifText('private',text).slice(0,60),peerAvatars[pid]||null);toast((peerNames[pid]||('@'+pid))+': '+_notifText('private',text).slice(0,50));}}
   saveAll();
 }
 

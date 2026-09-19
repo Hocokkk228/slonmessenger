@@ -382,7 +382,7 @@ function _listenUserChannel(channelId,username){
     const msg={id:d.id,sender:'inc',name:'📢 '+(meta.name||username),avatar:chAvatar,ts,time:fmtTime(ts),text:d.text};
     chatHist[channelId].push(msg);
     if(activeChat===channelId){renderChat(channelId);scrollDown();}
-    else{addUnread(channelId);toast('📢 Новый пост в @'+username+'!',3000);}
+    else{addUnread(channelId);if(!mutedChats[channelId]&&_notifOn('channels'))toast('📢 Новый пост в @'+username+(myNotif.channelsPreview!==false?': '+String(d.text).slice(0,40):'!'),3000);}
     saveAll();
   });
   _myChannelListeners[channelId]=unsub;

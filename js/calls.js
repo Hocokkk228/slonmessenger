@@ -939,7 +939,9 @@ function _setCallVolume(val){
 function playNotifSound(){
   try{
     const ac=getAC();
-    const g=ac.createGain();g.gain.setValueAtTime(0.18,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.35);
+    // Громкость из настроек уведомлений (0..10, по умолчанию 5)
+    const vol=(myNotif.volume??5)/5;if(vol<=0)return;
+    const g=ac.createGain();g.gain.setValueAtTime(0.18*vol,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.35);
     const o=ac.createOscillator();o.type='sine';o.frequency.setValueAtTime(880,ac.currentTime);o.frequency.setValueAtTime(1100,ac.currentTime+0.1);
     o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+0.35);
   }catch(e){}

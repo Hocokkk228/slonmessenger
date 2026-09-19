@@ -201,6 +201,10 @@ function _fbListen(username){
     }
     // Игнорируем сообщения от заблокированных пользователей
     if(blockedUsers[pid])return;
+    // Настройки конфиденциальности: кто может писать/звонить/добавлять в группы
+    if(data.payload&&!_privacyGate(pid,data.payload))return;
+    // Новый чат от незнакомца — в архив и без звука (если включено)
+    if(!peerNames[pid]&&myPrivacy.archiveUnknown){archivedChats[pid]=true;mutedChats[pid]=true;}
     // Авто-добавляем в контакты если новый
     if(!peerNames[pid]){
       peerNames[pid]='@'+pid;
@@ -229,6 +233,7 @@ function _watchPresence(pid){
     // Если пользователь забанен — не показываем онлайн
     const isBanned=bannedUsers[pid]&&bannedUsers[pid].until>Date.now();
     const online=rawOnline&&!isBanned;
+    peerLastSeen[pid]=data&&data.ls?data.ls:0;
     _fbConns[pid]=online;
     setSbStatus(pid,online);
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
@@ -253,13 +258,16 @@ function _checkFirebaseRules(){
 async function _startMyPresence(){
   if(!window._fbDb||!myUsername)return;
   const presRef=window._fbRef(window._fbDb,'presence/'+myUsername);
-  window._fbSet(presRef,{online:true,ts:Date.now()});
+  // ls — время последнего захода для других (0, если скрыто в конфиденциальности)
+  const pres=online=>{const ts=Date.now();return {online,ts,ls:myPrivacy.lastSeen==='nobody'?0:ts};};
+  window._fbSet(presRef,pres(true));
   setInterval(()=>{
     if(myUsername&&window._fbDb)
-      window._fbSet(window._fbRef(window._fbDb,'presence/'+myUsername),{online:true,ts:Date.now()});
+      window._fbSet(window._fbRef(window._fbDb,'presence/'+myUsername),pres(true));
   },25000);
   window.addEventListener('beforeunload',()=>{
-    window._fbRemove(window._fbRef(window._fbDb,'presence/'+myUsername));
+    // Не удаляем запись, а помечаем офлайн — чтобы у других было «был(а) в …»
+    window._fbSet(window._fbRef(window._fbDb,'presence/'+myUsername),pres(false));
   });
   // Сначала тянем профиль из Firebase, потом публикуем (с актуальными данными)
   _fetchAndApplyMyProfile().then(()=>_publishMyProfile()).catch(()=>_publishMyProfile());
@@ -289,7 +297,7 @@ async function _publishMyProfile(oldUsername){
     if(!myProfileBg&&existing.profileBg){myProfileBg=existing.profileBg;localChanged=true;}
     if(localChanged){updateProfileDisplay();setMyLabel();saveAll();}
 
-    const data={nick,avatar,bio,username:myUsername,iid:myInternalId,profileBg,bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',linkedChannel:myLinkedChannel||'',ts:Date.now()};
+    const data=_myPublicProfile({nick,avatar,bio,profileBg});
     window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
 
     if(oldUsername&&oldUsername!==myUsername){
@@ -298,10 +306,7 @@ async function _publishMyProfile(oldUsername){
     }
   }catch(e){
     // Если читать не удалось — пишем то что есть локально
-    const data={nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
-      username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',
-      bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',
-      linkedChannel:myLinkedChannel||'',ts:Date.now()};
+    const data=_myPublicProfile({nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',profileBg:myProfileBg||'bg0'});
     window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
   }
 }
@@ -309,7 +314,7 @@ async function _publishMyProfile(oldUsername){
 function _fbSilentConnect(pid){
   if(!_fbReady()||!pid||pid===myUsername)return;
   // Отправляем hello через Firebase
-  _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||''});
+  _fbSend(pid,_myHelloFor(pid));
   // Сразу читаем публичный профиль собеседника
   _fetchProfile(pid);
 }
@@ -334,6 +339,7 @@ function _fetchProfile(pid){
     if(d.bgColor!==undefined)peerProfileBgColors[pid]=d.bgColor||'';
     if(d.bgPattern!==undefined)peerProfilePatterns[pid]=d.bgPattern||'';
     peerLinkedChannels[pid]=d.linkedChannel||'';
+    _applyExtraProfile(pid,d);
     // Если username изменился — следим и за новым профилем
     if(newUsername!==pid&&!_profileWatchers[newUsername]){
       _watchPresence(newUsername);
@@ -390,7 +396,7 @@ function setupConn(conn,silent=false){
   const onOpen=()=>{
     if(conns[pid]!==conn)return;
     setSbStatus(pid,true);
-    sendData(conn,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});
+    sendData(conn,_myHelloFor(pid));
     if(!silent)sysMsg(pid,'Соединение установлено');
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
     saveAll();
@@ -472,6 +478,7 @@ function onData(pid,data){
       if(data.bgColor!==undefined){peerProfileBgColors[pid]=data.bgColor||'';}
       if(data.bgPattern!==undefined){peerProfilePatterns[pid]=data.bgPattern||'';}
       if(data.bio!==undefined){peerBios[pid]=data.bio;}
+      _applyExtraProfile(pid,data);
       // Миграция по oldUsername
       if(data.oldUsername&&data.oldUsername!==pid){
         if(chatHist[data.oldUsername]&&!chatHist[pid]){
@@ -492,8 +499,7 @@ function onData(pid,data){
       if(activeChat===pid)updateChatHeader();
       // Отвечаем своим профилем (если это не ответ)
       if(!data._reply){
-        _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
-          username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',_reply:true});
+        _fbSend(pid,{..._myHelloFor(pid),_reply:true});
       }
       saveAll();
       break;

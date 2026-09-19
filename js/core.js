@@ -222,6 +222,14 @@ let peerProfileBgColors={}; // pid->rgbColor
 let peerProfilePatterns={}; // pid->patternId
 let myLinkedChannel=''; // username своего канала, привязанного к профилю
 let peerLinkedChannels={}; // pid->username канала, привязанного к профилю
+// ── Профиль/настройки в стиле Telegram (settings-panel.js) ──
+let myLastName='';          // фамилия (необязательно)
+let myBirthday=null;        // {d,m,y} — y может быть 0
+let myBusinessHours=null;   // {enabled, days:[{mode:'open24'|'closed'|'custom',from,to} ×7, Пн..Вс]}
+let myPrivacy={};           // кто видит/может: lastSeen, photo, bio, birthday, calls, voice, messages, groups; archiveUnknown, titleChatName
+let myNotif={};             // web, volume(0..10), private/privatePreview, groups/groupsPreview, channels/channelsPreview
+let myPasscode='';          // SHA-256 хеш локального код-пароля ('' — выключен)
+let peerLastNames={},peerBirthdays={},peerBusinessHours={},peerLastSeen={};
 let myChannels={}; // channelId -> {name, desc, username, bg, bgColor, bgPattern, avatar}
 let subscribedChannels={}; // channelId -> {name, desc, ...} — подписки
 let inMediaBufs={};
@@ -1602,6 +1610,12 @@ function saveAll(){
       localStorage.setItem(p+'bgColor',JSON.stringify(myProfileBgColor));
       localStorage.setItem(p+'bgPattern',JSON.stringify(myProfilePattern));
       localStorage.setItem(p+'linkedCh',JSON.stringify(myLinkedChannel));
+      localStorage.setItem(p+'lastName',JSON.stringify(myLastName));
+      localStorage.setItem(p+'birthday',JSON.stringify(myBirthday));
+      localStorage.setItem(p+'bizHours',JSON.stringify(myBusinessHours));
+      localStorage.setItem(p+'privacy',JSON.stringify(myPrivacy));
+      localStorage.setItem(p+'notif',JSON.stringify(myNotif));
+      localStorage.setItem(p+'passcode',JSON.stringify(myPasscode));
       localStorage.setItem(p+'chatWall',JSON.stringify(myChatWallpaper));
       localStorage.setItem(p+'piids',JSON.stringify(peerIids));
       localStorage.setItem(p+'pbgs2',JSON.stringify(peerProfileBgs));
@@ -1674,6 +1688,12 @@ function loadStorage(){
   myProfileBgColor=LS.get(p+'bgColor','');
   myProfilePattern=LS.get(p+'bgPattern','');
   myLinkedChannel=LS.get(p+'linkedCh','');
+  myLastName=LS.get(p+'lastName','');
+  myBirthday=LS.get(p+'birthday',null);
+  myBusinessHours=LS.get(p+'bizHours',null);
+  myPrivacy=LS.get(p+'privacy',{})||{};
+  myNotif=LS.get(p+'notif',{})||{};
+  myPasscode=LS.get(p+'passcode','');
   myChatWallpaper=LS.get(p+'chatWall','none');
   peerIids=LS.get(p+'piids',LS.get('sl_piids',{}));
   peerProfileBgs=LS.get(p+'pbgs2',LS.get('sl_pbgs2',{}));

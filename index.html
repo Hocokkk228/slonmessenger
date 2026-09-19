@@ -296,17 +296,20 @@
 <!-- Информация о канале (как Channel Info в Telegram) -->
 <div class="peer-prof-overlay ci-overlay" id="chInfoOverlay"></div>
 <div class="peer-prof-overlay" id="peerProfOverlay">
-  <div class="peer-prof-hero" id="peerProfHero">
-    <div class="peer-prof-hero-bg" id="peerProfBg"></div>
-    <button class="peer-prof-back" onclick="closePeerProfile()">
-      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <div class="peer-prof-av" id="peerProfAv"></div>
-    <div class="peer-prof-name" id="peerProfName"></div>
-    <div class="peer-prof-status" id="peerProfStatus"></div>
+  <!-- Информация о пользователе (как User Info в Telegram) -->
+  <div class="ci-hdr pp-hdr">
+    <button class="sp-tb-btn" onclick="closePeerProfile()" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    <div class="ci-title">Информация</div>
+    <button class="sp-tb-btn" id="peerProfMoreBtn" title="Ещё"><svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
   </div>
-  <div class="peer-prof-actions" id="peerProfActions"></div>
-  <div class="prof-info-list" id="peerProfInfo"></div>
+  <div class="pp-hero" id="peerProfHero">
+    <div class="pp-hero-bg" id="peerProfBg"></div>
+    <div class="pp-av" id="peerProfAv"></div>
+    <div class="pp-name" id="peerProfName"></div>
+    <div class="pp-status" id="peerProfStatus"></div>
+  </div>
+  <div class="pp-actions" id="peerProfActions"></div>
+  <div id="peerProfInfo"></div>
   <!-- Блок консоли адмнистратора (показывается только admins) -->
   <div id="peerAdminSection" style="display:none">
     <div class="admin-console-section">
@@ -337,6 +340,8 @@
       </button>
     </div>
   </div>
+  <!-- Вкладки: медиа, файлы, ссылки, голосовые -->
+  <div id="peerProfTabs"></div>
 </div>
 
 <!-- ADMIN CONSOLE (в профиле) -->
@@ -482,10 +487,11 @@
     <div class="sidebar" id="sidebar">
       <!-- МОЙ ПРОФИЛЬ + НАСТРОЙКИ (выезжает поверх списка чатов, как в Telegram) -->
       <div class="sp-panel" id="spPanel" aria-hidden="true">
+        <div class="sp-base" id="spBase">
         <div class="sp-topbar" id="spTopbar">
           <button class="sp-tb-btn" onclick="closeMyProfilePanel()" title="Назад"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
           <div class="sp-tb-title">Настройки</div>
-          <button class="sp-tb-btn" onclick="toast('Поиск по настройкам скоро 🐘')" title="Поиск"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+          <button class="sp-tb-btn" onclick="_spEditProfile()" title="Изменить профиль"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           <button class="sp-tb-btn" onclick="_spToggleMenu(event)" title="Ещё"><svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
           <div class="sp-menu" id="spMenu"></div>
         </div>
@@ -497,6 +503,7 @@
             <div class="sp-status" id="spStatus"></div>
           </div>
           <div class="sp-body" id="spBody"></div>
+        </div>
         </div>
       </div>
       <div class="sb-search">

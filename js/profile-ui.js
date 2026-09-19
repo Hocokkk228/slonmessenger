@@ -67,107 +67,11 @@ function closeProfilePage(){$('profilePage').style.display='none';showChatElemen
 
 function showPeerProfile(pid){
   if(_isChannelId(pid)){showChannelInfo(pid);return;}
-  const name=peerNames[pid]||('@'+pid);
-  const av=peerAvatars[pid];
-  const isOnline=_fbMode?!!_fbConns[pid]:(conns[pid]?.open);
-  const bio=peerBios[pid]||'';
-  const bgId=peerProfileBgs[pid]||'bg0';
-  const bg=BG_COLORS.find(b=>b.id===bgId)||BG_COLORS[0];
-  const isBlocked=!!blockedUsers[pid];
-  const hasElephant=!!peerElephantBadges[pid];
   const hasPremiumPeer=!!peerPremium[pid];
-  const isBanned=bannedUsers[pid]&&bannedUsers[pid].until>Date.now();
   const isAdmin=CHANNEL_ADMINS.has(myUsername);
 
-  // Фон профиля собеседника
-  const peerBgColor=peerProfileBgColors[pid]||'';
-  const peerPattern=peerProfilePatterns[pid]||'';
-  const bgStyle=_getProfileBgStyle(bgId,peerBgColor,peerPattern);
-  $('peerProfBg').style.background=bgStyle;
-
-  const avEl=$('peerProfAv');avEl.innerHTML='';
-  if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;';avEl.appendChild(i);}
-  else{avEl.innerHTML=`<svg style="width:52px;height:52px;fill:rgba(255,255,255,.8)"><use href="#i-person"/></svg>`;}
-
-  // Имя с бейджами (слон + premium + мороженка бана)
-  const badgeTxt=(isBanned?'❄️ ':'')+name+(hasElephant?' 🐘':'')+(hasPremiumPeer?' ⭐':'');
-  const badge=(hasElephant?' 🐘':'')+(hasPremiumPeer?' ⭐':'');
-  $('peerProfName').textContent=badgeTxt;
-  // ⭐ кликабельная
-  if(hasPremiumPeer){
-    $('peerProfName').style.cursor='pointer';
-    $('peerProfName').onclick=()=>toast(`У ${name} подписка SLON Premium ⭐`);
-  }else{$('peerProfName').style.cursor='';$('peerProfName').onclick=null;}
-
-  // Статус — если забанен, онлайн не показываем
-  const statusEl=$('peerProfStatus');
-  if(isBlocked){
-    statusEl.innerHTML='<span style="color:rgba(255,100,100,.9)">🚫 Заблокирован тобой</span>';
-  }else if(isBanned){
-    const untilStr=bannedUsers[pid].until===9999999999999?'навсегда':new Date(bannedUsers[pid].until).toLocaleDateString('ru');
-    statusEl.innerHTML=`<span style="color:rgba(150,200,255,.8)">❄️ Заморожен до ${untilStr}</span>`;
-  }else{
-    // Проверяем онлайн только если НЕ забанен
-    statusEl.innerHTML=isOnline
-      ?'<div style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0"></div> В сети'
-      :'<div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex-shrink:0"></div> Не в сети';
-  }
-
-  // Кнопки действий
-  const acts=$('peerProfActions');
-  acts.innerHTML=`
-    <button class="peer-prof-act" onclick="closePeerProfile();openChat('${pid}')">
-      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-      Написать
-    </button>
-    <button class="peer-prof-act" onclick="closePeerProfile();startCallWithPerm('${pid}',false)">
-      <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-      Звонок
-    </button>
-    <button class="peer-prof-act" onclick="closePeerProfile();startCallWithPerm('${pid}',true)">
-      <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-      Видео
-    </button>
-    <button class="peer-prof-act danger" onclick="toggleBlockUser('${pid}')">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
-      ${isBlocked?'Разблокировать':'Заблокировать'}
-    </button>
-  `;
-
-  // Инфо-поля
-  const infoEl=$('peerProfInfo');
-  infoEl.innerHTML=`
-    <div class="prof-info-row" onclick="navigator.clipboard.writeText('@${pid}').then(()=>toast('Скопировано!'))">
-      <svg class="prof-info-ico"><use href="#i-username"/></svg>
-      <div class="prof-info-txt">
-        <div class="prof-info-val" style="font-family:monospace">@${esc(pid)}</div>
-        <div class="prof-info-lbl">Юзернейм · нажми чтобы скопировать</div>
-      </div>
-      <svg style="width:16px;height:16px;fill:var(--text2);flex-shrink:0"><use href="#i-copy"/></svg>
-    </div>
-    ${bio?`<div class="prof-info-row" style="cursor:default;">
-      <svg class="prof-info-ico"><use href="#i-info"/></svg>
-      <div class="prof-info-txt">
-        <div class="prof-info-val">${esc(bio)}</div>
-        <div class="prof-info-lbl">Bio</div>
-      </div>
-    </div>`:''}
-    <div class="prof-info-row" style="cursor:default;">
-      <svg class="prof-info-ico"><use href="#i-person"/></svg>
-      <div class="prof-info-txt">
-        <div class="prof-info-val">${esc(name)}${badge}</div>
-        <div class="prof-info-lbl">Имя</div>
-      </div>
-    </div>
-  `;
-
-  // Канал, привязанный к профилю собеседника
-  const linkedCh=peerLinkedChannels[pid];
-  _spPeerOpenId=pid;
-  if(linkedCh){
-    infoEl.insertAdjacentHTML('afterbegin',`<div class="sp-card sp-peer-ch" id="peerLinkedChCard">${_spChannelCardInner(linkedCh)}</div>`);
-    _spLoadChannelData(linkedCh);
-  }
+  // Шапка, быстрые действия, инфо-карточки и вкладки — settings-panel.js
+  _ppRender(pid);
 
   // Консоль администратора
   const adminSec=$('peerAdminSection');
@@ -204,14 +108,18 @@ function showPeerProfile(pid){
     adminSec.style.display='none';
   }
 
+  $('chInfoOverlay')?.classList.remove('show');
   $('peerProfBackdrop')?.classList.add('show');
+  $('peerProfOverlay').scrollTop=0;
   $('peerProfOverlay').classList.add('show');
+  _rpDock(true);
 }
 
 function closePeerProfile(){
   $('peerProfOverlay')?.classList.remove('show');
   $('chInfoOverlay')?.classList.remove('show');
   $('peerProfBackdrop')?.classList.remove('show');
+  _rpDock(false);
 }
 
 function _applyChatWallpaper(){
@@ -420,8 +328,7 @@ function editNick(){
 function saveNick(){
   const v=($('nickInp')?.value||'').trim().slice(0,32);
   myNick=v;saveAll();updateProfileDisplay();
-  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
-  if(_fbMode)_publishMyProfile();
+  _broadcastHello();
   closeModal();toast('Имя обновлено');
 }
 
@@ -440,7 +347,7 @@ function editBio(){
 function saveBio(){
   myBio=($('bioInp')?.value||'').trim().slice(0,200);
   saveAll();updateProfileDisplay();
-  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar||null,bio:myBio,username:myUsername});});
+  _broadcastHello();
   closeModal();toast('Биография обновлена');
 }
 
@@ -452,7 +359,7 @@ async function handleAvatarUpload(inp){
     const thumb=await makeThumb(e.target.result,200,0.8);
     myAvatar=thumb||e.target.result;
     saveAll();updateProfileDisplay();
-    Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:myAvatar,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+    _broadcastHello();
     toast('Фото профиля обновлено');
   };
   reader.readAsDataURL(file);
@@ -460,7 +367,7 @@ async function handleAvatarUpload(inp){
 
 function removeAvatar(){
   myAvatar=null;saveAll();updateProfileDisplay();
-  Object.keys(peerNames).forEach(pid=>{if(_fbMode||conns[pid]?.open)sendData(conns[pid]||pid,{type:'hello',nick:myNick,avatar:null,bio:myBio||'',username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0'});});
+  _broadcastHello();
   toast('Фото удалено');
 }
 

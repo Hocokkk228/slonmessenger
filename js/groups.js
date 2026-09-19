@@ -371,7 +371,7 @@ function _fbListenGrpMsgs(gid){
       text:d.text,ts,time:fmtTime(ts)};
     grpHist[gid].push(msg);
     if(activeChat===gid){appendMsg(msg);scrollDown();}
-    else{addUnread(gid);if(!mutedChats[gid])toast((groups[gid]?.name||'Группа')+': '+msg.name+': '+d.text.slice(0,35));}
+    else{addUnread(gid);if(!mutedChats[gid]&&_notifOn('groups')){playNotifSound();toast((groups[gid]?.name||'Группа')+': '+msg.name+': '+_notifText('groups',d.text).slice(0,35));}}
     saveAll();
     // Удаляем старые сообщения из Firebase (старше 7 дней) чтобы не копить
     if(ts<Date.now()-7*86400000)window._fbRemove(snap.ref).catch(()=>{});
@@ -413,7 +413,7 @@ async function _recvGrpMedia(gid,d){
     }
     grpHist[gid].push(msg);
     if(activeChat===gid){appendMsg(msg);scrollDown();}
-    else{addUnread(gid);toast((groups[gid]?.name||'Группа')+': '+(d.type==='voice'?'🎙️ Голосовое':'🐘 Слонкружок'));}
+    else{addUnread(gid);if(!mutedChats[gid]&&_notifOn('groups'))toast((groups[gid]?.name||'Группа')+': '+(d.type==='voice'?'🎙️ Голосовое':'🐘 Слонкружок'));}
     saveAll();
   }catch(e){console.warn('_recvGrpMedia error:',e);}
 }

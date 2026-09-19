@@ -384,8 +384,7 @@ function saveUsername(){
       _startMyPresence();
       _publishMyProfile(oldUsername||undefined);
       Object.keys(peerNames).forEach(pid=>{
-        _fbSend(pid,{type:'hello',nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
-          username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',oldUsername:oldUsername||undefined});
+        _fbSend(pid,{..._myHelloFor(pid),oldUsername:oldUsername||undefined});
       });
       if(!isFirstRegistration)toast('Юзернейм изменён: @'+myUsername);
     }else{
