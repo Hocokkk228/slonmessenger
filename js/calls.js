@@ -349,6 +349,7 @@ function _handleRemoteTrack(track){
   };
   track.onunmute=()=>{
     console.log('remote track unmuted:',track.kind);
+    if(track.kind==='video'){const rv=$('remoteVideo');if(rv)rv._needRefresh=true;}
     // При размьючивании убеждаемся что трек в _remoteStream
     if(!_remoteStream.getTracks().some(t=>t.id===track.id)){
       _remoteStream.addTrack(track);
@@ -364,7 +365,7 @@ function _handleRemoteTrack(track){
   };
   const rv=$('remoteVideo'),a=$('remAudio');
   rv.muted=true; // звук — только через remAudio, иначе он удваивается
-  if(rv.srcObject!==_remoteStream)rv.srcObject=_remoteStream;
+  // Видео назначает _updateRemoteVideoUI (свежим потоком только с видео)
   if(a.srcObject!==_remoteStream)a.srcObject=_remoteStream;
   a.volume=1.0;
   if(selSpk&&selSpk!=='default'&&typeof a.setSinkId==='function')
@@ -408,7 +409,9 @@ function _updateRemoteVideoUI(){
   });
 
   // UI решение на основе наличия видео
-  const remoteLiveVideo=_remoteStream.getVideoTracks().some(t=>t.readyState==='live');
+  // Видео есть, только если трек живой И реально идут кадры (muted = собеседник перестал слать)
+  const liveVids=_remoteStream.getVideoTracks().filter(t=>t.readyState==='live'&&!t.muted);
+  const remoteLiveVideo=liveVids.length>0;
   const myCamTracks=localStream?.getVideoTracks()||[];
   const myLiveVideo=myCamTracks.some(t=>t.readyState==='live')||isScreenSharing;
 
@@ -417,7 +420,12 @@ function _updateRemoteVideoUI(){
     // Видео собеседника — на месте аватарки
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
-    if(rv.srcObject!==_remoteStream){rv.srcObject=_remoteStream;}
+    // Каждый раз, когда набор видеотреков меняется, даём <video> СВЕЖИЙ поток.
+    // Если держать один MediaStream и удалять/добавлять в него треки, Chrome
+    // оставляет чёрный кадр навсегда (демка «отваливается» до перезагрузки)
+    const want=liveVids.map(t=>t.id).join(',');
+    const cur=(rv.srcObject&&rv.srcObject.getVideoTracks?rv.srcObject.getVideoTracks().map(t=>t.id).join(','):'');
+    if(cur!==want||rv._needRefresh){rv.srcObject=new MediaStream(liveVids);rv._needRefresh=false;}
     rv.play().catch(()=>{});
   }else{
     // Нет видео у собеседника — стандартный экран: аватарка, ник, время звонка
