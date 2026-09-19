@@ -205,6 +205,8 @@ function _fbListen(username){
     if(data.payload&&!_privacyGate(pid,data.payload))return;
     // Новый чат от незнакомца — в архив и без звука (если включено)
     if(!peerNames[pid]&&myPrivacy.archiveUnknown){archivedChats[pid]=true;mutedChats[pid]=true;}
+    // Незнакомый/удалённый чат не воскрешаем служебными сообщениями (hello, typing…)
+    if(!peerNames[pid]&&!_mayCreateChat(data.payload))return;
     // Авто-добавляем в контакты если новый
     if(!peerNames[pid]){
       peerNames[pid]='@'+pid;

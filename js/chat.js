@@ -491,7 +491,8 @@ function deleteChatFor(forAll){
     sendData(conns[activeChat]||activeChat,{type:'chat_delete',forAll:true});
     toast('Чат удалён у всех');
   }else{
-    // Только у себя — удаляем контакт из сайдбара
+    // Только у себя — удаляем чат насовсем
+    if(typeof _deleteChatFull==='function'){_deleteChatFull(activeChat);return;}
     delete chatHist[activeChat];
     delete peerNames[activeChat];
     delete peerAvatars[activeChat];
@@ -891,7 +892,7 @@ function ctxDeleteChat(){
   const id=ctxTargetId;
   showModal(`
     <div class="m-title">Удалить чат?</div>
-    <div class="m-info">История переписки с <b>${esc(peerNames[id]||('@'+id))}</b> будет удалена. Контакт останется.</div>
+    <div class="m-info">История переписки с <b>${esc(peerNames[id]||('@'+id))}</b> исчезнет из списка чатов. Если человек напишет снова — чат появится.</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-danger" onclick="doDeleteChat('${id}')">Удалить</button>
@@ -901,6 +902,7 @@ function ctxDeleteChat(){
 
 function doDeleteChat(id){
   closeModal();
+  if(typeof _deleteChatFull==='function'){_deleteChatFull(id);return;} // полное удаление (settings-extra.js)
   if(id.startsWith('g_')){delete grpHist[id];}
   else{chatHist[id]=[];}
   delete archivedChats[id];

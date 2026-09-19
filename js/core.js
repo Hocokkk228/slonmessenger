@@ -1054,10 +1054,20 @@ document.addEventListener('click',()=>$('chatCtxMenu')?.classList.remove('show')
     const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;
     return Math.hypot(dx,dy);
   }
-  function applyZoom(){
+  // Зум к точке между пальцами: translate(x,y) scale(s) при transform-origin 0 0
+  function applyZoom(animate){
     const v=$('remoteVideo');if(!v)return;
-    v.style.transform=_scale===1?'':'scale('+_scale+') translate('+_tx+'px,'+_ty+'px)';
+    v.style.transformOrigin='0 0';
+    v.style.transition=animate?'transform .28s cubic-bezier(.32,.72,0,1)':'none';
+    v.style.transform=_scale===1&&!_tx&&!_ty?'':'translate('+_tx+'px,'+_ty+'px) scale('+_scale+')';
   }
+  // Картинка не должна уезжать за края: при s>1 края видео не заходят внутрь рамки
+  function clampPan(){
+    const w=$('callVidWrap');if(!w)return;
+    const W=w.clientWidth,H=w.clientHeight;
+    _tx=Math.min(0,Math.max(W-W*_scale,_tx));_ty=Math.min(0,Math.max(H-H*_scale,_ty));
+  }
+  function localPt(x,y){const r=$('callVidWrap').getBoundingClientRect();const z=r.width/($('callVidWrap').offsetWidth||r.width);return {x:(x-r.left)/z,y:(y-r.top)/z};}
   function isInVidWrap(el){
     const w=$('callVidWrap');return w&&w.contains(el)&&w.classList.contains('show');
   }
@@ -1089,36 +1099,54 @@ document.addEventListener('click',()=>$('chatCtxMenu')?.classList.remove('show')
       if(_tapCount===1){
         _overlayVisible?hideOverlay():showOverlay();
       }else if(_tapCount>=2){
-        // Двойной тап — сбросить зум
-        _scale=1;_tx=0;_ty=0;applyZoom();
+        // Двойной тап — плавно вернуть исходный вид
+        _scale=1;_tx=0;_ty=0;applyZoom(true);
       }
       _tapCount=0;
     },250);
   });
 
-  // Pinch-zoom — только 2 пальца в vid-wrap
+  // Pinch-zoom в любую точку + перетаскивание. После отпускания масштаб сохраняется.
+  let _p0=null,_s0=1,_x0=0,_y0=0,_pan=null;
+  const mid=t=>localPt((t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2);
   document.addEventListener('touchstart',e=>{
     if(!isInVidWrap(e.target))return;
     if(e.touches.length===2){
-      _lastDist=dist(e.touches);_startScale=_scale;
+      _lastDist=dist(e.touches);_s0=_scale;_x0=_tx;_y0=_ty;_p0=mid(e.touches);_pan=null;
       e.preventDefault();
+    }else if(e.touches.length===1&&_scale>1){
+      const p=localPt(e.touches[0].clientX,e.touches[0].clientY);_pan={x:p.x,y:p.y,tx:_tx,ty:_ty};
     }
   },{passive:false});
   document.addEventListener('touchmove',e=>{
     if(!isInVidWrap(e.target))return;
-    if(e.touches.length===2){
-      const d=dist(e.touches);
-      _scale=Math.min(5,Math.max(1,_startScale*(d/_lastDist)));
-      applyZoom();
+    if(e.touches.length===2&&_p0){
+      const d=dist(e.touches),m=mid(e.touches);
+      _scale=Math.min(6,Math.max(1,_s0*(d/_lastDist)));
+      // Точка контента, которая была под пальцами, остаётся под ними (и следует за ними)
+      _tx=m.x-(_p0.x-_x0)*(_scale/_s0);_ty=m.y-(_p0.y-_y0)*(_scale/_s0);
+      clampPan();applyZoom();
+      e.preventDefault();
+    }else if(e.touches.length===1&&_pan){
+      const p=localPt(e.touches[0].clientX,e.touches[0].clientY);
+      _tx=_pan.tx+(p.x-_pan.x);_ty=_pan.ty+(p.y-_pan.y);
+      clampPan();applyZoom();
       e.preventDefault();
     }
   },{passive:false});
   document.addEventListener('touchend',e=>{
-    if(e.touches.length<2&&_scale>1){
-      const h=$('vidZoomHint');
-      if(h&&!h._shown){h._shown=true;h.classList.add('show');setTimeout(()=>h.classList.remove('show'),2000);}
-    }
+    if(e.touches.length<2)_p0=null;
+    if(e.touches.length===0)_pan=null;
+    if(_scale<=1.02&&!_p0){_scale=1;_tx=0;_ty=0;applyZoom(true);} // почти 1 — аккуратно в исходное
   },{passive:true});
+  // Колёсико на ПК — тоже зум к курсору
+  document.addEventListener('wheel',e=>{
+    if(!isInVidWrap(e.target)||!e.ctrlKey&&!e.altKey)return;
+    e.preventDefault();
+    const p=localPt(e.clientX,e.clientY),s0=_scale;
+    _scale=Math.min(6,Math.max(1,_scale*(e.deltaY<0?1.12:1/1.12)));
+    _tx=p.x-(p.x-_tx)*(_scale/s0);_ty=p.y-(p.y-_ty)*(_scale/s0);clampPan();applyZoom();
+  },{passive:false});
 
   // Ориентация экрана — fullscreen при landscape
   function handleOrientation(){
@@ -1217,7 +1245,12 @@ window.addEventListener('click',e=>{
     $('themePanel').classList.remove('show');
 },true);
 
+// Только при смене ШИРИНЫ (поворот экрана). На телефоне клавиатура меняет высоту окна —
+// раньше это закрывало шторку со списком чатов прямо во время набора в поиске
+let _lastVw=window.innerWidth;
 window.addEventListener('resize',()=>{
+  if(window.innerWidth===_lastVw)return;
+  _lastVw=window.innerWidth;
   setupMobile();
   if(window.innerWidth>640){$('sidebar').classList.remove('open');$('sbOverlay').classList.remove('show');}
 });

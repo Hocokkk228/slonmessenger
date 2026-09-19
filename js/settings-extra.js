@@ -348,8 +348,8 @@ function _spAddRecFolder(k){
 }
 function _spFolderMenu(id,btn){
   const m=document.createElement('div');m.className='sp-menu show sp-float-menu';
-  const r=btn.getBoundingClientRect(),pr=$('spPanel').getBoundingClientRect();
-  m.style.cssText=`top:${r.bottom-pr.top}px;right:${pr.right-r.right}px`;
+  const r=btn.getBoundingClientRect(),pr=$('spPanel').getBoundingClientRect(),z=_zoomOf($('spPanel'));
+  m.style.cssText=`top:${(r.bottom-pr.top)/z}px;right:${(pr.right-r.right)/z}px`;
   m.innerHTML=`<button class="sp-menu-item" onclick="this.parentElement.remove();_spFolderEdit('${id}')">${_spSvg('pencil')}<span>Изменить</span></button>
     <button class="sp-menu-item danger" onclick="this.parentElement.remove();_spFolderDelete('${id}')">${_spSvg('trash')}<span>Удалить</span></button>`;
   $('spPanel').appendChild(m);
@@ -962,8 +962,8 @@ function _grpMemMenu(gid,pid,btn){
   const g=groups[gid];if(!g)return;
   const inv=g.canInvite&&g.canInvite[pid];
   const m=document.createElement('div');m.className='sp-menu show sp-float-menu';
-  const ov=$('chInfoOverlay'),r=btn.getBoundingClientRect(),or=ov.getBoundingClientRect();
-  m.style.cssText=`position:absolute;top:${r.bottom-or.top+ov.scrollTop}px;right:${or.right-r.right}px`;
+  const ov=$('chInfoOverlay'),r=btn.getBoundingClientRect(),or=ov.getBoundingClientRect(),z=_zoomOf(ov);
+  m.style.cssText=`position:absolute;top:${(r.bottom-or.top)/z+ov.scrollTop}px;right:${(or.right-r.right)/z}px`;
   m.innerHTML=`<button class="sp-menu-item" onclick="this.parentElement.remove();grpToggleInvite('${gid}','${pid}');setTimeout(()=>showGroupPanel('${gid}'),150)">${_spSvg('personAdd')}<span>${inv?'Запретить приглашать':'Разрешить приглашать'}</span></button>
     <button class="sp-menu-item danger" onclick="this.parentElement.remove();grpKick('${gid}','${pid}')">${_spSvg('block')}<span>Удалить из группы</span></button>`;
   ov.appendChild(m);
@@ -1010,6 +1010,57 @@ function _menuLabelHtml(label){
   const ico=m&&_MENU_EMOJI_ICONS[m[1]];
   return ico?`${_spSvg(ico)}<span>${esc(m[2])}</span>`:`<span>${esc(label)}</span>`;
 }
+
+// Во сколько раз элемент увеличен CSS-зумом (для перевода координат экрана в его px)
+function _zoomOf(el){return el&&el.offsetWidth?el.getBoundingClientRect().width/el.offsetWidth:1;}
+
+// ════════════════════════════════════════
+// ── УДАЛЕНИЕ ЧАТА: насовсем, без «воскрешения» после перезагрузки ──
+// ════════════════════════════════════════
+function _deleteChatFull(id){
+  if(!id||id==='ai'||id==='saved'||id===SLON_CHANNEL_ID)return;
+  // Свой канал удалить нельзя (он вернётся из Firebase) — только скрыть в архив
+  if(id.startsWith('ch_')&&myChannels[id]&&(!myChannels[id].owner||myChannels[id].owner===myUsername)){
+    toast('Свой канал нельзя удалить — можно убрать его в архив');return;
+  }
+  const db=window._fbDb;
+  if(id.startsWith('g_')){
+    delete groups[id];delete grpHist[id];
+    try{_grpMsgListeners?.[id]?.();delete _grpMsgListeners[id];}catch(e){}
+    // Иначе группа приедет обратно из синхронизации между устройствами
+    if(db&&myUsername)window._fbRemove(window._fbRef(db,'user_groups/'+myUsername+'/'+id)).catch(()=>{});
+  }else if(id.startsWith('ch_')){
+    const u=id.slice(3);
+    delete subscribedChannels[id];delete chatHist[id];
+    try{_myChannelListeners?.[id]?.();delete _myChannelListeners[id];}catch(e){}
+    if(db&&myUsername){
+      window._fbRemove(window._fbRef(db,'channel_subs/'+u+'/'+myUsername)).catch(()=>{});
+      window._fbRemove(window._fbRef(db,'channel_subs_by_user/'+myUsername+'/'+u)).catch(()=>{});
+    }
+  }else{
+    delete chatHist[id];
+    try{_profileWatchers?.[id]?.();delete _profileWatchers[id];}catch(e){}
+    try{_presenceWatchers?.[id]?.();delete _presenceWatchers[id];}catch(e){}
+  }
+  delete peerNames[id];delete peerAvatars[id];
+  delete archivedChats[id];delete pinnedChats[id];delete mutedChats[id];
+  // Убираем и из папок
+  (myFolders||[]).forEach(f=>{f.chats=(f.chats||[]).filter(x=>x!==id);f.exclude=(f.exclude||[]).filter(x=>x!==id);});
+  if(typeof _foldersSave==='function'&&myFolders?.length)_foldersSave();
+  const el=$('si-'+id);
+  if(el){el.style.transition='opacity .22s,transform .22s';el.style.opacity='0';el.style.transform='translateX(-24px)';setTimeout(()=>el.remove(),220);}
+  if(activeChat===id)openChat('ai');
+  closePeerProfile?.();
+  saveAll();
+  if(typeof _arcUpdate==='function')setTimeout(_arcUpdate,240);
+  toast('Чат удалён');
+}
+
+// Сообщения, которые МОГУТ создать новый чат (настоящее сообщение/звонок/приглашение).
+// Служебные (hello, typing, read, мьют…) от незнакомого/удалённого — игнорируем,
+// иначе удалённый чат воскресает, когда собеседник просто заходит в сеть.
+const _CHAT_CREATING_TYPES=new Set(['msg','media_start','media_url','media_rtdb','file_start','call_incoming','call_offer','group_invite','group_add']);
+function _mayCreateChat(payload){return !!payload&&_CHAT_CREATING_TYPES.has(payload.type);}
 
 // ── ЗАПУСК ──
 document.addEventListener('DOMContentLoaded',()=>{
