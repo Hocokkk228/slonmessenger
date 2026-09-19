@@ -289,7 +289,7 @@ async function _publishMyProfile(oldUsername){
     if(!myProfileBg&&existing.profileBg){myProfileBg=existing.profileBg;localChanged=true;}
     if(localChanged){updateProfileDisplay();setMyLabel();saveAll();}
 
-    const data={nick,avatar,bio,username:myUsername,iid:myInternalId,profileBg,bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',ts:Date.now()};
+    const data={nick,avatar,bio,username:myUsername,iid:myInternalId,profileBg,bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',linkedChannel:myLinkedChannel||'',ts:Date.now()};
     window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
 
     if(oldUsername&&oldUsername!==myUsername){
@@ -301,7 +301,7 @@ async function _publishMyProfile(oldUsername){
     const data={nick:myNick||'',avatar:myAvatar||null,bio:myBio||'',
       username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',
       bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',
-      ts:Date.now()};
+      linkedChannel:myLinkedChannel||'',ts:Date.now()};
     window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
   }
 }
@@ -333,6 +333,7 @@ function _fetchProfile(pid){
     if(d.profileBg)peerProfileBgs[pid]=d.profileBg;
     if(d.bgColor!==undefined)peerProfileBgColors[pid]=d.bgColor||'';
     if(d.bgPattern!==undefined)peerProfilePatterns[pid]=d.bgPattern||'';
+    peerLinkedChannels[pid]=d.linkedChannel||'';
     // Если username изменился — следим и за новым профилем
     if(newUsername!==pid&&!_profileWatchers[newUsername]){
       _watchPresence(newUsername);

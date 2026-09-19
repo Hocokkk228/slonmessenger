@@ -920,3 +920,169 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .vr-mini-timer{font-size:11px;color:var(--text2);}
 .vr-mini-end{background:#ef4444;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .vr-mini-end svg{width:16px;height:16px;fill:#fff;}
+/* ════════════════════════════════════════════════════════
+   МОЙ ПРОФИЛЬ + НАСТРОЙКИ (панель в сайдбаре, как в Telegram)
+   ════════════════════════════════════════════════════════ */
+.sp-panel{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:var(--bg1);transform:translateX(100%);visibility:hidden;transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s linear .42s;overflow:hidden;}
+.sp-panel.open{transform:translateX(0);visibility:visible;transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s;}
+/* Список чатов слегка уезжает влево и темнеет — эффект глубины */
+.sidebar .sb-search,.sidebar .sb-list,.sidebar .sb-global,.sidebar .sb-section-hdr,.sidebar .sb-archive{transition:transform .42s cubic-bezier(.32,.72,0,1),opacity .3s ease;}
+.sidebar .fab-wrap{transition:opacity .25s ease,transform .3s cubic-bezier(.32,.72,0,1);}
+.sidebar.sp-open .fab-wrap{opacity:0;transform:scale(.6);pointer-events:none;}
+.sidebar.sp-open .sb-search,.sidebar.sp-open .sb-list,.sidebar.sp-open .sb-global,.sidebar.sp-open .sb-section-hdr,.sidebar.sp-open .sb-archive{transform:translateX(-22%);opacity:.35;}
+
+/* Верхняя панель: прозрачная поверх фона профиля, при прокрутке — сплошная */
+.sp-topbar{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:4px;padding:8px;color:#fff;transition:background .25s ease,color .25s ease,box-shadow .25s ease;}
+.sp-topbar.solid{background:var(--bg2);color:var(--text1);box-shadow:0 1px 0 var(--border);}
+.sp-tb-title{flex:1;font-size:18px;font-weight:700;padding-left:6px;letter-spacing:.2px;text-shadow:0 1px 6px rgba(0,0,0,.25);}
+.sp-topbar.solid .sp-tb-title{text-shadow:none;}
+.sp-tb-btn{width:40px;height:40px;border:none;border-radius:50%;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit;flex-shrink:0;transition:background .15s;}
+.sp-tb-btn:hover{background:rgba(255,255,255,.14);}
+.sp-topbar.solid .sp-tb-btn:hover,.ci-hdr .sp-tb-btn:hover{background:var(--hover);}
+.sp-tb-btn svg{width:22px;height:22px;fill:currentColor;}
+
+.sp-menu{position:absolute;top:50px;right:10px;min-width:210px;padding:6px;border-radius:14px;background:var(--bg2);background:color-mix(in srgb,var(--bg2) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--border);box-shadow:0 14px 40px rgba(0,0,0,.4);transform-origin:top right;opacity:0;transform:scale(.9);pointer-events:none;transition:opacity .16s ease,transform .2s cubic-bezier(.32,.72,0,1);}
+.sp-menu.show{opacity:1;transform:scale(1);pointer-events:auto;}
+.sp-menu-item{display:flex;align-items:center;gap:14px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:none;color:var(--text1);font-size:14px;cursor:pointer;text-align:left;}
+.sp-menu-item:hover{background:var(--hover);}
+.sp-menu-item svg{width:20px;height:20px;fill:var(--text2);flex-shrink:0;}
+.sp-menu-item.danger{color:var(--red);}
+.sp-menu-item.danger svg{fill:var(--red);}
+
+.sp-scroll{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
+.sp-scroll::-webkit-scrollbar{width:4px;}
+.sp-scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+
+/* Шапка профиля с градиентом */
+.sp-hero{position:relative;display:flex;flex-direction:column;align-items:center;padding:62px 16px 22px;overflow:hidden;}
+.sp-hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(135deg,var(--accent),var(--accent2));background-size:60px 60px,cover;transition:background .3s ease;}
+.sp-hero>*:not(.sp-hero-bg){position:relative;z-index:1;}
+.sp-av{width:108px;height:108px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.25);position:relative;}
+.sp-av img{width:100%;height:100%;object-fit:cover;}
+.sp-av .sp-av-letter{font-size:44px;font-weight:700;color:#fff;background:none;}
+.sp-av-cam{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s;}
+.sp-av:hover .sp-av-cam{opacity:1;}
+.sp-av-cam svg{width:32px;height:32px;fill:#fff;}
+.sp-name{margin-top:14px;font-size:22px;font-weight:700;color:#fff;text-align:center;text-shadow:0 1px 8px rgba(0,0,0,.25);word-break:break-word;}
+.sp-badge{font-size:16px;vertical-align:middle;}
+.sp-status{margin-top:4px;font-size:14px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px;}
+.sp-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);}
+.sp-dot.on{background:#4ade80;box-shadow:0 0 0 2px rgba(74,222,128,.25);}
+
+/* Карточки */
+.sp-body{padding:10px 0 18px;}
+.sp-card{margin:0 10px 10px;background:var(--bg2);border-radius:18px;padding:6px 0;overflow:hidden;}
+.sp-panel.open .sp-card{animation:spCardIn .5s cubic-bezier(.32,.72,0,1) both;animation-delay:calc(var(--i,0)*45ms + 120ms);}
+.sp-panel.open .sp-av{animation:spAvIn .5s cubic-bezier(.32,.72,0,1) both .08s;}
+.sp-panel.open .sp-name,.sp-panel.open .sp-status{animation:spCardIn .45s cubic-bezier(.32,.72,0,1) both .14s;}
+@keyframes spCardIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+@keyframes spAvIn{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.sp-panel,.sp-panel.open{transition:none;}.sp-panel.open .sp-card,.sp-panel.open .sp-av,.sp-panel.open .sp-name,.sp-panel.open .sp-status{animation:none;}}
+
+.sp-row{display:flex;align-items:center;gap:18px;padding:9px 16px;cursor:pointer;transition:background .15s;text-decoration:none;color:inherit;}
+.sp-row:hover{background:var(--hover);}
+.sp-row:active{background:var(--bg3);}
+.sp-row-static{cursor:default;}
+.sp-row-static:hover{background:none;}
+.sp-row-multi{align-items:flex-start;}
+.sp-row-multi .sp-ico{margin-top:3px;}
+.sp-row-txt{flex:1;min-width:0;}
+.sp-row-title{font-size:15px;color:var(--text1);line-height:1.35;overflow-wrap:anywhere;}
+.sp-row:not(.sp-row-multi) .sp-row-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sp-row-title a{color:var(--accent);}
+.sp-row-sub{font-size:13px;color:var(--text2);margin-top:1px;}
+.sp-row-val{font-size:14px;color:var(--text2);flex-shrink:0;}
+.sp-row-act svg{width:20px;height:20px;fill:var(--text2);}
+.sp-row-danger .sp-row-title{color:var(--red);}
+.sp-muted{color:var(--text2);}
+.sp-ico-pad{width:32px;flex-shrink:0;}
+.sp-footer{text-align:center;font-size:12px;color:var(--text2);opacity:.7;padding:6px 0 4px;}
+
+/* Иконки настроек — как в Telegram: белый глиф на цветном скруглённом квадрате */
+.sp-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 -1px 0 rgba(0,0,0,.12);}
+.sp-ico svg{width:20px;height:20px;fill:#fff;}
+.sp-c-red{background:linear-gradient(180deg,#ff6b61,#f23d33);}
+.sp-c-green{background:linear-gradient(180deg,#6fdc6c,#36b640);}
+.sp-c-steel{background:linear-gradient(180deg,#a3b1c2,#7a8899);}
+.sp-c-gray{background:linear-gradient(180deg,#a5aeb8,#7c858f);}
+.sp-c-blue{background:linear-gradient(180deg,#5ab3ff,#2a86f0);}
+.sp-c-cyan{background:linear-gradient(180deg,#56c8fb,#1a9be6);}
+.sp-c-pink{background:linear-gradient(180deg,#ff6a96,#ef2d6a);}
+.sp-c-violet{background:linear-gradient(180deg,#b58cff,#8756f2);}
+.sp-c-purple{background:linear-gradient(180deg,#d38cff,#9b4ce8);}
+.sp-c-orange{background:linear-gradient(180deg,#ffb547,#ff9000);}
+.sp-c-premium{background:linear-gradient(135deg,#6e8dff 0%,#a66bff 55%,#e070d8 100%);}
+
+/* Карточка канала */
+.sp-ch-hdr{display:flex;align-items:center;gap:8px;padding:6px 16px 2px;}
+.sp-ch-lbl{font-size:15px;font-weight:600;color:var(--accent);}
+.sp-ch-subs{font-size:12px;font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);padding:1px 7px;border-radius:6px;}
+.sp-ch-edit{margin-left:auto;font-size:12px;color:var(--text2);cursor:pointer;}
+.sp-ch-edit:hover{color:var(--accent);}
+.sp-ch-row{display:flex;align-items:center;gap:14px;padding:8px 16px;cursor:pointer;transition:background .15s;}
+.sp-ch-row:hover{background:var(--hover);}
+.sp-ch-av,.sp-pick-av{width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.sp-ch-av img,.sp-pick-av img,.ci-av img{width:100%;height:100%;object-fit:cover;}
+.sp-av-letter{background:linear-gradient(180deg,#ff8a65,#e0503d);color:#fff;font-weight:700;font-size:18px;}
+.sp-ch-txt{flex:1;min-width:0;}
+.sp-ch-top{display:flex;align-items:baseline;gap:8px;}
+.sp-ch-name{flex:1;font-size:15px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sp-ch-time{font-size:12px;color:var(--text2);flex-shrink:0;}
+.sp-ch-prev{font-size:14px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.peer-prof-overlay .sp-peer-ch{margin:12px 12px 4px;background:var(--bg3);}
+
+/* Выбор канала */
+.sp-pick-list{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;max-height:320px;overflow-y:auto;}
+.sp-pick{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;cursor:pointer;color:var(--text1);}
+.sp-pick:hover{background:var(--hover);}
+.sp-pick-av{width:40px;height:40px;font-size:16px;}
+.sp-pick-txt{flex:1;min-width:0;font-size:15px;}
+.sp-pick-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--text2);flex-shrink:0;transition:all .15s;}
+.sp-pick.sel .sp-pick-radio{border-color:var(--accent);box-shadow:inset 0 0 0 4px var(--bg2);background:var(--accent);}
+
+/* Кастомизация профиля */
+.sp-cust-prev{height:150px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:12px;background-size:60px 60px,cover;transition:background .25s;}
+.sp-cust-av{width:62px;height:62px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.sp-cust-av img{width:100%;height:100%;object-fit:cover;}
+.sp-cust-name{margin-top:8px;color:#fff;font-weight:700;font-size:16px;text-shadow:0 1px 6px rgba(0,0,0,.3);}
+.sp-cust-st{color:rgba(255,255,255,.8);font-size:12px;}
+.sp-cust-lbl{font-size:13px;font-weight:600;color:var(--text2);margin:10px 0 8px;}
+.sp-lock{font-weight:600;color:#fbbf24;font-size:12px;margin-left:4px;}
+.sp-swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.sp-sw{aspect-ratio:1;border-radius:50%;border:none;cursor:pointer;box-shadow:0 0 0 2px transparent;transition:transform .15s,box-shadow .15s;}
+.sp-sw:hover{transform:scale(1.08);}
+.sp-sw.sel{box-shadow:0 0 0 2px var(--bg2),0 0 0 4px var(--accent);}
+.sp-cust-colors{display:flex;gap:10px;}
+.sp-cust-colors label{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg3);border-radius:12px;padding:6px 6px 6px 12px;font-size:14px;color:var(--text1);cursor:pointer;}
+.sp-cust-colors input{width:40px;height:30px;border:none;background:none;cursor:pointer;padding:0;}
+.sp-patterns{display:flex;flex-wrap:wrap;gap:6px;}
+.sp-pat{padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:13px;cursor:pointer;transition:all .15s;}
+.sp-pat.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--bg3));}
+.sp-prem-list{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text1);margin:4px 0 8px;}
+
+/* Переключатель */
+.sp-switch{width:40px;height:24px;border-radius:12px;background:var(--bg4);position:relative;flex-shrink:0;transition:background .2s;}
+.sp-switch::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .22s cubic-bezier(.32,.72,0,1);}
+.sp-switch.on{background:var(--accent);}
+.sp-switch.on::after{transform:translateX(16px);}
+
+/* ── ИНФОРМАЦИЯ О КАНАЛЕ ── */
+.ci-overlay{background:var(--bg1);}
+.ci-hdr{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:6px;padding:8px;background:var(--bg1);color:var(--text1);}
+.ci-title{flex:1;font-size:18px;font-weight:700;padding-left:6px;}
+.ci-top{display:flex;flex-direction:column;align-items:center;padding:10px 16px 18px;}
+.ci-av{width:112px;height:112px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 6px 24px rgba(0,0,0,.2);flex-shrink:0;}
+.ci-name{margin-top:14px;font-size:21px;font-weight:700;color:var(--text1);text-align:center;}
+.ci-subs{margin-top:3px;font-size:14px;color:var(--text2);}
+.ci-overlay .sp-card{margin:0 12px 12px;flex-shrink:0;}
+.ci-overlay.show .ci-top,.ci-overlay.show .sp-card,.ci-overlay.show .ci-tabs{animation:spCardIn .45s cubic-bezier(.32,.72,0,1) both .1s;}
+.ci-tabs{display:flex;gap:4px;margin:0 12px 8px;padding:4px;background:var(--bg2);border-radius:14px;flex-shrink:0;}
+.ci-tab{flex:1;padding:9px 0;border:none;border-radius:10px;background:none;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s,color .2s;}
+.ci-tab.sel{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);}
+.ci-content{margin:0 12px 16px;border-radius:14px;overflow:hidden;background:var(--bg2);min-height:80px;flex-shrink:0;}
+.ci-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.ci-cell{aspect-ratio:1;background:var(--bg3);cursor:pointer;overflow:hidden;}
+.ci-cell img{width:100%;height:100%;object-fit:cover;transition:transform .2s;}
+.ci-cell:hover img{transform:scale(1.05);}
+.ci-empty{padding:28px 16px;text-align:center;color:var(--text2);font-size:14px;}
+.ci-link .sp-row-title{color:var(--accent);}

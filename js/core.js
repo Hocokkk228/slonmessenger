@@ -220,6 +220,8 @@ let myProfilePattern='';
 let myChatWallpaper='none';
 let peerProfileBgColors={}; // pid->rgbColor
 let peerProfilePatterns={}; // pid->patternId
+let myLinkedChannel=''; // username своего канала, привязанного к профилю
+let peerLinkedChannels={}; // pid->username канала, привязанного к профилю
 let myChannels={}; // channelId -> {name, desc, username, bg, bgColor, bgPattern, avatar}
 let subscribedChannels={}; // channelId -> {name, desc, ...} — подписки
 let inMediaBufs={};
@@ -1599,6 +1601,7 @@ function saveAll(){
       localStorage.setItem(p+'premium',JSON.stringify(myPremium));
       localStorage.setItem(p+'bgColor',JSON.stringify(myProfileBgColor));
       localStorage.setItem(p+'bgPattern',JSON.stringify(myProfilePattern));
+      localStorage.setItem(p+'linkedCh',JSON.stringify(myLinkedChannel));
       localStorage.setItem(p+'chatWall',JSON.stringify(myChatWallpaper));
       localStorage.setItem(p+'piids',JSON.stringify(peerIids));
       localStorage.setItem(p+'pbgs2',JSON.stringify(peerProfileBgs));
@@ -1670,6 +1673,7 @@ function loadStorage(){
   myPremium=LS.get(p+'premium',false);
   myProfileBgColor=LS.get(p+'bgColor','');
   myProfilePattern=LS.get(p+'bgPattern','');
+  myLinkedChannel=LS.get(p+'linkedCh','');
   myChatWallpaper=LS.get(p+'chatWall','none');
   peerIids=LS.get(p+'piids',LS.get('sl_piids',{}));
   peerProfileBgs=LS.get(p+'pbgs2',LS.get('sl_pbgs2',{}));

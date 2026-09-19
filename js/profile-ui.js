@@ -38,7 +38,12 @@ function setTheme(t){applyTheme(t,true);}
 
 function toggleThemePanel(){$('themePanel').classList.toggle('show');}
 
-function openProfile(){
+// Мой профиль теперь открывается панелью в сайдбаре (settings-panel.js),
+// открытый чат справа остаётся на месте
+function openProfile(){openMyProfilePanel();}
+
+// Старый профиль во всю область чата — оставлен на всякий случай, нигде не вызывается
+function _openProfileLegacy(){
   currentView='profile';
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   showChatElements(false);$('profilePage').style.display='flex';
@@ -61,6 +66,7 @@ function openProfile(){
 function closeProfilePage(){$('profilePage').style.display='none';showChatElements(true);}
 
 function showPeerProfile(pid){
+  if(_isChannelId(pid)){showChannelInfo(pid);return;}
   const name=peerNames[pid]||('@'+pid);
   const av=peerAvatars[pid];
   const isOnline=_fbMode?!!_fbConns[pid]:(conns[pid]?.open);
@@ -155,6 +161,14 @@ function showPeerProfile(pid){
     </div>
   `;
 
+  // Канал, привязанный к профилю собеседника
+  const linkedCh=peerLinkedChannels[pid];
+  _spPeerOpenId=pid;
+  if(linkedCh){
+    infoEl.insertAdjacentHTML('afterbegin',`<div class="sp-card sp-peer-ch" id="peerLinkedChCard">${_spChannelCardInner(linkedCh)}</div>`);
+    _spLoadChannelData(linkedCh);
+  }
+
   // Консоль администратора
   const adminSec=$('peerAdminSection');
   if(isAdmin&&pid!==myUsername){
@@ -196,6 +210,7 @@ function showPeerProfile(pid){
 
 function closePeerProfile(){
   $('peerProfOverlay')?.classList.remove('show');
+  $('chInfoOverlay')?.classList.remove('show');
   $('peerProfBackdrop')?.classList.remove('show');
 }
 
@@ -284,7 +299,11 @@ function applyRgbProfile(){
 
 function _getProfileBgStyle(bgId,bgColor,pattern){
   let baseGrad;
-  if(bgColor){
+  if(bgColor&&bgColor.includes('|')){
+    // Двухцветный градиент как в Telegram: светлее в центре (за аватаркой), темнее к краям
+    const [c1,c2]=bgColor.split('|');
+    baseGrad=`radial-gradient(circle at 50% 38%,${c1} 0%,${c2} 85%)`;
+  }else if(bgColor){
     // RGB цвет — делаем градиент из него
     baseGrad=`linear-gradient(135deg,${bgColor},${bgColor}cc)`;
   }else{
@@ -378,6 +397,8 @@ function updateProfileDisplay(){
   }
   const bv2=$('profBioVal2');if(bv2)bv2.textContent=myBio||'Добавить описание…';
   setMyLabel();
+  // Панель профиля в сайдбаре — перерисовываем, если открыта
+  if(typeof _spRefresh==='function')_spRefresh();
 }
 
 function setProfileBg(id){

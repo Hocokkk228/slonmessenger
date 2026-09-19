@@ -96,6 +96,7 @@ function showChatElements(show){
 
 function onChatHeaderClick(){
   if(activeChat==='ai'||activeChat.startsWith('g_')||currentView==='profile')return;
+  if(_isChannelId(activeChat)){showChannelInfo(activeChat);return;}
   showPeerProfile(activeChat);
 }
 
@@ -497,6 +498,7 @@ function backToList(){if(window.innerWidth<=640)toggleSidebar();}
 function switchTab
 (tab){
   if(tab==='chats'){
+    closeMyProfilePanel();
     $('bn-chats').classList.add('active');$('bn-profile').classList.remove('active');
     if(currentView==='profile'){closeProfilePage();openChat(activeChat);}
   }else if(tab==='profile'){
