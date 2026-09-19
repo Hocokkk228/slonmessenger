@@ -60,90 +60,68 @@
 <!-- ── USERNAME SETUP OVERLAY ── -->
 <div class="username-overlay" id="usernameOverlay">
   <div class="username-card" id="authCard">
+    <!-- Логотип: 3D-слон с искрами, его можно крутить -->
+    <div class="auth-logo" id="authLogo">
+      <canvas class="auth-sparks" id="authSparks"></canvas>
+      <div class="auth-3d" id="auth3d"><div class="prem-fallback auth-fb">🐘</div></div>
+    </div>
 
-    <!-- ══ ЭКРАН ВХОДА ══ -->
-    <div id="authLogin">
-      <span class="username-logo">🐘</span>
-      <h2>Войти в SLON</h2>
-      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Введи юзернейм и пароль</p>
-      <div class="username-inp-wrap">
-        <span class="username-prefix">@</span>
-        <input class="username-inp" id="loginUsernameInp" placeholder="юзернейм" maxlength="20"
+    <!-- ══ ВХОД ══ -->
+    <div id="authLogin" class="auth-sec">
+      <div class="auth-glass auth-hello"><h1>SLON</h1><p>С возвращением! Введи юзернейм и пароль.</p></div>
+      <div class="auth-h">Вход</div>
+      <label class="auth-field"><span class="auth-at">@</span>
+        <input class="username-inp" id="loginUsernameInp" placeholder="Юзернейм" maxlength="20"
           autocomplete="username" autocapitalize="none" spellcheck="false"
           oninput="sanitizeUsernameInput(this)"
-          onkeydown="if(event.key==='Enter')$('loginPassInp').focus()">
-      </div>
-      <div class="username-inp-wrap" style="margin-top:10px">
-        <span class="username-prefix" style="font-size:18px">🔑</span>
-        <input class="username-inp" id="loginPassInp" type="password" placeholder="пароль"
+          onkeydown="if(event.key==='Enter')$('loginPassInp').focus()"></label>
+      <label class="auth-field">
+        <input class="username-inp" id="loginPassInp" type="password" placeholder="Пароль"
           autocomplete="current-password"
-          onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
+          onkeydown="if(event.key==='Enter')doLogin()"></label>
       <div class="username-error" id="loginError" style="display:none"></div>
-      <button class="username-btn" onclick="doLogin()" style="margin-top:14px">Войти 🐘</button>
-      <p style="margin-top:18px;font-size:13px;color:var(--text2);text-align:center">
-        Нет аккаунта?
-        <a href="#" class="auth-link" onclick="showAuthRegister();return false">Зарегистрируйтесь здесь</a>
-      </p>
+      <div class="auth-alt">Нет аккаунта? <a href="#" class="auth-link" onclick="_authSwitch('reg');return false">Зарегистрироваться</a></div>
+      <button class="username-btn" onclick="doLogin()">Войти</button>
     </div>
 
-    <!-- ══ ЭКРАН РЕГИСТРАЦИИ ══ -->
-    <div id="authRegister" style="display:none">
-      <span class="username-logo">🐘</span>
-      <h2>Создать аккаунт</h2>
-      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Выбери юзернейм и придумай пароль</p>
-      <div class="username-inp-wrap">
-        <span class="username-prefix">@</span>
-        <input class="username-inp" id="regUsernameInp" placeholder="твой_юзернейм" maxlength="20"
+    <!-- ══ РЕГИСТРАЦИЯ ══ -->
+    <div id="authRegister" class="auth-sec" style="display:none">
+      <div class="auth-glass auth-hello"><h1>Добро пожаловать</h1><p>Выбери юзернейм и придумай пароль.</p></div>
+      <div class="auth-h">Регистрация</div>
+      <label class="auth-field"><span class="auth-at">@</span>
+        <input class="username-inp" id="regUsernameInp" placeholder="Юзернейм" maxlength="20"
           autocomplete="username" autocapitalize="none" spellcheck="false"
           oninput="sanitizeUsernameInput(this)"
-          onkeydown="if(event.key==='Enter')$('regPassInp').focus()">
-      </div>
-      <div class="username-hint">Только латинские буквы, цифры и _ · 3–20 символов</div>
-      <div class="username-inp-wrap" style="margin-top:10px">
-        <span class="username-prefix" style="font-size:18px">🔑</span>
-        <input class="username-inp" id="regPassInp" type="password" placeholder="пароль (мин. 6 символов)"
+          onkeydown="if(event.key==='Enter')$('regPassInp').focus()"></label>
+      <div class="username-hint">Латинские буквы, цифры и _ · от 3 до 20 символов</div>
+      <label class="auth-field">
+        <input class="username-inp" id="regPassInp" type="password" placeholder="Пароль (мин. 6 символов)"
           autocomplete="new-password"
-          onkeydown="if(event.key==='Enter')$('regPassConfInp').focus()">
-      </div>
-      <div class="username-inp-wrap" style="margin-top:10px">
-        <span class="username-prefix" style="font-size:18px">✅</span>
-        <input class="username-inp" id="regPassConfInp" type="password" placeholder="повтори пароль"
+          onkeydown="if(event.key==='Enter')$('regPassConfInp').focus()"></label>
+      <label class="auth-field">
+        <input class="username-inp" id="regPassConfInp" type="password" placeholder="Повтори пароль"
           autocomplete="new-password"
-          onkeydown="if(event.key==='Enter')doRegister()">
-      </div>
+          onkeydown="if(event.key==='Enter')doRegister()"></label>
       <div class="username-error" id="regError" style="display:none"></div>
-      <button class="username-btn" onclick="doRegister()" style="margin-top:14px">Зарегистрироваться 🐘</button>
-      <p style="margin-top:18px;font-size:13px;color:var(--text2);text-align:center">
-        Уже есть аккаунт?
-        <a href="#" class="auth-link" onclick="showAuthLogin();return false">Войти</a>
-      </p>
+      <div class="auth-alt">Уже есть аккаунт? <a href="#" class="auth-link" onclick="_authSwitch('login');return false">Войти</a></div>
+      <button class="username-btn" onclick="doRegister()">Далее</button>
     </div>
 
-    <!-- ══ ЗАПРОС ПАРОЛЯ ДЛЯ УЖЕ ЗАРЕГАННЫХ ══ -->
-    <div id="authSetPassword" style="display:none">
-      <span class="username-logo">🔒</span>
-      <h2>Защити аккаунт</h2>
-      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Привет, <b id="authSetPassUsername"></b>! В SLON появились пароли — установи пароль чтобы никто не мог войти в твой аккаунт.</p>
-      <div class="username-inp-wrap">
-        <span class="username-prefix" style="font-size:18px">🔑</span>
-        <input class="username-inp" id="setPassInp" type="password" placeholder="новый пароль (мин. 6 символов)"
+    <!-- ══ УСТАНОВКА ПАРОЛЯ ДЛЯ СТАРЫХ АККАУНТОВ ══ -->
+    <div id="authSetPassword" class="auth-sec" style="display:none">
+      <div class="auth-glass auth-hello"><h1>Защити аккаунт</h1><p>Привет, <b id="authSetPassUsername"></b>! Установи пароль, чтобы никто не мог войти в твой аккаунт.</p></div>
+      <label class="auth-field">
+        <input class="username-inp" id="setPassInp" type="password" placeholder="Новый пароль (мин. 6 символов)"
           autocomplete="new-password"
-          onkeydown="if(event.key==='Enter')$('setPassConfInp').focus()">
-      </div>
-      <div class="username-inp-wrap" style="margin-top:10px">
-        <span class="username-prefix" style="font-size:18px">✅</span>
-        <input class="username-inp" id="setPassConfInp" type="password" placeholder="повтори пароль"
+          onkeydown="if(event.key==='Enter')$('setPassConfInp').focus()"></label>
+      <label class="auth-field">
+        <input class="username-inp" id="setPassConfInp" type="password" placeholder="Повтори пароль"
           autocomplete="new-password"
-          onkeydown="if(event.key==='Enter')doSetPassword()">
-      </div>
+          onkeydown="if(event.key==='Enter')doSetPassword()"></label>
       <div class="username-error" id="setPassError" style="display:none"></div>
-      <button class="username-btn" onclick="doSetPassword()" style="margin-top:14px">Установить пароль 🔒</button>
-      <p style="margin-top:12px;font-size:12px;color:var(--text2);text-align:center">
-        <a href="#" class="auth-link" style="font-size:12px" onclick="skipSetPassword();return false">Пропустить (не рекомендуется)</a>
-      </p>
+      <div class="auth-alt"><a href="#" class="auth-link" onclick="skipSetPassword();return false">Пропустить (не рекомендуется)</a></div>
+      <button class="username-btn" onclick="doSetPassword()">Установить пароль</button>
     </div>
-
   </div>
 </div>
 

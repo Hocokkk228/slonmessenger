@@ -73,13 +73,13 @@ function _spPremiumInfo(){
 }
 
 // Искры-звёздочки вокруг слона (canvas 2D)
-function _premSparks(cv){
+function _premSparks(cv,colsOpt){
   if(!cv)return ()=>{};
   const ctx=cv.getContext('2d');let raf=0,alive=true;
   const dpr=Math.min(window.devicePixelRatio||1,2);
   const resize=()=>{cv.width=cv.clientWidth*dpr;cv.height=cv.clientHeight*dpr;};
   resize();
-  const cols=['#a78bfa','#818cf8','#c084fc','#93c5fd','#f0abfc'];
+  const cols=colsOpt||['#a78bfa','#818cf8','#c084fc','#93c5fd','#f0abfc'];
   const P=Array.from({length:46},()=>({a:Math.random()*Math.PI*2,r:.28+Math.random()*.5,s:2+Math.random()*4.5,
     ph:Math.random()*6.28,sp:.6+Math.random()*1.6,c:cols[Math.floor(Math.random()*cols.length)],dr:(Math.random()-.5)*.0012}));
   const star=(x,y,s,al,c)=>{
@@ -106,111 +106,124 @@ function _premSparks(cv){
 
 // 3D-слон из примитивов Three.js: крутится мышью/пальцем,
 // через ~2 с после отпускания плавно возвращается в исходную позу
-function _premElephant(THREE,host){
+// 3D-слон (детальная модель из гладких примитивов): тело и голова — деформированные
+// сферы высокой плотности, уши — выдавленные плоские формы, хобот и бивни — сужающиеся
+// трубки по кривым, ноги — тела вращения со ступнями и ногтями.
+// opts: {color, dark, tusk, rimColor, fillColor, rest:{x,y}, scale}
+function _premElephant(THREE,host,opts){
   if(!host)return ()=>{};
-  // Эмодзи-заглушку не удаляем — она спрячется, когда отрисуется первый кадр
+  opts=Object.assign({color:0x8f7bff,dark:0x6b58e6,tusk:0xfdf4ff,rimColor:0xff7ad9,fillColor:0x7aa2ff,rest:{x:.12,y:-.55},scale:.95},opts||{});
   const W=host.clientWidth||260,H=host.clientHeight||200;
   let renderer;
   try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}
-  catch(e){console.warn('[SLON] WebGL недоступен:',e);return ()=>{};} // остаётся эмодзи-слон
+  catch(e){console.warn('[SLON] WebGL недоступен:',e);return ()=>{};}
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setSize(W,H);
   renderer.outputEncoding=THREE.sRGBEncoding;
   host.appendChild(renderer.domElement);
   const scene=new THREE.Scene();
-  const cam=new THREE.PerspectiveCamera(32,W/H,.1,100);
-  cam.position.set(0,.35,7.4);
+  const cam=new THREE.PerspectiveCamera(30,W/H,.1,100);
+  cam.position.set(0,.3,8.2);
+  scene.add(new THREE.AmbientLight(opts.fillColor,.5));
+  const key=new THREE.DirectionalLight(0xffffff,1.05);key.position.set(-3,4,5);scene.add(key);
+  const rim=new THREE.PointLight(opts.rimColor,1.3,20);rim.position.set(4,1.5,2.5);scene.add(rim);
+  const fill=new THREE.DirectionalLight(opts.fillColor,.6);fill.position.set(2,-2,4);scene.add(fill);
 
-  // Свет: холодный слева, розовый справа — даёт «премиум»-градиент как у звезды Telegram
-  scene.add(new THREE.AmbientLight(0x8a7cff,.55));
-  const l1=new THREE.DirectionalLight(0x7aa2ff,1.15);l1.position.set(-4,3,5);scene.add(l1);
-  const l2=new THREE.PointLight(0xff7ad9,1.4,20);l2.position.set(4,1,3);scene.add(l2);
-  const l3=new THREE.DirectionalLight(0xffffff,.45);l3.position.set(0,5,2);scene.add(l3);
-
-  const mat=new THREE.MeshPhysicalMaterial({color:0x8f7bff,roughness:.32,metalness:.08,clearcoat:.9,clearcoatRoughness:.25});
-  const matDark=new THREE.MeshStandardMaterial({color:0x6b58e6,roughness:.45});
-  const matTusk=new THREE.MeshPhysicalMaterial({color:0xfdf4ff,roughness:.25,clearcoat:1});
-  const matEye=new THREE.MeshStandardMaterial({color:0x1b1238,roughness:.2});
-
+  const mat=new THREE.MeshPhysicalMaterial({color:opts.color,roughness:.34,metalness:.05,clearcoat:.85,clearcoatRoughness:.22});
+  const matDark=new THREE.MeshPhysicalMaterial({color:opts.dark,roughness:.42,clearcoat:.5,side:THREE.DoubleSide});
+  const matTusk=new THREE.MeshPhysicalMaterial({color:opts.tusk,roughness:.22,clearcoat:1});
+  const matEye=new THREE.MeshStandardMaterial({color:0x10091f,roughness:.15});
+  const matNail=new THREE.MeshStandardMaterial({color:0xf3eefc,roughness:.4});
   const g=new THREE.Group();
-  const add=(geo,m,pos,scale,rot)=>{const o=new THREE.Mesh(geo,m);o.position.set(...pos);if(scale)o.scale.set(...scale);if(rot)o.rotation.set(...rot);g.add(o);return o;};
-  const S=(r,w=32,h=24)=>new THREE.SphereGeometry(r,w,h);
-  // Тело и голова
-  add(S(1),mat,[0,0,0],[1.35,1.02,1.05]);
-  add(S(.72),mat,[1.25,.42,0]);
-  // Уши — сплюснутые сферы
-  add(S(.62),matDark,[1.02,.5,.62],[.18,.95,.78],[0,-.5,.15]);
-  add(S(.62),matDark,[1.02,.5,-.62],[.18,.95,.78],[0,.5,.15]);
-  // Хобот — трубка по кривой, закрученная вверх
-  const curve=new THREE.CatmullRomCurve3([
-    new THREE.Vector3(1.78,.35,0),new THREE.Vector3(2.12,-.1,0),new THREE.Vector3(2.2,-.62,0),
-    new THREE.Vector3(2.02,-.98,0),new THREE.Vector3(1.8,-.92,0),new THREE.Vector3(1.78,-.72,0)]);
-  const trunkGeo=new THREE.TubeGeometry(curve,48,.17,16,false);
-  // Хобот сужается к кончику
-  const pa=trunkGeo.attributes.position;const tmp=new THREE.Vector3();
-  for(let i=0;i<pa.count;i++){
-    const seg=Math.floor(i/17)/48;const pt=curve.getPoint(Math.min(seg,1));
-    tmp.fromBufferAttribute(pa,i).sub(pt).multiplyScalar(1-seg*.45).add(pt);pa.setXYZ(i,tmp.x,tmp.y,tmp.z);
-  }
-  trunkGeo.computeVertexNormals();
-  add(trunkGeo,mat,[0,0,0]);
-  // Бивни
-  add(new THREE.ConeGeometry(.07,.42,16),matTusk,[1.78,.02,.26],null,[0,0,-2.3]);
-  add(new THREE.ConeGeometry(.07,.42,16),matTusk,[1.78,.02,-.26],null,[0,0,-2.3]);
-  // Глаза
-  add(S(.075,16,12),matEye,[1.72,.62,.3]);
-  add(S(.075,16,12),matEye,[1.72,.62,-.3]);
-  // Ноги
-  [[.72,.5],[.72,-.5],[-.72,.5],[-.72,-.5]].forEach(([x,z])=>add(new THREE.CylinderGeometry(.28,.3,.9,20),mat,[x,-1.05,z]));
-  // Хвост
-  add(new THREE.CylinderGeometry(.04,.06,.6,10),matDark,[-1.42,.05,0],null,[0,0,-.6]);
-  g.position.set(-.35,.12,0);
-  g.scale.setScalar(.95);
-  scene.add(g);
+  const mesh=(geo,m,p,r,s)=>{const o=new THREE.Mesh(geo,m);if(p)o.position.set(...p);if(r)o.rotation.set(...r);if(s)o.scale.set(...s);g.add(o);return o;};
+  // Деформация вершин сферы функцией f(v)
+  const deform=(geo,f)=>{const a=geo.attributes.position,v=new THREE.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i);f(v);a.setXYZ(i,v.x,v.y,v.z);}geo.computeVertexNormals();return geo;};
+  // Тело: вытянутое, с горбом на холке и провисшим животом
+  mesh(deform(new THREE.SphereGeometry(1,72,54),v=>{
+    v.x*=1.42;v.z*=1.02;
+    if(v.y>0)v.y*=1+.12*Math.exp(-Math.pow(v.x-.45,2)*2.2);
+    else v.y*=1.06;
+    if(v.x<-.6)v.z*=.96;
+  }),mat);
+  // Голова: большой лоб, чуть приплюснутая спереди
+  mesh(deform(new THREE.SphereGeometry(.74,64,48),v=>{
+    if(v.y>0)v.y*=1.1;
+    if(v.x>0)v.x*=.9;
+    v.z*=1.02;
+  }),mat,[1.42,.5,0]);
+  // Уши — плоские закруглённые пластины с толщиной
+  const ear=new THREE.Shape();
+  ear.moveTo(0,.45);ear.bezierCurveTo(.55,.62,.82,.18,.7,-.25);
+  ear.bezierCurveTo(.6,-.62,.22,-.72,.02,-.42);ear.bezierCurveTo(-.08,-.1,-.06,.25,0,.45);
+  const earGeo=new THREE.ExtrudeGeometry(ear,{depth:.04,bevelEnabled:true,bevelThickness:.035,bevelSize:.04,bevelSegments:6,curveSegments:32});
+  mesh(earGeo,matDark,[1.2,.62,.46],[0,-1.25,-.12]);
+  mesh(earGeo,matDark,[1.2,.62,-.46],[0,1.25+Math.PI,.12],[1,1,-1]);
+  // Хобот: сужающаяся трубка, кончик загнут вверх
+  const trunkC=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(1.95,.38,0),new THREE.Vector3(2.2,.02,0),new THREE.Vector3(2.28,-.42,0),
+    new THREE.Vector3(2.16,-.86,0),new THREE.Vector3(1.96,-1.02,0),new THREE.Vector3(1.86,-.88,0)]);
+  const TS=96,RS=28;
+  const trunk=new THREE.TubeGeometry(trunkC,TS,.2,RS,false);
+  {const a=trunk.attributes.position,v=new THREE.Vector3();
+    for(let i=0;i<a.count;i++){const seg=Math.floor(i/(RS+1))/TS,c=trunkC.getPoint(Math.min(seg,1));
+      v.fromBufferAttribute(a,i).sub(c).multiplyScalar(1-seg*.5).add(c);a.setXYZ(i,v.x,v.y,v.z);}
+    trunk.computeVertexNormals();}
+  mesh(trunk,mat);
+  // Бивни — изогнутые конусы
+  [.25,-.25].forEach(z=>{
+    const c=new THREE.CatmullRomCurve3([new THREE.Vector3(1.86,.12,z),new THREE.Vector3(2.1,-.08,z*1.15),new THREE.Vector3(2.3,-.02,z*1.2)]);
+    const t=new THREE.TubeGeometry(c,32,.07,14,false);
+    const a=t.attributes.position,v=new THREE.Vector3();
+    for(let i=0;i<a.count;i++){const seg=Math.floor(i/15)/32,p=c.getPoint(Math.min(seg,1));v.fromBufferAttribute(a,i).sub(p).multiplyScalar(1-seg*.85).add(p);a.setXYZ(i,v.x,v.y,v.z);}
+    t.computeVertexNormals();mesh(t,matTusk);
+  });
+  // Глаза с бликом
+  [.33,-.33].forEach(z=>{
+    mesh(new THREE.SphereGeometry(.075,24,16),matEye,[1.9,.68,z]);
+    mesh(new THREE.SphereGeometry(.022,12,8),new THREE.MeshBasicMaterial({color:0xffffff}),[1.955,.71,z*1.03]);
+  });
+  // Ноги — тела вращения: толще сверху, колено, широкая ступня; на ступне ногти
+  const legProfile=[[0,-.62],[.33,-.62],[.36,-.57],[.35,-.48],[.3,-.22],[.285,.05],[.3,.3],[.34,.5],[.2,.62],[0,.62]].map(([x,y])=>new THREE.Vector2(x,y));
+  const legGeo=new THREE.LatheGeometry(legProfile,48);
+  [[.78,.5],[.78,-.5],[-.8,.5],[-.8,-.5]].forEach(([x,z])=>{
+    mesh(legGeo,mat,[x,-1.12,z]);
+    [-.14,0,.14].forEach(dz=>mesh(new THREE.SphereGeometry(.07,16,10),matNail,[x+.3,-1.66,z+dz],null,[1,.55,1]));
+  });
+  // Хвост с кисточкой
+  const tailC=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.38,.25,0),new THREE.Vector3(-1.58,-.05,0),new THREE.Vector3(-1.6,-.5,0)]);
+  mesh(new THREE.TubeGeometry(tailC,24,.035,10,false),matDark);
+  mesh(new THREE.SphereGeometry(.08,16,12),matDark,[-1.6,-.56,0],null,[1,1.5,1]);
 
-  // Исходная поза — чуть в три четверти, как «иконка»
-  const REST={x:.12,y:-.55};
+  g.position.set(-.3,.25,0);
+  g.scale.setScalar(opts.scale);
+  scene.add(g);
+  // Вращение пальцем/мышью; через 2 с покоя — плавно в исходную позу
+  const REST=opts.rest;
   let rx=REST.x,ry=REST.y,vx=0,vy=0,dragging=false,lastX=0,lastY=0,lastMove=0;
   const el=renderer.domElement;el.style.touchAction='none';el.style.cursor='grab';
   const down=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;el.setPointerCapture?.(e.pointerId);el.style.cursor='grabbing';host.parentElement?.classList.add('touched');};
-  const move=e=>{
-    if(!dragging)return;
-    const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
-    vy=dx*.012;vx=dy*.008;ry+=vy;rx=Math.max(-.7,Math.min(.9,rx+vx));lastMove=performance.now();
-  };
+  const move=e=>{if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;vy=dx*.012;vx=dy*.008;ry+=vy;rx=Math.max(-.7,Math.min(.9,rx+vx));lastMove=performance.now();};
   const up=()=>{dragging=false;lastMove=performance.now();el.style.cursor='grab';};
   el.addEventListener('pointerdown',down);el.addEventListener('pointermove',move);
   el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
-
   let raf=0,alive=true;const t0=performance.now();
   const tick=now=>{
     if(!alive)return;
     const t=(now-t0)/1000;
     if(!dragging){
-      // Инерция после броска
       ry+=vy;rx=Math.max(-.7,Math.min(.9,rx+vx));vy*=.92;vx*=.9;
-      // Через 2 с покоя — плавно домой (кратчайшим путём по кругу)
-      if(now-lastMove>2000){
-        let d=((REST.y-ry)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
-        ry+=d*.06;rx+=(REST.x-rx)*.06;
-      }
+      if(now-lastMove>2000){const d=((REST.y-ry)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;ry+=d*.06;rx+=(REST.x-rx)*.06;}
     }
-    g.rotation.y=ry;g.rotation.x=rx;
-    g.position.y=.12+Math.sin(t*1.6)*.06; // лёгкое «парение»
-    try{
-      renderer.render(scene,cam);
-      // Эмодзи-заглушку прячем только после первого удачного кадра
-      if(!host.classList.contains('ready'))host.classList.add('ready');
-    }catch(e){console.warn('[SLON] Ошибка рендера слона:',e);alive=false;renderer.domElement.remove();return;}
+    g.rotation.y=ry;g.rotation.x=rx;g.position.y=.25+Math.sin(t*1.6)*.06;
+    try{renderer.render(scene,cam);if(!host.classList.contains('ready'))host.classList.add('ready');}
+    catch(e){console.warn('[SLON] Ошибка рендера слона:',e);alive=false;renderer.domElement.remove();return;}
     raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
-  return ()=>{
-    alive=false;cancelAnimationFrame(raf);
+  return ()=>{alive=false;cancelAnimationFrame(raf);
     el.removeEventListener('pointerdown',down);el.removeEventListener('pointermove',move);
     el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);
-    renderer.dispose();scene.traverse(o=>{o.geometry?.dispose?.();});
-  };
+    renderer.dispose();scene.traverse(o=>{o.geometry?.dispose?.();});};
 }
 
 // ════════════════════════════════════════
@@ -1072,6 +1085,52 @@ setInterval(()=>{
     if(rv._stall>=2){rv._stall=0;rv._needRefresh=true;try{_updateRemoteVideoUI();}catch(e){}}
   }else rv._stall=0;
 },1500);
+
+// ════════════════════════════════════════
+// ── ЭКРАН ВХОДА: 3D-слон, переключение с анимацией, вход в мессенджер ──
+// ════════════════════════════════════════
+let _authStop=null;
+function _authStart3d(){
+  if(_authStop)return;
+  const stopSp=_premSparks($('authSparks'),['#7cc4ff','#3390ec','#a5d8ff','#5aa9f8','#dbeeff']);
+  let stop3d=()=>{};
+  _loadThree().then(T=>{
+    if(!$('usernameOverlay')?.classList.contains('show'))return;
+    stop3d=_premElephant(T,$('auth3d'),{color:0x3b8cf5,dark:0x2366c9,rimColor:0x7fd3ff,fillColor:0x9cc8ff,rest:{x:.1,y:-.6},scale:.9});
+  }).catch(()=>{});
+  _authStop=()=>{stopSp();stop3d();_authStop=null;};
+}
+// Вход ↔ регистрация: одна секция уезжает, другая выезжает
+function _authSwitch(to){
+  const from=[...document.querySelectorAll('#authCard .auth-sec')].find(x=>x.style.display!=='none');
+  const next=to==='reg'?$('authRegister'):$('authLogin');
+  if(!from||from===next){to==='reg'?showAuthRegister():showAuthLogin();return;}
+  from.classList.add('auth-out');
+  setTimeout(()=>{
+    from.classList.remove('auth-out');
+    to==='reg'?showAuthRegister():showAuthLogin();
+    next.classList.remove('auth-in');void next.offsetWidth;next.classList.add('auth-in');
+  },180);
+}
+// Следим за окном входа: показали — запускаем слона; скрыли после входа — анимация появления
+function _authWatch(){
+  const ov=$('usernameOverlay');if(!ov)return;
+  let wasShown=ov.classList.contains('show');
+  if(wasShown)_authStart3d();
+  new MutationObserver(()=>{
+    const shown=ov.classList.contains('show');
+    if(shown&&!wasShown)_authStart3d();
+    if(!shown&&wasShown){
+      // Успешный вход: окно растворяется, мессенджер плавно появляется
+      ov.classList.add('leaving');
+      document.body.classList.add('app-entering');
+      setTimeout(()=>{ov.classList.remove('leaving');_authStop?.();},650);
+      setTimeout(()=>document.body.classList.remove('app-entering'),1100);
+    }
+    wasShown=shown;
+  }).observe(ov,{attributes:true,attributeFilter:['class']});
+}
+document.addEventListener('DOMContentLoaded',_authWatch);
 
 // ── ЗАПУСК ──
 document.addEventListener('DOMContentLoaded',()=>{

@@ -219,7 +219,7 @@ async function doSetPassword(){
     toast('Пароль установлен 🔒');
     initFirebaseMode();
   }finally{
-    if(btn){btn.textContent='Установить пароль 🔒';btn.disabled=false;}
+    if(btn){btn.textContent='Установить пароль';btn.disabled=false;}
   }
 }
 
