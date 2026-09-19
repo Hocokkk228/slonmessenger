@@ -71,11 +71,26 @@ function _spPlural(n,one,few,many){
 }
 function _spSubsText(n){return n+' '+_spPlural(n,'подписчик','подписчика','подписчиков');}
 
-// Аватарка-кружок: картинка или первая буква на градиенте
-function _spAvatarHtml(src,name,cls){
+// ── Аватарки без фото: буквы имени и фамилии на цветах Telegram ──
+const _AV_COLORS=[['#ff885e','#ff516a'],['#ffcd6a','#ffa85c'],['#82b1ff','#665fff'],['#a0de7e','#54cb68'],['#53edd6','#28c9b7'],['#72d5fd','#2a9ef1'],['#e0a2f3','#d669ed']];
+function _avColor(id){
+  let h=0;for(const c of String(id||'?'))h=(h*31+c.codePointAt(0))|0;
+  const [a,b]=_AV_COLORS[Math.abs(h)%_AV_COLORS.length];
+  return `linear-gradient(180deg,${a},${b})`;
+}
+// «Иван Петров» → «ИП», «ivan» → «I», «📢 Канал» → «К»
+function _initials(name){
+  const w=String(name||'').replace(/@/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').trim().split(/\s+/).filter(Boolean);
+  if(!w.length)return '?';
+  return ([...w[0]][0]+(w[1]?[...w[1]][0]:'')).toUpperCase();
+}
+function _avHtml(id,name){
+  return `<span class="av-l" style="background:${_avColor(id)}"><b>${esc(_initials(name))}</b></span>`;
+}
+// Аватарка-кружок: картинка или буквы
+function _spAvatarHtml(src,name,cls,id){
   if(src)return `<div class="${cls}"><img src="${src}" alt=""></div>`;
-  const letter=esc(((name||'?').replace(/^[^\p{L}\p{N}]+/u,'')[0]||'?').toUpperCase());
-  return `<div class="${cls} sp-av-letter">${letter}</div>`;
+  return `<div class="${cls}">${_avHtml(id||name,name)}</div>`;
 }
 
 // Дополнительные иконки
@@ -181,7 +196,7 @@ function _myFullName(){return (myNick||'')+(myLastName?' '+myLastName:'');}
 function _spRender(quiet){
   $('spHeroBg').style.background=_getProfileBgStyle(myProfileBg,myProfileBgColor,myProfilePattern);
   const displayName=_myFullName().trim()||('@'+myUsername);
-  $('spAv').innerHTML=(myAvatar?`<img src="${myAvatar}" alt="">`:`<span class="sp-av-letter">${esc((displayName.replace('@','')[0]||'?').toUpperCase())}</span>`)
+  $('spAv').innerHTML=(myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,_myFullName().trim()||myUsername))
     +`<div class="sp-av-cam">${_spSvg('camera')}</div>`;
   $('spName').innerHTML=esc(displayName)
     +(hasElephantBadge?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
@@ -375,7 +390,7 @@ function _spEditProfile(){
   const bd=myBirthday?`${myBirthday.y||2000}-${String(myBirthday.m).padStart(2,'0')}-${String(myBirthday.d).padStart(2,'0')}`:'';
   const page=_spPush('Изменить профиль',`
     <div class="ep-av-wrap"><div class="ep-av" onclick="$('avIn').click()">
-      ${myAvatar?`<img src="${myAvatar}" alt="">`:`<span class="sp-av-letter">${esc(((myNick||myUsername)[0]||'?').toUpperCase())}</span>`}
+      ${myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,_myFullName().trim()||myUsername)}
       <div class="ep-av-cam">${_spSvg('camera')}</div></div></div>
     <div class="sp-card sp-pad">
       <label class="sp-field"><input id="epFirst" maxlength="32" value="${esc(myNick)}" placeholder=" " oninput="_epDirty()"><span>Имя (обязательно)</span></label>
@@ -934,7 +949,7 @@ function _ppRender(pid){
   const hero=$('peerProfHero');
   hero.classList.toggle('pp-custom',custom);
   $('peerProfBg').style.background=custom?_getProfileBgStyle(peerProfileBgs[pid]||'bg0',bgColor,pattern):'';
-  $('peerProfAv').innerHTML=av?`<img src="${av}" alt="">`:`<span class="sp-av-letter">${esc((name.replace(/^[@📢\s]+/,'')[0]||'?').toUpperCase())}</span>`;
+  $('peerProfAv').innerHTML=av?`<img src="${av}" alt="">`:_avHtml(pid,name);
   $('peerProfAv').onclick=av?()=>{$('photoImg').src=av;$('photoView').classList.add('show');}:null;
   $('peerProfName').innerHTML=(isBanned?'❄️ ':'')+esc(name)
     +(hasElephant?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')

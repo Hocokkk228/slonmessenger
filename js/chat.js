@@ -195,7 +195,7 @@ function appendMsg(msg,container){
   }else{
     const src=msg.avatar||peerAvatars[msg.senderId]||null;
     if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}
-    else av.textContent=(msg.name||'?')[0]||'?';
+    else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');
   }
   const body=document.createElement('div');body.className='msg-body';
   if(!isOut&&msg.name){

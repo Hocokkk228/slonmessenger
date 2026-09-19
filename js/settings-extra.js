@@ -649,9 +649,38 @@ function _perfPaint(){
 function _perfLevel(v){myPerf.level=+v;LS.set('sl_perf',myPerf);_perfApply();_perfPaint();}
 function _perfFlag(k,row){myPerf[k]=!myPerf[k];LS.set('sl_perf',myPerf);row.querySelector('.sp-check').classList.toggle('on',myPerf[k]);_perfApply();}
 
+// ════════════════════════════════════════
+// ── ЭМОДЗИ В ПОЛЕ ВВОДА + КНОПКА «ВНИЗ» ──
+// ════════════════════════════════════════
+const _EMOJIS='😀😃😄😁😆😅😂🤣🙂🙃😉😊😇🥰😍🤩😘😗😚😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😏😒🙄😬😮‍💨🤥😌😔😪🤤😴😷🤒🤕🤢🤮🥵🥶🥴😵🤯🤠🥳😎🤓🧐😕😟🙁😮😯😲😳🥺😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👻👽👾🤖😺😸😹😻😼😽🙀😿😾🙈🙉🙊💋💌💘💝💖💗💓💞💕❤️🧡💛💚💙💜🤎🖤🤍💯💢💥💫💦💨🕳️💬👋🤚🖐️✋🖖👌🤌🤏✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊🤛🤜👏🙌👐🤲🤝🙏💪🦾🐘🦛🦒🦅🔥✨⭐🌟🎉🎊🎁🏆⚡🌈☀️🌙❄️🍕🍔🍟🌭🍿🥤☕🍺🎮🎧🎵📱💻📸🚀✈️🚗';
+function _toggleEmojiPanel(e){
+  e?.stopPropagation();
+  const p=$('emojiPanel');if(!p)return;
+  if(!p.dataset.ready){
+    // Режем строку на эмодзи с учётом составных (❤️, 😮‍💨)
+    const list=typeof Intl.Segmenter==='function'
+      ?[...new Intl.Segmenter('ru',{granularity:'grapheme'}).segment(_EMOJIS)].map(x=>x.segment)
+      :[..._EMOJIS];
+    p.innerHTML=list.map(em=>`<button onclick="_insertEmoji('${em}')">${em}</button>`).join('');
+    p.dataset.ready='1';
+  }
+  p.classList.toggle('show');
+}
+function _insertEmoji(em){
+  const inp=$('msgInp');if(!inp)return;
+  const a=inp.selectionStart??inp.value.length,b=inp.selectionEnd??a;
+  inp.value=inp.value.slice(0,a)+em+inp.value.slice(b);
+  inp.focus();inp.selectionStart=inp.selectionEnd=a+em.length;
+  onTyping(inp);
+}
+document.addEventListener('click',e=>{if(!e.target.closest?.('#emojiPanel,#emojiBtn'))$('emojiPanel')?.classList.remove('show');});
+
 // ── ЗАПУСК ──
 document.addEventListener('DOMContentLoaded',()=>{
   _perfLoad();
+  // Кнопка «вниз» появляется, когда прокрутил историю вверх
+  const msgs=$('msgs'),sdb=$('scrollDownBtn');
+  if(msgs&&sdb)msgs.addEventListener('scroll',()=>sdb.classList.toggle('show',msgs.scrollHeight-msgs.scrollTop-msgs.clientHeight>300),{passive:true});
   if(!myUsername)return;
   _foldersLoad();
   myStickerCfg=LS.get(_getAccountPrefix(myUsername)+'stickerCfg',{})||{};

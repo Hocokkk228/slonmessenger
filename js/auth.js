@@ -323,7 +323,7 @@ async function _fetchAndApplyMyProfile(){
       if(bnAv){
         bnAv.innerHTML='';
         if(myAvatar){const i=document.createElement('img');i.src=myAvatar;i.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';bnAv.appendChild(i);}
-        else bnAv.innerHTML='<svg><use href="#i-person"/></svg>';
+        else bnAv.innerHTML=_avHtml(myUsername,myNick||myUsername);
       }
       saveAll();
       toast('Профиль синхронизирован 🔄');

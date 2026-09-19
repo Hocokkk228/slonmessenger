@@ -156,7 +156,7 @@ function updateChatHeader(){
     const chAv=chMeta.avatar;
     $('chAv').innerHTML='';
     if(chAv){const i=document.createElement('img');i.src=chAv;i.style.cssText='width:38px;height:38px;object-fit:cover;border-radius:50%';$('chAv').appendChild(i);}
-    else{$('chAv').innerHTML='📢';$('chAv').style.background='none';}
+    else{$('chAv').style.background='';$('chAv').innerHTML=_avHtml(id,chMeta.name||chMeta.username||id);}
     $('chName').textContent=chMeta.name||('@'+(chMeta.username||id));
     $('chStatus').textContent=chMeta.desc||'Канал';$('chStatus').className='ch-status';
     const isOwner=chMeta.owner===myUsername;
@@ -186,12 +186,12 @@ function updateChatHeader(){
       const i=document.createElement('img');i.src=av;i.style.cssText='width:38px;height:38px;object-fit:cover;border-radius:50%';
       $('chAv').appendChild(i);
     }else{
-      $('chAv').style.background='linear-gradient(135deg,var(--accent),var(--accent2))';
-      $('chAv').innerHTML=icoSvg('i-person');
+      $('chAv').style.background='';
+      $('chAv').innerHTML=_avHtml(id,peerNames[id]||id);
     }
     $('chName').textContent=(peerNames[id]||('@'+id))+(peerElephantBadges[id]?' 🐘':'');
     $('chStatus').innerHTML=ok
-      ?`<div class="status-dot online" style="width:7px;height:7px"></div> В сети`
+      ?`<div class="status-dot online" style="width:7px;height:7px"></div> в сети`
       :`<div class="status-dot offline" style="width:7px;height:7px"></div> ${esc(_lastSeenText(id))}`;
     $('chStatus').className='ch-status'+(ok?'':' off');
     // Show search + call buttons, rebuild dropdown
@@ -284,8 +284,8 @@ function addSbItem(pid){
   const av=peerAvatars[pid];
   const d=document.createElement('div');d.className='sb-item';d.id='si-'+pid;d.onclick=()=>openChat(pid);d.oncontextmenu=e=>showChatCtxMenu(e,pid);
   d.innerHTML=`
-    <div class="sb-av" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">
-      <div class="sb-av-inner" id="sav-${pid}">${av?`<img src="${av}" style="width:100%;height:100%;object-fit:cover">`:icoSvg('i-person')}</div>
+    <div class="sb-av">
+      <div class="sb-av-inner" id="sav-${pid}">${av?`<img src="${av}" style="width:100%;height:100%;object-fit:cover">`:_avHtml(pid,peerNames[pid]||pid)}</div>
       <div class="sb-av-dot" id="dot-${pid}"></div>
     </div>
     <div class="sb-info">
@@ -305,8 +305,8 @@ function addSbGroup(gid){
   if($('si-'+gid))return;const g=groups[gid]||{};
   const d=document.createElement('div');d.className='sb-item';d.id='si-'+gid;d.onclick=()=>openChat(gid);d.oncontextmenu=e=>showChatCtxMenu(e,gid);
   d.innerHTML=`
-    <div class="sb-av" style="background:linear-gradient(135deg,#16a34a,#0891b2)">
-      <div class="sb-av-inner" id="sav-${gid}">${g.avatar?`<img src="${g.avatar}" style="width:100%;height:100%;object-fit:cover">`:icoSvg('i-group')}</div>
+    <div class="sb-av">
+      <div class="sb-av-inner" id="sav-${gid}">${g.avatar?`<img src="${g.avatar}" style="width:100%;height:100%;object-fit:cover">`:_avHtml(gid,g.name||'Группа')}</div>
     </div>
     <div class="sb-info">
       <div class="sb-row1">
@@ -331,11 +331,13 @@ function updateSbName(pid){
   const badge=peerElephantBadges[pid]?' 🐘':'';
   const name=(peerNames[pid]||('@'+pid))+badge;
   const el=$('sbn-'+pid);if(el)el.textContent=name.slice(0,20);
+  if(!peerAvatars[pid])updateSbAvatar(pid); // буквы на аватарке зависят от имени
   if(activeChat===pid)$('chName').textContent=name;
 }
 
 function updateSbAvatar(pid){
-  const c=$('sav-'+pid);if(!c)return;const av=peerAvatars[pid];if(!av)return;
+  const c=$('sav-'+pid);if(!c)return;const av=peerAvatars[pid];
+  if(!av){c.innerHTML=_avHtml(pid,peerNames[pid]||pid);return;}
   let img=c.querySelector('img');
   if(!img){img=document.createElement('img');img.style.cssText='width:100%;height:100%;object-fit:cover';c.innerHTML='';c.appendChild(img);}
   img.src=av;if(activeChat===pid)updateChatHeader();
@@ -586,7 +588,7 @@ function _showContactsList(){
       const av=peerAvatars[pid];
       const badge=peerElephantBadges[pid]?' 🐘':'';
       return `<div class="wiz-member-row" style="animation:sbFadeIn .22s ease both;animation-delay:${i*0.02}s" onclick="closeContactsPanel();openChat('${pid}')">
-        <div class="wiz-member-av">${av?`<img src="${av}">`:icoSvg('i-person')}</div>
+        <div class="wiz-member-av">${av?`<img src="${av}">`:_avHtml(pid,peerNames[pid]||pid)}</div>
         <div class="wiz-member-info"><div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}${badge}</div></div>
       </div>`;
     }).join('');

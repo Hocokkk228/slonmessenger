@@ -221,7 +221,7 @@ function _gcMakeTile(pid, name, av, stream, hasVideo) {
   avWrap.className = 'grp-tile-av';
   avWrap.style.display = hasVideo && stream ? 'none' : 'flex';
   if (av) { const img = document.createElement('img'); img.src = av; avWrap.appendChild(img); }
-  else { avWrap.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-person"/></svg>`; }
+  else { avWrap.innerHTML = _avHtml(pid, peerNames[pid]||pid); }
   tile.appendChild(avWrap);
   // Name bar
   const info = document.createElement('div'); info.className = 'grp-tile-info';

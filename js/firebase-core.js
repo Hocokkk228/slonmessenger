@@ -571,7 +571,7 @@ function onData(pid,data){
       }
       {const av=peerAvatars[pid],el=$('icAv');el.innerHTML='';
       if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';el.appendChild(i);}
-      else el.innerHTML=icoSvg('i-person');
+      else el.innerHTML=_avHtml(pid,data.nick||peerNames[pid]||pid);
       $('icName').textContent=data.nick||peerNames[pid]||('@'+pid);
       $('icType').textContent=data.isVideo?'Видеозвонок':'Голосовой звонок';
       $('incoming').classList.add('show');startRingSound();

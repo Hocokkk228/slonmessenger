@@ -463,7 +463,7 @@ appendMsg=function(msg,container){
     const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
     const av=document.createElement('div');av.className='msg-av';
     if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
-    else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.textContent=(msg.name||'?')[0]||'?';}
+    else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}
     const body=document.createElement('div');body.className='msg-body';
     if(!isOut&&msg.name){
     const w=document.createElement('div');w.className='msg-who';
@@ -486,7 +486,7 @@ appendMsg=function(msg,container){
     const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
     const av=document.createElement('div');av.className='msg-av';
     if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
-    else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.textContent=(msg.name||'?')[0]||'?';}
+    else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}
     const body=document.createElement('div');body.className='msg-body';
     if(!isOut&&msg.name){
     const w=document.createElement('div');w.className='msg-who';

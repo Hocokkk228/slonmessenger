@@ -60,6 +60,7 @@ const hasMediaDevices=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserM
 // ── THEMES ──
 const THEMES=[
   // Бесплатные
+  {id:'liketg', lbl:'like tg',     grad:'linear-gradient(135deg,#8fb981 0%,#cfd79b 50%,#eeffde 50%,#ffffff 100%)', premium:false},
   {id:'dark',   lbl:'Тёмная',      grad:'linear-gradient(135deg,#0d1117,#58a6ff)',  premium:false},
   {id:'light',  lbl:'Светлая',     grad:'linear-gradient(135deg,#f0f2f5,#0084ff)',  premium:false},
   {id:'pink',   lbl:'Розовая',     grad:'linear-gradient(135deg,#2a1022,#f472b6)',  premium:false},
@@ -81,7 +82,7 @@ const THEMES=[
   {id:'golden',     lbl:'Золото',      grad:'linear-gradient(135deg,#0a0800,#fbbf24)',     premium:true},
   {id:'lavender',   lbl:'Лаванда',     grad:'linear-gradient(135deg,#0e0920,#c4b5fd)',     premium:true},
 ];
-const THEME_EMOJIS={dark:'🌙',light:'☀️',pink:'🌸',purple:'💜',ocean:'🌊',galaxy:'🌌',green:'🌿',sunset:'🌅',autumn:'🍂',midnight:'🖤',cherry:'🍒',arctic:'🧊',volcano:'🌋',emerald:'💎',neon:'💚',['rose-gold']:'🌹',['deep-space']:'🚀',golden:'✨',lavender:'💜'};
+const THEME_EMOJIS={liketg:'✈️',dark:'🌙',light:'☀️',pink:'🌸',purple:'💜',ocean:'🌊',galaxy:'🌌',green:'🌿',sunset:'🌅',autumn:'🍂',midnight:'🖤',cherry:'🍒',arctic:'🧊',volcano:'🌋',emerald:'💎',neon:'💚',['rose-gold']:'🌹',['deep-space']:'🚀',golden:'✨',lavender:'💜'};
 
 // Emoji-паттерны для чата (обои)
 // SVG пути для монохромных значков обоев (простые геометрические)

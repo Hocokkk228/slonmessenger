@@ -208,10 +208,10 @@ function setupCallUI(peerId,isVideo){
   const av=peerAvatars[peerId];
   const callAvEl=$('callAv');callAvEl.innerHTML='';
   if(av){const i=document.createElement('img');i.src=av;callAvEl.appendChild(i);}
-  else callAvEl.innerHTML=icoSvg('i-person');
+  else callAvEl.innerHTML=_avHtml(peerId,peerNames[peerId]||peerId);
   const mcAvEl=$('mcAv');mcAvEl.innerHTML='';
   if(av){const i=document.createElement('img');i.src=av;i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';mcAvEl.appendChild(i);}
-  else mcAvEl.innerHTML=icoSvg('i-person');
+  else mcAvEl.innerHTML=_avHtml(peerId,peerNames[peerId]||peerId);
   const name=peerNames[peerId]||('@'+peerId);
   $('callPName').textContent=$('mcName').textContent=name;
   $('callTimer').textContent=$('mcTimer').textContent='00:00';

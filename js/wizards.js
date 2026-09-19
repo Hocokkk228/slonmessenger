@@ -111,7 +111,7 @@ function _wizRenderMembersStep(dir){
     const checked=_wizData.members.includes(pid)?'checked':'';
     return `<label class="wiz-member-row" data-name="${esc((peerNames[pid]||pid).toLowerCase())}">
       <input type="checkbox" value="${pid}" ${checked}>
-      <div class="wiz-member-av">${av?`<img src="${av}">`:icoSvg('i-person')}</div>
+      <div class="wiz-member-av">${av?`<img src="${av}">`:_avHtml(pid,peerNames[pid]||pid)}</div>
       <div class="wiz-member-info">
         <div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}</div>
         <div class="wiz-member-sub">${isOnline?'в сети':'не в сети'}</div>
@@ -136,13 +136,13 @@ function _wizFilterMembers(q){
 
 function _wizMembersPreviewHtml(){
   const me=`<div class="wiz-member-row" style="cursor:default">
-      <div class="wiz-member-av">${myAvatar?`<img src="${myAvatar}">`:icoSvg('i-person')}</div>
+      <div class="wiz-member-av">${myAvatar?`<img src="${myAvatar}">`:_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername)}</div>
       <div class="wiz-member-info"><div class="wiz-member-name">${esc(myNick||('@'+myUsername))} (ты)</div></div>
     </div>`;
   const others=_wizData.members.map(pid=>{
     const av=peerAvatars[pid];
     return `<div class="wiz-member-row" style="cursor:default">
-      <div class="wiz-member-av">${av?`<img src="${av}">`:icoSvg('i-person')}</div>
+      <div class="wiz-member-av">${av?`<img src="${av}">`:_avHtml(pid,peerNames[pid]||pid)}</div>
       <div class="wiz-member-info"><div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}</div></div>
     </div>`;
   }).join('');

@@ -240,7 +240,7 @@ function updateProfileDisplay(){
   if(avEl){
     avEl.innerHTML='';
     if(myAvatar){const i=document.createElement('img');i.src=myAvatar;avEl.appendChild(i);}
-    else avEl.innerHTML=icoSvg('i-person');
+    else avEl.innerHTML=_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername);
   }
   const nameEl=$('profNameEl');
   if(nameEl){
@@ -279,11 +279,11 @@ function updateProfileDisplay(){
   if(btn2){
     btn2.innerHTML='';
     if(myAvatar){const img=document.createElement('img');img.src=myAvatar;img.style.cssText='width:34px;height:34px;object-fit:cover;border-radius:7px';btn2.appendChild(img);}
-    else{const sp=document.createElement('span');sp.className='prof-initials';sp.innerHTML=icoSvg('i-person');btn2.appendChild(sp);}
+    else btn2.innerHTML=_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername);
   }
   // Bottom nav avatar
   const bnAv=$('bnProfAv');
-  if(bnAv){bnAv.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;bnAv.appendChild(i);}else bnAv.innerHTML=icoSvg('i-person');}
+  if(bnAv){bnAv.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;bnAv.appendChild(i);}else bnAv.innerHTML=_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername);}
   // Profile colors / premium picker
   const pc=$('profColors');
   if(pc){
@@ -391,7 +391,7 @@ function copyMyId(){
 
 function _updateHbProfileRow(){
   const av=$('hbProfileAv'),nm=$('hbProfileName');
-  if(av){av.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.innerHTML=icoSvg('i-person');}
+  if(av){av.innerHTML='';if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.innerHTML=_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername);}
   if(nm)nm.textContent=myNick||('@'+myUsername);
 }
 

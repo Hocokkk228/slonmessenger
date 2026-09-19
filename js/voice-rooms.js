@@ -40,7 +40,7 @@ function _vrMakeTile(pid, name, av, bgId, bgColor, bgPattern){
   // Аватарка
   const avWrap=document.createElement('div');avWrap.className='vr-tile-av';avWrap.id='vrtile-av-'+pid;
   if(av){const img=document.createElement('img');img.src=av;avWrap.appendChild(img);}
-  else{avWrap.innerHTML='<div class="vr-tile-av-icon"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></div>';}
+  else{avWrap.innerHTML=_avHtml(pid,peerNames[pid]||pid);}
   tile.appendChild(avWrap);
 
   // Инфо-бар
