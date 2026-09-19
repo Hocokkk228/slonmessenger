@@ -255,7 +255,7 @@ function appendMsg(msg,container){
   menuBtn.title='Действия';
   menuBtn.onclick=e=>{e.stopPropagation();showMsgMenu(e,msg,isOut);};
   body.appendChild(t);
-  if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';body.insertBefore(pin,body.firstChild);}
+  if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.innerHTML='<svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>';body.insertBefore(pin,body.firstChild);}
   wrap.dataset.msgId=msg.id;
   wrap.appendChild(av);wrap.appendChild(body);wrap.appendChild(menuBtn);c.appendChild(wrap);
 }
@@ -307,7 +307,7 @@ function showMsgMenu(e,msg,isOut){
   }
   items.forEach(([label,fn,cls])=>{
     const btn=document.createElement('button');
-    btn.textContent=label;if(cls)btn.className=cls;
+    btn.innerHTML=_menuLabelHtml(label);if(cls)btn.className=cls; // значок вместо эмодзи
     btn.onclick=()=>{fn();closeMsgMenu();};
     div.appendChild(btn);
   });
@@ -433,7 +433,7 @@ function togglePinMsg(msg){
   const wrap=document.querySelector('[data-msg-id="'+msg.id+'"]');
   if(wrap){
     const old=wrap.querySelector('.msg-pin-badge');if(old)old.remove();
-    if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
+    if(msg.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.innerHTML='<svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
   }
   _updatePinnedBar();
   saveAll();
@@ -451,7 +451,7 @@ function _handleMsgPin(pid,data){
     const wrap=document.querySelector('[data-msg-id="'+data.id+'"]');
     if(wrap){
       const old=wrap.querySelector('.msg-pin-badge');if(old)old.remove();
-      if(data.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.textContent='📌';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
+      if(data.pinned){const pin=document.createElement('div');pin.className='msg-pin-badge';pin.innerHTML='<svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>';wrap.querySelector('.msg-body').insertBefore(pin,wrap.querySelector('.msg-body').firstChild);}
     }
     _updatePinnedBar();saveAll();
   }

@@ -25,8 +25,7 @@ function rebuildSidebar(){
     el.style.position='relative';
     if(!el.querySelector('.sb-pin')){
       const pin=document.createElement('span');
-      pin.className='sb-pin';pin.textContent='📌';
-      pin.style.cssText='font-size:9px;position:absolute;top:2px;left:2px;opacity:.55;pointer-events:none';
+      pin.className='sb-pin';pin.innerHTML='<svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>';
       el.appendChild(pin);
     }
   });
@@ -99,7 +98,8 @@ function showChatElements(show){
 }
 
 function onChatHeaderClick(){
-  if(activeChat==='ai'||activeChat.startsWith('g_')||currentView==='profile')return;
+  if(activeChat==='ai'||currentView==='profile')return;
+  if(activeChat.startsWith('g_')){showGroupPanel(activeChat);return;}
   if(_isChannelId(activeChat)){showChannelInfo(activeChat);return;}
   showPeerProfile(activeChat);
 }
@@ -118,15 +118,15 @@ function updateChatHeader(){
   const _mw=$('chMoreBtn')?.closest('.ch-more-wrap');
   if(_mw)_mw.style.display='';
   if(id==='ai'){
-    $('chAv').textContent='🐘';$('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
-    $('chName').textContent='🐘 СЛОН AI';$('chStatus').textContent='AI Ассистент';
+    $('chAv').innerHTML=_SLON_MARK;$('chAv').style.background='var(--accent)';
+    $('chName').textContent='СЛОН AI';$('chStatus').textContent='AI Ассистент';
     $('chStatus').className='ch-status';
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     _buildChatDropdown('ai','channel');
     mob.style.display='none';
   }else if(id==='saved'){
     $('chAv').innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#fff"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>';
-    $('chAv').style.background='linear-gradient(135deg,#0ea5e9,#22d3ee)';
+    $('chAv').style.background='#3390ec';
     $('chName').textContent='Избранное';$('chStatus').textContent='Только ты видишь эти сообщения';
     $('chStatus').className='ch-status';
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
@@ -135,9 +135,9 @@ function updateChatHeader(){
     mob.style.display='none';
   }else if(id===SLON_CHANNEL_ID){
     // SLON-канал — особый вид, без статуса "в сети"
-    $('chAv').innerHTML='<span style="font-size:22px;line-height:38px">🐘</span>';
-    $('chAv').style.background='linear-gradient(135deg,#1d4ed8,#7c3aed)';
-    $('chName').textContent='🐘 SLON Новости';
+    $('chAv').innerHTML=_SLON_MARK;
+    $('chAv').style.background='var(--accent)';
+    $('chName').textContent='SLON Новости';
     const isAdmin=CHANNEL_ADMINS.has(myUsername);
     $('chStatus').innerHTML=isAdmin
       ?'<span style="font-size:11px">📢 Ты редактор канала</span>'
@@ -146,7 +146,7 @@ function updateChatHeader(){
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     const dd2=$('chDropdown');
     if(dd2)dd2.innerHTML=isAdmin?`<button class="ch-dropdown-item" onclick="showChannelPublish();closeChatDropdown()"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg><span>📝 Опубликовать пост</span></button>`:'';
-    if(isAdmin){_pb.innerHTML='📝 Пост';_pb.style.display='';_pb.onclick=()=>showChannelPublish();}
+    if(isAdmin){_pb.innerHTML='<svg viewBox="0 0 24 24" class="pb-ico"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Пост';_pb.style.display='';_pb.onclick=()=>showChannelPublish();}
     _applyChannelInputLock(id,isAdmin);
     mob.style.display='none';
   }else if(id.startsWith('ch_')){
@@ -162,7 +162,7 @@ function updateChatHeader(){
     const isOwner=chMeta.owner===myUsername;
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     if(isOwner){
-      _pb.innerHTML='📝 Пост';_pb.style.display='';_pb.onclick=()=>showUserChannelPublish(id);
+      _pb.innerHTML='<svg viewBox="0 0 24 24" class="pb-ico"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Пост';_pb.style.display='';_pb.onclick=()=>showUserChannelPublish(id);
       _sb.innerHTML=icoSvg('i-settings');_sb.style.display='';_sb.onclick=()=>showChannelSettings(id);
     }
     _buildChatDropdown(id,'channel');
@@ -173,9 +173,9 @@ function updateChatHeader(){
     const g=groups[id]||{};
     $('chAv').innerHTML='';$('chAv').style.background='';
     if(g.avatar){const _gi=document.createElement('img');_gi.src=g.avatar;_gi.style.cssText='width:38px;height:38px;object-fit:cover;border-radius:50%';$('chAv').appendChild(_gi);}
-    else{$('chAv').textContent='👥';$('chAv').style.background='none';}
+    else{$('chAv').style.background='';$('chAv').innerHTML=_avHtml(id,g.name||'Группа');}
     $('chName').textContent=(g.name||'Группа');
-    $('chStatus').textContent=(g.members?.length||0)+' участников';$('chStatus').className='ch-status';
+    $('chStatus').textContent=_grpMembersText(g.members?.length||0);$('chStatus').className='ch-status off';
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     _buildChatDropdown(id,'group');
     mob.style.display='none';
@@ -441,7 +441,7 @@ async function _runGlobalSearch(q){
       const csnap=await _fbOnce('user_channels/'+q+'/meta');
       const cmeta=csnap?.val();
       if(cmeta){
-        results.push({type:'channel',id:q,title:'📢 '+(cmeta.name||q),sub:(cmeta.desc||'Канал')+' · @'+q,avatar:cmeta.avatar,meta:cmeta});
+        results.push({type:'channel',id:q,title:(cmeta.name||q),sub:(cmeta.desc||'Канал')+' · @'+q,avatar:cmeta.avatar,meta:cmeta});
       }
     }catch(e){}
   }catch(e){}

@@ -363,6 +363,7 @@ function _handleRemoteTrack(track){
     _updateRemoteVideoUI();
   };
   const rv=$('remoteVideo'),a=$('remAudio');
+  rv.muted=true; // звук — только через remAudio, иначе он удваивается
   if(rv.srcObject!==_remoteStream)rv.srcObject=_remoteStream;
   if(a.srcObject!==_remoteStream)a.srcObject=_remoteStream;
   a.volume=1.0;
@@ -411,24 +412,23 @@ function _updateRemoteVideoUI(){
   const myCamTracks=localStream?.getVideoTracks()||[];
   const myLiveVideo=myCamTracks.some(t=>t.readyState==='live')||isScreenSharing;
 
-  if(remoteLiveVideo||myLiveVideo){
+  const rv=$('remoteVideo');rv.muted=true;
+  if(remoteLiveVideo){
+    // Видео собеседника — на месте аватарки
     $('callVidWrap').classList.add('show');
     $('callAudUI').style.display='none';
-    const rv=$('remoteVideo');
     if(rv.srcObject!==_remoteStream){rv.srcObject=_remoteStream;}
-    if(remoteLiveVideo){rv.play().catch(()=>{});}
-    else{rv.srcObject=null;}
-    if(!myLiveVideo){
-      const lv=$('localVideo');lv.srcObject=null;lv.style.display='none';
-      updatePipSelfInfo();
-    }
+    rv.play().catch(()=>{});
   }else{
+    // Нет видео у собеседника — стандартный экран: аватарка, ник, время звонка
     $('callVidWrap').classList.remove('show');
     $('callAudUI').style.display='';
-    $('remoteVideo').srcObject=null;
-    const lv=$('localVideo');lv.srcObject=null;lv.style.display='none';
-    updatePipSelfInfo();
+    rv.srcObject=null;
   }
+  // Моя камера/демонстрация — окошко в правом нижнем углу (оно вне callVidWrap)
+  if(!myLiveVideo){const lv=$('localVideo');lv.srcObject=null;lv.style.display='none';}
+  $('callCard')?.classList.toggle('has-self-video',myLiveVideo);
+  updatePipSelfInfo();
 }
 
 function _tryPlayRemote(){
@@ -510,6 +510,7 @@ function toggleCallFullscreen(){
 }
 
 function endCall(){
+  if(typeof _showPeerMute==='function')_showPeerMute(false);
   if(_vr){leaveVoiceRoom();return;}
   if(activeCall?.peerId){
     const msgType=activeCall.answered?'call_end':'call_cancel';
@@ -566,6 +567,7 @@ function toggleMute(){
   if(_vr)_vr.muted=isMuted;
   updateMuteBtn();
   _vrSyncButtons();
+  if(activeCall?.peerId){try{sendData(conns[activeCall.peerId]||activeCall.peerId,{type:'call_mute',muted:isMuted});}catch(e){}}
 }
 
 function updateMuteBtn(){

@@ -751,36 +751,45 @@ function _arcUpdate(instant){
   const names=[...$('archiveList').querySelectorAll('.sb-name')].map(e=>e.textContent.trim()).filter(Boolean);
   const prev=$('arcPrev');if(prev)prev.textContent=names.slice(0,4).join(', ')||'Пусто';
   if(instant)row.style.transition='none';
-  row.classList.toggle('show',_arcShown&&n>0);
+  row.classList.toggle('show',_arcShown);
   if(instant){void row.offsetHeight;row.style.transition='';}
-  if(!n&&$('arcPanel')?.classList.contains('open'))_arcClose();
 }
 function _arcReveal(){
-  if(_arcShown||!_arcCount())return;
+  if(_arcShown)return;
   _arcShown=true;LS.set('sl_arcShown',true);
-  const row=$('arcRow');row.style.maxHeight='';row.classList.add('show','pop');
+  const row=$('arcRow');row.style.maxHeight='';row.style.opacity='';row.classList.add('show','pop');
   setTimeout(()=>row.classList.remove('pop'),700);
 }
 function _arcHide(){_arcShown=false;LS.set('sl_arcShown',false);$('arcRow')?.classList.remove('show');toast('Архив скрыт — потяни список вниз, чтобы вернуть');}
 // Жест: тянешь список вниз, находясь в самом верху → архив вытягивается
 function _arcGestures(list){
-  let startY=null,pull=0;
+  let startY=null,pull=0,pulling=false;
   const row=$('arcRow');
-  list.addEventListener('touchstart',e=>{startY=(list.scrollTop<=0&&!_arcShown&&_arcCount())?e.touches[0].clientY:null;pull=0;},{passive:true});
+  const reset=()=>{startY=null;pulling=false;row.style.transition='';row.style.opacity='';};
+  list.addEventListener('touchstart',e=>{
+    startY=(list.scrollTop<=0&&!_arcShown)?e.touches[0].clientY:null;pull=0;pulling=false;
+  },{passive:true});
+  // Не пассивный: пока тянем архив, гасим нативный «потяни чтобы обновить»,
+  // иначе браузер забирает жест себе и присылает touchcancel
   list.addEventListener('touchmove',e=>{
     if(startY==null)return;
-    pull=Math.max(0,e.touches[0].clientY-startY);
+    const dy=e.touches[0].clientY-startY;
+    if(!pulling&&(dy<=4||list.scrollTop>0)){if(dy<0)startY=null;return;}
+    pulling=true;
+    if(e.cancelable)e.preventDefault();
+    pull=Math.max(0,dy);
     row.style.transition='none';row.style.maxHeight=Math.min(72,pull*.6)+'px';row.style.opacity=Math.min(1,pull/110);
-  },{passive:true});
+  },{passive:false});
   list.addEventListener('touchend',()=>{
-    if(startY==null)return;startY=null;
-    row.style.transition='';row.style.opacity='';
-    if(pull*.6>44)_arcReveal();else row.style.maxHeight='';
+    if(startY==null)return;
+    const ok=pulling&&pull*.6>40;reset();
+    if(ok)_arcReveal();else row.style.maxHeight='';
   });
+  list.addEventListener('touchcancel',()=>{if(startY==null)return;reset();row.style.maxHeight='';});
   // Колесо мыши вверх, когда список уже в самом верху
   let acc=0,t=null;
   list.addEventListener('wheel',e=>{
-    if(_arcShown||!_arcCount()||list.scrollTop>0||e.deltaY>=0){acc=0;return;}
+    if(_arcShown||list.scrollTop>0||e.deltaY>=0){acc=0;return;}
     acc+=-e.deltaY;clearTimeout(t);t=setTimeout(()=>acc=0,400);
     if(acc>160){acc=0;_arcReveal();}
   },{passive:true});
@@ -836,7 +845,7 @@ function _islandToggle(force){
   const open=force??!el.classList.contains('open');
   el.classList.toggle('open',open);
   // После изменения ширины островок не должен вылезти за край экрана
-  setTimeout(_islandPos,20);setTimeout(_islandPos,420);
+  setTimeout(_islandPos,20);setTimeout(_islandPos,300);
 }
 // Нажатие на кнопку островка — «пружинка»
 function _islandBtn(btn){btn.classList.remove('tap');void btn.offsetWidth;btn.classList.add('tap');}
@@ -851,13 +860,13 @@ function _callMinimizeAnimated(){
   const dx=(ir.left+ir.width/2)-(cr.left+cr.width/2),dy=(ir.top+ir.height/2)-(cr.top+cr.height/2);
   const s=Math.max(ir.width/cr.width,.06);
   card.animate([{transform:'none',opacity:1,borderRadius:getComputedStyle(card).borderRadius},
-    {transform:`translate(${dx}px,${dy}px) scale(${s})`,opacity:.15,borderRadius:'50%'}],{duration:420,easing:'cubic-bezier(.5,0,.3,1)'});
-  scr.animate([{backgroundColor:getComputedStyle(scr).backgroundColor},{backgroundColor:'rgba(0,0,0,0)'}],{duration:420,easing:'ease'});
+    {transform:`translate(${dx}px,${dy}px) scale(${s})`,opacity:.15,borderRadius:'50%'}],{duration:280,easing:'cubic-bezier(.5,0,.3,1)'});
+  scr.animate([{backgroundColor:getComputedStyle(scr).backgroundColor},{backgroundColor:'rgba(0,0,0,0)'}],{duration:280,easing:'ease'});
   setTimeout(()=>{
     scr.classList.remove('show');
     isl.classList.remove('hidden-pre');isl.classList.add('pop');
-    setTimeout(()=>isl.classList.remove('pop'),650);
-  },400);
+    setTimeout(()=>isl.classList.remove('pop'),400);
+  },265);
 }
 // Вернуть звонок на экран: карточка «высасывается» из островка
 function _callMaximizeAnimated(){
@@ -869,10 +878,137 @@ function _callMaximizeAnimated(){
   const s=Math.max(ir.width/cr.width,.06);
   card.animate([{transform:`translate(${dx}px,${dy}px) scale(${s},${Math.max(ir.height/cr.height,.04)})`,opacity:.3,borderRadius:'40px',filter:'blur(6px)'},
     {transform:'translate(0,0) scale(1.02)',opacity:1,borderRadius:getComputedStyle(card).borderRadius,filter:'blur(0)',offset:.8},
-    {transform:'none',opacity:1,borderRadius:getComputedStyle(card).borderRadius,filter:'blur(0)'}],{duration:520,easing:'cubic-bezier(.2,.8,.2,1)'});
-  scr.animate([{backgroundColor:'rgba(0,0,0,0)'},{backgroundColor:getComputedStyle(scr).backgroundColor}],{duration:420,easing:'ease'});
-  isl.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.6)',opacity:0}],{duration:260,easing:'ease-in'});
-  setTimeout(()=>isl.classList.remove('show','open'),250);
+    {transform:'none',opacity:1,borderRadius:getComputedStyle(card).borderRadius,filter:'blur(0)'}],{duration:340,easing:'cubic-bezier(.2,.8,.2,1)'});
+  scr.animate([{backgroundColor:'rgba(0,0,0,0)'},{backgroundColor:getComputedStyle(scr).backgroundColor}],{duration:280,easing:'ease'});
+  isl.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.6)',opacity:0}],{duration:180,easing:'ease-in'});
+  setTimeout(()=>isl.classList.remove('show','open'),170);
+}
+
+// Значок «микрофон выключен» у собеседника (на аватарке и поверх его видео)
+function _showPeerMute(on){
+  ['callPeerMute','callPeerMuteVid'].forEach(id=>{
+    const el=$(id);if(!el)return;
+    if(on){el.classList.remove('hide');el.classList.add('show');}
+    else if(el.classList.contains('show')){el.classList.add('hide');setTimeout(()=>el.classList.remove('show','hide'),280);}
+  });
+}
+
+// ════════════════════════════════════════
+// ── ИНФОРМАЦИЯ О ГРУППЕ (правая колонка, как у каналов) ──
+// ════════════════════════════════════════
+Object.assign(_SP_ICONS,{
+  download:'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+  pin:'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z',
+  bookmark:'M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z',
+  personAdd:'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+  crown:'M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z',
+  group:'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+  megaphone:'M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z'
+});
+
+function _grpMembersText(n){return n+' '+_spPlural(n,'участник','участника','участников');}
+
+function showGroupPanel(gid){
+  const g=groups[gid];if(!g){toast('Группа не найдена');return;}
+  const ov=$('chInfoOverlay');if(!ov)return;
+  const isOwner=g.admin===myUsername;
+  const canInvite=isOwner||!!(g.canInvite&&g.canInvite[myUsername]);
+  const mems=g.members||[];
+  const online=mems.filter(p=>p!==myUsername&&(_fbMode?_fbConns[p]:conns[p]?.open)).length;
+  const memRow=pid=>{
+    const isAdm=pid===g.admin,inv=g.canInvite&&g.canInvite[pid];
+    const role=isAdm?'владелец':inv?'может приглашать':'';
+    const me=pid===myUsername;
+    const st=me?'это ты':_lastSeenText(pid);
+    return `<div class="sp-row gp-mem" onclick="${me?'':`closePeerProfile();showPeerProfile('${pid}')`}">
+      ${_spAvatarHtml(peerAvatars[pid]||(me?myAvatar:null),me?(_myFullName().trim()||myUsername):(peerNames[pid]||pid),'sp-pick-av',pid)}
+      <div class="sp-row-txt"><div class="sp-row-title">${esc(me?(_myFullName().trim()||'@'+myUsername):(peerNames[pid]||'@'+pid))}</div>
+        <div class="sp-row-sub${st==='в сети'?' gp-on':''}">${esc(st)}</div></div>
+      ${role?`<div class="gp-role">${role}</div>`:''}
+      ${isOwner&&!me?`<button class="sp-dots" onclick="event.stopPropagation();_grpMemMenu('${gid}','${pid}',this)">${_spSvg('dotsV')}</button>`:''}</div>`;
+  };
+  const muteRow=`<div class="sp-row" onclick="_ciToggleMute('${gid}')">${_spIco('red','bell')}
+      <div class="sp-row-txt"><div class="sp-row-title">Уведомления</div></div>
+      <div class="sp-switch${mutedChats[gid]?'':' on'}" id="ciMuteSw"></div></div>`;
+  ov.innerHTML=`
+    <div class="ci-hdr">
+      <button class="sp-tb-btn" onclick="closePeerProfile()" title="Закрыть">${_spSvg('close')}</button>
+      <div class="ci-title">Информация о группе</div>
+      ${isOwner?`<button class="sp-tb-btn" onclick="_grpEdit('${gid}')" title="Изменить">${_spSvg('pencil')}</button>`:''}
+    </div>
+    <div class="ci-top">
+      ${_spAvatarHtml(g.avatar,g.name||'Группа','ci-av',gid)}
+      <div class="ci-name">${esc(g.name||'Группа')}</div>
+      <div class="ci-subs">${_grpMembersText(mems.length)}${online?`, ${online} в сети`:''}</div>
+    </div>
+    <div class="sp-card">
+      ${g.desc?_spRow({ico:'info',color:'gray',title:esc(g.desc).replace(/\n/g,'<br>'),sub:'Описание',cls:'sp-row-multi sp-row-static'}):''}
+      ${muteRow}
+    </div>
+    ${_spSec('Участники',_grpMembersText(mems.length))}
+    <div class="sp-card">
+      ${canInvite?_spRow({ico:'personAdd',color:'blue',title:'Добавить участников',onclick:`showAddGroupMember('${gid}')`}):''}
+      ${mems.map(memRow).join('')}
+    </div>
+    <div class="ci-tabs-wrap">${_ciTabsHtml(gid,true)}</div>`;
+  _ciRenderTab(gid,ov.querySelector('.ci-tabs-wrap'));
+  $('peerProfOverlay')?.classList.remove('show');
+  $('peerProfBackdrop')?.classList.add('show');
+  ov.scrollTop=0;ov.classList.add('show');
+  _rpDock(true);
+}
+
+function _grpMemMenu(gid,pid,btn){
+  const g=groups[gid];if(!g)return;
+  const inv=g.canInvite&&g.canInvite[pid];
+  const m=document.createElement('div');m.className='sp-menu show sp-float-menu';
+  const ov=$('chInfoOverlay'),r=btn.getBoundingClientRect(),or=ov.getBoundingClientRect();
+  m.style.cssText=`position:absolute;top:${r.bottom-or.top+ov.scrollTop}px;right:${or.right-r.right}px`;
+  m.innerHTML=`<button class="sp-menu-item" onclick="this.parentElement.remove();grpToggleInvite('${gid}','${pid}');setTimeout(()=>showGroupPanel('${gid}'),150)">${_spSvg('personAdd')}<span>${inv?'Запретить приглашать':'Разрешить приглашать'}</span></button>
+    <button class="sp-menu-item danger" onclick="this.parentElement.remove();grpKick('${gid}','${pid}')">${_spSvg('block')}<span>Удалить из группы</span></button>`;
+  ov.appendChild(m);
+  setTimeout(()=>document.addEventListener('click',()=>m.remove(),{once:true}),0);
+}
+
+// Редактирование группы — прямо в правой колонке
+function _grpEdit(gid){
+  const g=groups[gid];if(!g||g.admin!==myUsername)return;
+  const ov=$('chInfoOverlay');
+  const cur=g.bgColor||'#3390ec';
+  ov.innerHTML=`
+    <div class="ci-hdr">
+      <button class="sp-tb-btn" onclick="showGroupPanel('${gid}')" title="Назад">${_spSvg('back')}</button>
+      <div class="ci-title">Изменить группу</div>
+    </div>
+    <div class="ep-av-wrap"><div class="ep-av" onclick="$('grpAvFileInput').click()">
+      <div id="grpAvPrev" style="width:100%;height:100%">${g.avatar?`<img src="${g.avatar}" alt="" style="width:100%;height:100%;object-fit:cover">`:_avHtml(gid,g.name||'Группа')}</div>
+      <div class="ep-av-cam">${_spSvg('camera')}</div></div>
+      <input type="file" id="grpAvFileInput" accept="image/*" style="display:none" onchange="grpLoadAvatar('${gid}',this)"></div>
+    <div class="sp-card sp-pad">
+      <label class="sp-field"><input id="grpEditName" maxlength="40" value="${esc(g.name||'')}" placeholder=" "><span>Название группы</span></label>
+      <label class="sp-field sp-field-ta"><textarea id="grpEditDesc" maxlength="300" placeholder=" ">${esc(g.desc||'')}</textarea><span>Описание (необязательно)</span></label>
+    </div>
+    ${myPremium?`${_spSec('Фон профиля')}<div class="sp-card sp-pad">
+      <div class="sp-cust-colors"><label>Цвет<input type="color" id="grpColorPicker" value="${cur}"></label></div>
+      <div id="grpColorPreview" style="display:none"></div>
+      <div class="sp-patterns" style="margin-top:10px">
+        <button class="sp-pat${!g.bgPattern?' sel':''}" id="grpPat_">Нет</button>
+        ${PREMIUM_BG_PATTERNS.map(p=>`<button class="sp-pat${g.bgPattern===p.id?' sel':''}" id="grpPat_${p.id}">${p.emoji} ${p.label}</button>`).join('')}
+      </div></div>`:_spHint('Цвет и узор фона группы — в SLON Premium')}
+    <div style="padding:6px 12px 16px"><button class="sp-btn" onclick="saveGroupProfile('${gid}');setTimeout(()=>showGroupPanel('${gid}'),120)">Сохранить</button></div>`;
+  ['', ...PREMIUM_BG_PATTERNS.map(p=>p.id)].forEach(pid=>{
+    const btn=$('grpPat_'+pid);
+    if(btn)btn.onclick=()=>{groups[gid].bgPattern=pid;document.querySelectorAll('[id^="grpPat_"]').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');};
+  });
+  ov.scrollTop=0;
+}
+
+// Иконки вместо эмодзи в меню сообщения («📋 Копировать» → значок + текст)
+const _MENU_EMOJI_ICONS={'⬇️':'download','📋':'copy','⭐':'bookmark','✏️':'pencil','🗑':'trash','📌':'pin'};
+function _menuLabelHtml(label){
+  const m=String(label).match(/^(\S+)\s+(.+)$/);
+  const ico=m&&_MENU_EMOJI_ICONS[m[1]];
+  return ico?`${_spSvg(ico)}<span>${esc(m[2])}</span>`:`<span>${esc(label)}</span>`;
 }
 
 // ── ЗАПУСК ──
@@ -887,6 +1023,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   _renderFolderTabs();_applyFolderFilter();
   _arcInit();
   _islandInit();
+  // Старые сохранённые названия каналов были с эмодзи «📢 »/«🐘 » — чистим
+  Object.keys(peerNames).forEach(id=>{
+    if(!_isChannelId(id))return;
+    const clean=String(peerNames[id]).replace(/^(📢|🐘)\s*/u,'');
+    if(clean!==peerNames[id]){peerNames[id]=clean;updateSbName(id);}
+  });
   // Новые/перерисованные чаты в списке — снова применяем фильтр папки
   const list=$('sbList');
   if(list){let t=null;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(_applyFolderFilter,60);}).observe(list,{childList:true,subtree:true,characterData:true});}

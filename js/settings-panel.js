@@ -71,6 +71,9 @@ function _spPlural(n,one,few,many){
 }
 function _spSubsText(n){return n+' '+_spPlural(n,'подписчик','подписчика','подписчиков');}
 
+// Значок SLON (слон) — вместо эмодзи 🐘 в аватарках СЛОН AI и канала новостей
+const _SLON_MARK='<svg class="slon-mark" viewBox="0 0 24 24"><path d="M20 9.5c0-3-2.6-5.5-6.2-5.5H9.6C6 4 3.5 6.6 3.5 10v2.2c0 .9.3 1.7.8 2.3V19a1 1 0 0 0 1 1h1.4a1 1 0 0 0 1-1v-2.4h4.6V19a1 1 0 0 0 1 1h1.4a1 1 0 0 0 1-1v-3.2c.5-.5.8-1.1.9-1.8H18v3.3c0 .9.8 1.7 1.7 1.7.5 0 .8-.4.8-.8V9.5zM14 8.3a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z"/></svg>';
+
 // ── Аватарки без фото: буквы имени и фамилии на цветах Telegram ──
 const _AV_COLORS=[['#ff885e','#ff516a'],['#ffcd6a','#ffa85c'],['#82b1ff','#665fff'],['#a0de7e','#54cb68'],['#53edd6','#28c9b7'],['#72d5fd','#2a9ef1'],['#e0a2f3','#d669ed']];
 function _avColor(id){
@@ -376,7 +379,9 @@ function _spPickChannel(){
 }
 
 function _spSetLinkedChannel(u){
-  myLinkedChannel=u;saveAll();
+  myLinkedChannel=u;
+  LS.set(_getAccountPrefix(myUsername)+'linkedCh',u); // отдельно и сразу — не зависит от квоты истории
+  saveAll();
   if(_fbMode)_publishMyProfile();
   _spPop();
   toast(u?'Канал добавлен в профиль 📢':'Канал убран из профиля');
@@ -1100,7 +1105,7 @@ function _ciSetTab(id,t,btn){
 function _ciRenderTab(id,root){
   const box=root?.querySelector('.ci-content');if(!box)return;
   const tab=box.dataset.tab||'media';
-  const hist=chatHist[id]||[];
+  const hist=chatHist[id]||(typeof grpHist!=='undefined'&&grpHist[id])||[];
   box.classList.remove('ci-fade');void box.offsetWidth;box.classList.add('ci-fade');
   if(tab==='media'){
     const photos=hist.filter(m=>m.photoId).reverse();

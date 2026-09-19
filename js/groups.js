@@ -125,6 +125,7 @@ function doCreateGroup(){
 }
 
 function showGroupInfo(gid){
+  if(typeof showGroupPanel==='function')return showGroupPanel(gid); // новая панель справа
   const g=groups[gid];if(!g)return;
   const isOwner=g.admin===myUsername;
   const canInvite=isOwner||(g.canInvite&&g.canInvite[myUsername]);
@@ -154,6 +155,7 @@ function showGroupInfo(gid){
 }
 
 function showGroupProfile(gid){
+  if(typeof showGroupPanel==='function')return showGroupPanel(gid);
   const g=groups[gid];if(!g)return;
   const isOwner=g.admin===myUsername;
   const bgStyle=_getProfileBgStyle(g.bg||'bg0',g.bgColor||'',g.bgPattern||'');

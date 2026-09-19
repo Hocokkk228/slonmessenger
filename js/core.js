@@ -1593,11 +1593,10 @@ function saveAll(){
 
   const _trySave=()=>{
     try{
-      localStorage.setItem(p+'chats',JSON.stringify(co));
-      localStorage.setItem(p+'grpH',JSON.stringify(go));
+      // Сначала маленькие настройки: если квота кончится на тяжёлой истории,
+      // профиль/канал в профиле/приватность всё равно уже сохранены
       localStorage.setItem(p+'groups',JSON.stringify(groups));
       localStorage.setItem(p+'names',JSON.stringify(peerNames));
-      localStorage.setItem(p+'avs',JSON.stringify(peerAvatars));
       localStorage.setItem(p+'nick',JSON.stringify(myNick));
       localStorage.setItem(p+'bio',JSON.stringify(myBio));
       localStorage.setItem(p+'av',JSON.stringify(myAvatar));
@@ -1626,6 +1625,10 @@ function saveAll(){
       localStorage.setItem('sl_mic',JSON.stringify(selMic));
       localStorage.setItem('sl_spk',JSON.stringify(selSpk));
       localStorage.setItem('sl_cam',JSON.stringify(selCam));
+      // Тяжёлое — в конце
+      localStorage.setItem(p+'avs',JSON.stringify(peerAvatars));
+      localStorage.setItem(p+'grpH',JSON.stringify(go));
+      localStorage.setItem(p+'chats',JSON.stringify(co));
       return true;
     }catch(e){
       if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')return false;

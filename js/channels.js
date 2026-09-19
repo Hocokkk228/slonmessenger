@@ -275,7 +275,7 @@ async function saveChannelSettings(channelId){
       ...updated,ts:Date.now()
     });
     // Обновляем локально и в sidebar
-    peerNames[channelId]='📢 '+(updated.name||('@'+ch.username));
+    peerNames[channelId]=updated.name||('@'+ch.username);
     peerAvatars[channelId]=updated.avatar||null;
     peerProfileBgColors[channelId]=updated.bgColor||'';
     peerProfilePatterns[channelId]=updated.bgPattern||'';
@@ -341,7 +341,7 @@ async function doSubscribeChannel(){
     if(!meta)return toast('Канал @'+username+' не найден');
     const channelId='ch_'+username;
     subscribedChannels[channelId]=meta;
-    peerNames[channelId]='📢 '+meta.name;
+    peerNames[channelId]=meta.name;
     peerAvatars[channelId]=meta.avatar||null;
     if(!chatHist[channelId])chatHist[channelId]=[];
     if(!$('si-'+channelId))_addChannelToSidebar(channelId,meta);
@@ -357,7 +357,7 @@ async function doSubscribeChannel(){
 }
 
 function _addChannelToSidebar(channelId,meta){
-  peerNames[channelId]='📢 '+(meta.name||('@'+meta.username));
+  peerNames[channelId]=meta.name||('@'+meta.username);
   peerAvatars[channelId]=meta.avatar||null;
   if(!chatHist[channelId])chatHist[channelId]=[];
   if(!$('si-'+channelId))addSbItem(channelId);
@@ -379,7 +379,7 @@ function _listenUserChannel(channelId,username){
     const ts=d.ts||Date.now();
     const meta=myChannels[channelId]||subscribedChannels[channelId]||{};
     const chAvatar=meta.avatar||peerAvatars[channelId]||null;
-    const msg={id:d.id,sender:'inc',name:'📢 '+(meta.name||username),avatar:chAvatar,ts,time:fmtTime(ts),text:d.text};
+    const msg={id:d.id,sender:'inc',name:(meta.name||username),avatar:chAvatar,ts,time:fmtTime(ts),text:d.text};
     chatHist[channelId].push(msg);
     if(activeChat===channelId){renderChat(channelId);scrollDown();}
     else{addUnread(channelId);if(!mutedChats[channelId]&&_notifOn('channels'))toast('📢 Новый пост в @'+username+(myNotif.channelsPreview!==false?': '+String(d.text).slice(0,40):'!'),3000);}

@@ -1453,7 +1453,7 @@ body{font-family:'Roboto',-apple-system,'Segoe UI',system-ui,sans-serif;-webkit-
 .msg-link{color:var(--accent)!important;}
 
 /* Плашки дат */
-.date-separator{margin:10px 0 4px;position:sticky;top:4px;z-index:2;}
+.date-separator{margin:10px 0 4px;position:relative;z-index:1;}
 .date-separator span{background:var(--date-bg);color:#fff;border:none;font-size:14px;font-weight:500;padding:2px 9px;border-radius:14px;box-shadow:none;}
 .sys{border:none;background:var(--date-bg);color:#fff;font-size:14px;font-weight:500;padding:2px 10px;border-radius:14px;}
 
@@ -1595,9 +1595,6 @@ body[data-theme="liketg"]{background-color:#98bd8a;background-image:
     0 12px 32px rgba(0,0,0,.32),0 2px 6px rgba(0,0,0,.2);
   transition:width .5s cubic-bezier(.32,.72,0,1),height .5s cubic-bezier(.32,.72,0,1),border-radius .5s cubic-bezier(.32,.72,0,1),padding .5s cubic-bezier(.32,.72,0,1),transform .2s ease;}
 /* Chromium: настоящее преломление фона через SVG-фильтр */
-@supports (backdrop-filter:url(#lgRefract)){
-  .mini-call{backdrop-filter:url(#lgRefract) blur(10px) saturate(190%) brightness(1.05);}
-}
 .mini-call.show{display:flex;}
 .mini-call.grab{cursor:grabbing;transform:scale(1.04);}
 .mini-call.hidden-pre{opacity:0;}
@@ -1658,3 +1655,107 @@ body[data-theme="liketg"]{background-color:#98bd8a;background-image:
   .mob-call-bar{display:none!important;}
   .ch-act.call{display:flex;}
 }
+
+/* ════════════════════════════════════════════════════════
+   ЖИДКОЕ СТЕКЛО (лёгкая версия), ЗВОНОК, ШАПКА ЧАТА
+   ════════════════════════════════════════════════════════ */
+/* Островок: быстрее и дешевле для GPU */
+.mini-call{-webkit-backdrop-filter:blur(12px) saturate(180%);backdrop-filter:blur(12px) saturate(180%);will-change:transform;contain:layout paint;
+  transition:width .28s cubic-bezier(.32,.72,0,1),height .28s cubic-bezier(.32,.72,0,1),border-radius .28s cubic-bezier(.32,.72,0,1),padding .28s cubic-bezier(.32,.72,0,1),transform .15s ease;}
+.mc-shine{mix-blend-mode:normal;}
+.mc-name{transition:max-width .28s cubic-bezier(.32,.72,0,1),opacity .2s ease;}
+.mc-btns{transition:max-width .28s cubic-bezier(.32,.72,0,1),opacity .18s ease;}
+.mini-call.open .mc-btns{transition-delay:.06s;}
+.mini-call.pop{animation:islandPop .38s cubic-bezier(.32,.72,0,1) both;}
+
+/* Шапка чата — жидкое стекло, парит над сообщениями */
+.chat-hdr,.pinned-bar{
+  background:color-mix(in srgb,var(--bg2) 64%,transparent)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.2),0 4px 16px rgba(16,35,47,.14)!important;}
+.chat-hdr::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 60%);}
+.chat-hdr>*{position:relative;}
+@media(min-width:641px){
+  .chat-hdr{position:absolute;top:12px;left:0;right:0;margin:0 auto;}
+  .pinned-bar{position:absolute;top:68px;left:0;right:0;margin:0 auto;}
+  .msgs{padding-top:72px;}
+  .pinned-bar.show~.msgs{padding-top:124px;}
+  .recon-banner{margin-top:70px;}
+}
+@media(max-width:640px){
+  .chat-hdr{position:absolute;top:8px;left:0;right:0;margin:0 auto;}
+  .pinned-bar{position:absolute;top:62px;left:0;right:0;margin:0 auto;}
+  .msgs{padding-top:64px;}
+  .pinned-bar.show~.msgs{padding-top:116px;}
+}
+/* Тёмные темы: блики стекла мягче */
+[data-theme]:not([data-theme="liketg"]):not([data-theme="light"]):not([data-theme="arctic"]) .chat-hdr,
+[data-theme]:not([data-theme="liketg"]):not([data-theme="light"]):not([data-theme="arctic"]) .pinned-bar{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07),0 4px 16px rgba(0,0,0,.3)!important;}
+[data-theme]:not([data-theme="liketg"]):not([data-theme="light"]):not([data-theme="arctic"]) .chat-hdr::before{background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,0) 60%);}
+
+/* ── Экран звонка ── */
+.call-card{position:relative;}
+/* Оверлей с дублирующими кнопками и подсказки с эмодзи внутри видео больше не нужны */
+.vid-tap-overlay,.vid-zoom-hint,.vid-switch-hint{display:none!important;}
+/* Моя камера/демонстрация — окошко в правом нижнем углу над кнопками */
+.call-card>#localVideo{position:absolute;right:16px;bottom:128px;width:132px;height:96px;border-radius:14px;object-fit:cover;z-index:6;
+  border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),0 6px 20px rgba(0,0,0,.35);opacity:1;
+  animation:selfPipIn .35s cubic-bezier(.32,.72,0,1) both;}
+.call-card>#localVideo.main-mode{top:64px;bottom:120px;left:0;right:0;width:auto;height:auto;border-radius:0;}
+@keyframes selfPipIn{from{opacity:0;transform:scale(.7) translateY(12px);}to{opacity:1;transform:none;}}
+.call-screen.fullscreen .call-card>#localVideo{width:200px;height:130px;bottom:140px;right:24px;}
+@media(max-width:640px){.call-screen.show .call-card>#localVideo{width:104px!important;height:78px!important;bottom:120px;}}
+/* Аватарка + значок мьюта собеседника */
+.call-av-wrap{position:relative;}
+.call-peer-mute{position:absolute;right:-4px;bottom:-4px;width:38px;height:38px;border-radius:50%;display:none;align-items:center;justify-content:center;z-index:3;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.1));
+  -webkit-backdrop-filter:blur(10px) saturate(180%);backdrop-filter:blur(10px) saturate(180%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset 0 2px 1px rgba(255,255,255,.8),inset 0 -2px 3px rgba(255,255,255,.3),0 4px 12px rgba(0,0,0,.3);}
+.call-peer-mute svg{width:20px;height:20px;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));}
+.call-peer-mute.show{display:flex;animation:muteIn .42s cubic-bezier(.32,.72,0,1) both;}
+.call-peer-mute.hide{animation:muteOut .26s ease both;}
+.call-peer-mute.vid{top:14px;left:14px;right:auto;bottom:auto;}
+@keyframes muteIn{0%{transform:scale(.3) rotate(-25deg);opacity:0;}60%{transform:scale(1.15) rotate(6deg);opacity:1;}100%{transform:none;}}
+@keyframes muteOut{to{transform:scale(.3);opacity:0;}}
+
+html,body{overscroll-behavior-y:none;}
+
+/* Плавная смена языка */
+body{transition:opacity .16s ease;}
+body.lang-switching{opacity:.55;}
+
+/* ════════════════════════════════════════════════════════
+   ЗНАЧКИ ВМЕСТО ЭМОДЗИ, МЕНЮ СООБЩЕНИЯ, ПАНЕЛЬ ГРУППЫ
+   ════════════════════════════════════════════════════════ */
+.slon-mark{width:58%;height:58%;fill:#fff;}
+.ch-av .slon-mark{width:24px;height:24px;}
+/* Тип чата перед названием: канал — рупор, группа — люди (как в Telegram) */
+.sb-item[id^="si-ch_"] .sb-name::before,.sb-item#si-slon_channel .sb-name::before,.sb-item[id^="si-g_"] .sb-name::before{
+  content:'';display:inline-block;width:16px;height:16px;margin:0 4px -2px 0;background:currentColor;opacity:.85;
+  -webkit-mask:var(--ti) center/contain no-repeat;mask:var(--ti) center/contain no-repeat;}
+.sb-item[id^="si-ch_"],.sb-item#si-slon_channel{--ti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z'/%3E%3C/svg%3E");}
+.sb-item[id^="si-g_"]{--ti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'/%3E%3C/svg%3E");}
+/* Булавки */
+.sb-pin{position:absolute;top:6px;right:8px;width:14px;height:14px;pointer-events:none;opacity:.6;}
+.sb-pin svg{width:100%;height:100%;fill:var(--text2);}
+.sb-item.active .sb-pin svg{fill:#fff;}
+.msg-pin-badge{display:flex;align-items:center;justify-content:flex-end;margin-bottom:2px;}
+.msg-pin-badge svg{width:14px;height:14px;fill:var(--accent);transform:rotate(30deg);}
+.pb-ico{width:14px;height:14px;fill:currentColor;margin-right:5px;vertical-align:-2px;}
+
+/* Меню сообщения — значки вместо эмодзи, как контекстное меню Telegram */
+.msg-menu-popup{background:color-mix(in srgb,var(--bg2) 90%,transparent);-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  border:1px solid var(--border);border-radius:14px;padding:5px;min-width:200px;box-shadow:0 10px 32px rgba(0,0,0,.28);
+  animation:msgMenuIn .18s cubic-bezier(.32,.72,0,1) both;transform-origin:top left;}
+@keyframes msgMenuIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:none;}}
+.msg-menu-popup button{display:flex;align-items:center;gap:14px;border-radius:9px;padding:9px 12px;font-size:14px;color:var(--text1);}
+.msg-menu-popup button svg{width:20px;height:20px;fill:var(--text2);flex-shrink:0;}
+.msg-menu-popup button.danger,.msg-menu-popup button.danger svg{color:var(--red);fill:var(--red);}
+
+/* Панель группы */
+.gp-role{font-size:13px;color:var(--text2);flex-shrink:0;}
+.gp-on{color:var(--accent)!important;}
+.gp-mem .sp-pick-av{width:42px;height:42px;}
+.ci-overlay .sp-menu{z-index:10;}

@@ -5,7 +5,7 @@
 // Пользовательский контент (сообщения, имена, био) не трогаем.
 // Подключается последним.
 // ════════════════════════════════════════════════════════
-const SLON_LANG=(()=>{try{return JSON.parse(localStorage.getItem('sl_lang'))||'ru';}catch(e){return 'ru';}})();
+let SLON_LANG=(()=>{try{return JSON.parse(localStorage.getItem('sl_lang'))||'ru';}catch(e){return 'ru';}})();
 
 function _langName(){return SLON_LANG==='en'?'English':'Русский';}
 
@@ -209,7 +209,7 @@ const _I18N_EN={
 'Нажми на сеанс, чтобы завершить его.':'Tap a session to terminate it.','Звук и камера ':'Speakers and Camera','Проверить звук':'Test sound','Уровень ':'Level',
 'Контент':'Content','Выбери канал':'Choose channel','изменить':'edit','Написать ':'Message','Звонок ':'Call','Видео ':'Video',
 'января':'January','февраля':'February','марта':'March','апреля':'April','мая':'May','июня':'June','июля':'July','августа':'August','сентября':'September','октября':'October','ноября':'November','декабря':'December',
-'Пн':'Mon','Вт':'Tue','Ср':'Wed','Чт':'Thu','Пт':'Fri','Сб':'Sat','Вс':'Sun','пн':'Mon','вт':'Tue','ср':'Wed','чт':'Thu','пт':'Fri','сб':'Sat','вс':'Sun'
+'Архив':'Archive','Здесь чаты, которые ты убрал в архив. Новые сообщения их не достают.':'Chats you archived live here. New messages do not bring them back.','Архив скрыт — потяни список вниз, чтобы вернуть':'Archive hidden — pull the chat list down to bring it back','Информация о группе':'Group Info','Изменить группу':'Edit group','Участники':'Members','Название группы':'Group name','Описание (необязательно)':'Description (optional)','владелец':'owner','может приглашать':'can invite','это ты':'this is you','Разрешить приглашать':'Allow inviting','Запретить приглашать':'Forbid inviting','Цвет и узор фона группы — в SLON Premium':'Group background color and pattern are in SLON Premium','Фон профиля':'Profile background','Цвет':'Color','Микрофон выключен':'Microphone is off','Сбросить':'End call','На экран':'Full screen','Эмодзи':'Emoji','Вниз':'Down','Папок пока нет':'No folders yet','Новая папка':'New folder','Группа не найдена':'Group not found','Пн':'Mon','Вт':'Tue','Ср':'Wed','Чт':'Thu','Пт':'Fri','Сб':'Sat','Вс':'Sun','пн':'Mon','вт':'Tue','ср':'Wed','чт':'Thu','пт':'Fri','сб':'Sat','вс':'Sun'
 };
 
 // Регулярки для динамических фраз (числа, возраст и т.п.)
@@ -251,14 +251,29 @@ const _I18N_SKIP='.msg-bub,.msg-who,#pinnedText,.sp-ch-prev,.pin-txt span,[data-
 // Имена и «о себе»: переводим только точным совпадением («Избранное» → «Saved Messages»), чужие имена не искажаем
 const _I18N_EXACT='.sb-prev,.sb-name,.ch-name,.sp-name,.pp-name,.sp-ch-name,.ci-name,.sp-row-multi .sp-row-title,.sp-pick-txt';
 
+// Исходный русский текст узлов/атрибутов — чтобы вернуть его без перезагрузки
+const _i18nOrig=new WeakMap();
 function _i18nText(n){
-  const p=n.parentElement;if(!p||!_CYR.test(n.nodeValue))return;
+  const p=n.parentElement;if(!p)return;
+  const v=n.nodeValue;
+  if(SLON_LANG!=='en'){
+    // Обратно на русский: возвращаем оригинал, если текст с тех пор не менялся приложением
+    const o=_i18nOrig.get(n);
+    if(o){if(o.tr===v)n.nodeValue=o.ru;_i18nOrig.delete(n);}
+    return;
+  }
+  if(!_CYR.test(v))return;
   if(p.closest(_I18N_SKIP))return;
-  const v=p.closest(_I18N_EXACT)?trExact(n.nodeValue):tr(n.nodeValue);
-  if(v!==n.nodeValue)n.nodeValue=v;
+  const t=p.closest(_I18N_EXACT)?trExact(v):tr(v);
+  if(t!==v){_i18nOrig.set(n,{ru:v,tr:t});n.nodeValue=t;}
 }
 function _i18nAttrs(el){
-  ['placeholder','title','aria-label'].forEach(a=>{const v=el.getAttribute(a);if(v&&_CYR.test(v)){const t=tr(v);if(t!==v)el.setAttribute(a,t);}});
+  ['placeholder','title','aria-label'].forEach(a=>{
+    const key='i18n'+a.replace(/-./g,x=>x[1].toUpperCase());
+    const v=el.getAttribute(a);if(v==null)return;
+    if(SLON_LANG!=='en'){const o=el.dataset[key];if(o!==undefined){el.setAttribute(a,o);delete el.dataset[key];}return;}
+    if(_CYR.test(v)){const t=tr(v);if(t!==v){el.dataset[key]=v;el.setAttribute(a,t);}}
+  });
 }
 function _i18nNode(n){
   if(n.nodeType===3){_i18nText(n);return;}
@@ -274,14 +289,15 @@ function _i18nNode(n){
   let c;while((c=w.nextNode())){if(c.nodeType===1)_i18nAttrs(c);else _i18nText(c);}
 }
 
-if(SLON_LANG==='en'){
-  document.documentElement.lang='en';
-  // Тосты и заголовки модалок идут через DOM — но toast лучше переводить сразу
+// Наблюдатель работает всегда: язык можно переключить на лету
+(function(){
   const _toastOrig=window.toast;
   if(typeof _toastOrig==='function')window.toast=function(msg,...a){return _toastOrig(tr(msg),...a);};
   const run=()=>{
-    _i18nNode(document.body);
+    document.documentElement.lang=SLON_LANG;
+    if(SLON_LANG==='en')_i18nNode(document.body);
     new MutationObserver(ms=>{
+      if(SLON_LANG!=='en')return;
       for(const m of ms){
         if(m.type==='characterData')_i18nNode(m.target);
         else m.addedNodes.forEach(_i18nNode);
@@ -289,19 +305,27 @@ if(SLON_LANG==='en'){
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
-}
+})();
 
 // ── Страница «Язык» в настройках ──
 function _spLanguage(){
-  const opt=(code,name,sub)=>`<div class="sp-pick${SLON_LANG===code?' sel':''}" onclick="_setLang('${code}')">
-      <div class="sp-pick-radio"></div><div class="sp-pick-txt"><div>${name}</div><div class="sp-row-sub">${sub}</div></div></div>`;
+  const opt=(code,name,sub)=>`<div class="sp-pick${SLON_LANG===code?' sel':''}" data-lang="${code}" onclick="_setLang('${code}')">
+      <div class="sp-pick-radio"></div><div class="sp-pick-txt" data-noi18n><div>${name}</div><div class="sp-row-sub">${sub}</div></div></div>`;
   _spPush('Язык',
     _spSec('Язык интерфейса')
     +`<div class="sp-card sp-pad sp-lang-list">${opt('ru','Русский','Russian')}${opt('en','English','English')}</div>`);
 }
+// Смена языка без перезагрузки: весь интерфейс перерисовывается на месте
 function _setLang(code){
   if(code===SLON_LANG)return;
   try{localStorage.setItem('sl_lang',JSON.stringify(code));}catch(e){}
-  document.body.style.transition='opacity .25s';document.body.style.opacity='0';
-  setTimeout(()=>location.reload(),260);
+  document.querySelectorAll('.sp-lang-list .sp-pick').forEach(x=>x.classList.toggle('sel',x.dataset.lang===code));
+  const root=document.body;
+  root.classList.add('lang-switching');
+  setTimeout(()=>{
+    SLON_LANG=code;
+    document.documentElement.lang=code;
+    _i18nNode(document.body); // en — переводит, ru — возвращает оригиналы
+    root.classList.remove('lang-switching');
+  },160);
 }

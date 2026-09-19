@@ -81,7 +81,7 @@ function initFirebaseMode(){
 
 function _initSlonChannel(){
   if(!peerNames[SLON_CHANNEL_ID]){
-    peerNames[SLON_CHANNEL_ID]='🐘 SLON Новости';
+    peerNames[SLON_CHANNEL_ID]='SLON Новости';
     peerAvatars[SLON_CHANNEL_ID]=null;
     if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
     const already=chatHist[SLON_CHANNEL_ID].some(m=>m.text&&m.text.includes('SLON v0.9'));
@@ -551,6 +551,10 @@ function onData(pid,data){
         if(isForUs||!activeCall)
           toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
       }
+      break;
+    case 'call_mute':
+      // Собеседник выключил/включил микрофон — показываем значок
+      if(activeCall?.peerId===pid)_showPeerMute(!!data.muted);
       break;
     case 'call_end':
       stopRingSound();
