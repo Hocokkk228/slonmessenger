@@ -122,6 +122,8 @@ function _spPush(title,bodyHtml,opts={}){
 
 function _spPop(instant){
   const page=_spStack.pop();if(!page)return;
+  // Страница может держать ресурсы (камера, микрофон, анимация) — освобождаем
+  try{page._onClose?.();}catch(e){}
   const under=_spStack[_spStack.length-1]||$('spBase');
   under.classList.remove('sp-behind');
   if(instant){page.remove();return;}
@@ -219,11 +221,12 @@ function _spRender(quiet){
    +_spRow({ico:'key',color:'steel',title:'Конфиденциальность',onclick:'_spPrivacy()'})
    +_spRow({ico:'brush',color:'purple',title:'Кастомизация профиля',onclick:'_spCustomize()'})
    +_spRow({ico:'clock',color:'orange',title:'Часы работы',val:myBusinessHours?.enabled?'Вкл':'',onclick:'_bhEditor()'})
-   +_spRow({ico:'folder',color:'blue',title:'Папки с чатами',onclick:'_spSoon()'})
-   +_spRow({ico:'heart',color:'pink',title:'Стикеры и эмодзи',onclick:'_spSoon()'})
-   +_spRow({ico:'speaker',color:'green',title:'Звук и камера',onclick:'_spSoon()'})
-   +_spRow({ico:'devices',color:'blue',title:'Устройства',onclick:'showDevPanel()'})
-   +_spRow({ico:'globe',color:'violet',title:'Язык',val:'Русский',onclick:"toast('Пока только русский 🐘')"})
+   +_spRow({ico:'folder',color:'blue',title:'Папки с чатами',onclick:'_spFolders()'})
+   +_spRow({ico:'heart',color:'pink',title:'Стикеры и эмодзи',onclick:'_spStickers()'})
+   +_spRow({ico:'speaker',color:'green',title:'Звук и камера',onclick:'_spAV()'})
+   +_spRow({ico:'bolt',color:'violet',title:'Анимации и производительность',onclick:'_spAnimations()'})
+   +_spRow({ico:'devices',color:'blue',title:'Устройства',onclick:'_spSessions()'})
+   +_spRow({ico:'globe',color:'violet',title:'Язык',val:_langName(),onclick:'_spLanguage()'})
    +_spRow({ico:'keyboard',color:'orange',title:'Горячие клавиши',onclick:'_spSoon()'})
   );
 
@@ -567,7 +570,7 @@ function _spPrivacy(){
       _spRow({ico:'block',color:'red',title:'Заблокированные',val:blockedN||'',onclick:'_spBlocked()'})
      +_spRow({ico:'lock',color:'blue',title:'Код-пароль',sub:myPasscode?'Включён':'Выключен',onclick:'_spPasscode()'})
      +_spRow({ico:'shieldCheck',color:'green',title:'Пароль аккаунта',sub:'Вход с других устройств',onclick:'_spChangePassword()'})
-     +_spRow({ico:'globe',color:'violet',title:'Устройства',onclick:'showDevPanel()'})
+     +_spRow({ico:'globe',color:'violet',title:'Устройства',onclick:'_spSessions()'})
     )
     +_spSec('Конфиденциальность')+_spCard(rows)
     +_spSec('Новые чаты от незнакомых')
@@ -782,16 +785,7 @@ function _spSetWallpaper(id,el){
   el.parentElement.querySelectorAll('.sp-pick').forEach(x=>x.classList.toggle('sel',x===el));
 }
 
-function _spPremiumInfo(){
-  _spPush('SLON Premium',`<div class="sp-prem-hero"><div class="sp-prem-star">${_spSvg('star')}</div>
-      <div class="sp-prem-t">SLON Premium</div><div class="sp-prem-s">${myPremium?'Подписка активна — спасибо! 💜':'Больше возможностей для SLON'}</div></div>`
-    +_spCard(
-      _spRow({ico:'gear',color:'violet',title:'10 эксклюзивных тем',sub:'Оформление, которого нет у других',cls:'sp-row-static'})
-     +_spRow({ico:'brush',color:'pink',title:'Свои цвета профиля',sub:'Любой градиент фона',cls:'sp-row-static'})
-     +_spRow({ico:'heart',color:'orange',title:'Узоры на фоне профиля',sub:'Слоны, бегемоты, жирафы, орлы',cls:'sp-row-static'})
-     +_spRow({ico:'image',color:'blue',title:'Обои для чатов',cls:'sp-row-static'})
-     +_spRow({ico:'star',color:'premium',title:'Значок ⭐ у имени',cls:'sp-row-static'})));
-}
+// Страница SLON Premium — в settings-extra.js (3D-слон)
 
 let _spDraft=null;
 function _spCustomize(){
