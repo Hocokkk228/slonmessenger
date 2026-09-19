@@ -554,6 +554,9 @@ function onData(pid,data){
           toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
       }
       break;
+    case 'grp_call_incoming':
+      _handleGrpCallMsg(pid,data);
+      break;
     case 'call_mute':
       // Собеседник выключил/включил микрофон — показываем значок
       if(activeCall?.peerId===pid)_showPeerMute(!!data.muted);

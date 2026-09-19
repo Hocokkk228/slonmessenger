@@ -74,6 +74,7 @@ function openChat(id){
     renderChat(id);
     updateChatHeader();
     _updateWindowTitle();
+    _gcRenderBar(); // плашка «Идёт групповой звонок» (group-calls.js)
     // В личных чатах аватарки и имена у сообщений не нужны (как в Telegram)
     $('msgs').classList.toggle('is-group',id.startsWith('g_')||id==='ai');
     _syncInpState();
@@ -176,7 +177,7 @@ function updateChatHeader(){
     else{$('chAv').style.background='';$('chAv').innerHTML=_avHtml(id,g.name||'Группа');}
     $('chName').textContent=(g.name||'Группа');
     $('chStatus').textContent=_grpMembersText(g.members?.length||0);$('chStatus').className='ch-status off';
-    $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
+    $('chSearchBtn').style.display='none';$('chCallBtn').style.display=''; // групповой звонок
     _buildChatDropdown(id,'group');
     mob.style.display='none';
   }else{

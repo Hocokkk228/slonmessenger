@@ -90,6 +90,7 @@ async function _flushPendingIce(){
 }
 
 function startCallWithPerm(peerId,isVideo){
+  if(peerId&&peerId.startsWith('g_'))return startGroupCall(peerId,isVideo); // групповой звонок
   // В fbMode считаем всех потенциально доступными
   if(activeCall)return toast('Уже идёт звонок');
   if(!hasMediaDevices)return toast('Медиа-устройства недоступны');
