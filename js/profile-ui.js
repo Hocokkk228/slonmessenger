@@ -406,13 +406,4 @@ function closeThemeOverlay(){
   $('themeOvOverlay')?.classList.remove('show');
 }
 
-function _onStoryRingClick(){
-  // Пока не показываем ничего — здесь будут истории контактов
-  toast('Истории контактов скоро появятся 🐘');
-}
-
-function _updateStoryAvatar(){
-  // Кружок пока пустой — предназначен для чужих историй, не для своей аватарки
-  const el=$('sbStoryAv');if(!el)return;
-  el.innerHTML='';
-}
+// _onStoryRingClick и _updateStoryAvatar — в stories.js
