@@ -749,7 +749,7 @@ function showChatCtxMenu(e,id){
       'Просмотр','_ctxPreview()');
     html+=item('M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
       'Отметить как непрочитанное','_ctxMarkUnread()');
-    html+='<div class="ctx-item" onclick="_ctxAddToFolder()"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg><span style="flex:1">Добавить в папку</span><svg style="width:13px;height:13px;fill:var(--text2)"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>';
+    html+='<div class="ctx-item" onclick="event.stopPropagation();_ctxAddToFolder()"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg><span style="flex:1">Добавить в папку</span><svg style="width:13px;height:13px;fill:var(--text2)"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>';
     html+='<div class="ctx-sep"></div>';
     html+=item(isPinned?'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z':'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z',
       isPinned?'Открепить':'Закрепить чат','ctxPinToggle()');
@@ -788,8 +788,8 @@ function _ctxMarkUnread(){
 }
 
 function _ctxAddToFolder(){
-  $('chatCtxMenu').classList.remove('show');
-  toast('Папки появятся немного позже 📁');
+  if(!ctxTargetId)return;
+  _ctxFolderMenu(ctxTargetId); // подменю с папками — settings-extra.js
 }
 
 function ctxClearHistory(){
@@ -915,6 +915,7 @@ function updateArchiveHeader(){
   const hdr=$('archiveHdr');
   const hasArchived=$('archiveList').children.length>0;
   hdr.style.display=hasArchived?'flex':'none';
+  if(typeof _arcUpdate==='function')_arcUpdate(); // новый архив (settings-extra.js)
 }
 
 function toggleArchiveSection(){

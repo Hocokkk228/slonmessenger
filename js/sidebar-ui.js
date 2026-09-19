@@ -571,9 +571,8 @@ function _toggleHbFlyout(){
 
 function _openArchiveFromMenu(){
   const list=$('archiveList');
-  if(!list||!list.children.length){toast('Архив пуст');return;}
-  if(!list.classList.contains('open'))toggleArchiveSection();
-  list.scrollIntoView({behavior:'smooth',block:'center'});
+  if(!list||!list.querySelector('.sb-item')){toast('Архив пуст');return;}
+  _arcOpen();
 }
 
 function _showContactsList(){

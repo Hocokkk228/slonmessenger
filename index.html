@@ -470,16 +470,25 @@
    </div>
   </div>
 
+  <!-- Островок звонка: жидкое стекло, перетаскивается, по тапу разворачивается -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="lgRefract" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.02" numOctaves="2" seed="7" result="n"/>
+      <feGaussianBlur in="n" stdDeviation="2" result="nb"/>
+      <feDisplacementMap in="SourceGraphic" in2="nb" scale="36" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
   <div class="mini-call" id="miniCall">
-    <div class="mc-av ring" id="mcAv" onclick="maximizeCall()"><svg><use href="#i-person"/></svg></div>
-    <div class="mc-info" onclick="maximizeCall()">
+    <div class="mc-shine"></div>
+    <div class="mc-av ring" id="mcAv"></div>
+    <div class="mc-info">
       <div class="mc-name" id="mcName">Звонок</div>
       <div class="mc-timer" id="mcTimer">00:00</div>
     </div>
     <div class="mc-btns">
-      <button class="mc-btn mc-btn-mute" id="mcMuteBtn" onclick="toggleMute()"><svg><use href="#i-mic"/></svg></button>
-      <button class="mc-btn mc-btn-end" onclick="endCall()"><svg><use href="#i-phone-off"/></svg></button>
-      <button class="mc-expand-btn" onclick="maximizeCall()"><svg><use href="#i-maximize"/></svg></button>
+      <button class="mc-btn mc-btn-mute" id="mcMuteBtn" onclick="_islandBtn(this);toggleMute()" title="Микрофон"><svg viewBox="0 0 24 24"><path d="M12 15.2a3.7 3.7 0 0 0 3.7-3.7V5.7a3.7 3.7 0 1 0-7.4 0v5.8a3.7 3.7 0 0 0 3.7 3.7zm6.6-3.9a1.1 1.1 0 0 0-2.2.1 4.4 4.4 0 0 1-8.8 0 1.1 1.1 0 0 0-2.2-.1 6.6 6.6 0 0 0 5.5 6.5v2H9.3a1.1 1.1 0 0 0 0 2.2h5.4a1.1 1.1 0 0 0 0-2.2h-1.6v-2a6.6 6.6 0 0 0 5.5-6.5z"/></svg></button>
+      <button class="mc-btn mc-btn-end" onclick="_islandBtn(this);endCall()" title="Сбросить"><svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.96.96 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.3 11.3 0 0 0-2.67-1.85 1 1 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></button>
+      <button class="mc-btn mc-btn-screen" onclick="_islandBtn(this);maximizeCall()" title="На экран"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
     </div>
   </div>
 
@@ -488,6 +497,16 @@
 
     <div class="sidebar" id="sidebar">
       <!-- МОЙ ПРОФИЛЬ + НАСТРОЙКИ (выезжает поверх списка чатов, как в Telegram) -->
+      <!-- АРХИВ: открывается поверх списка чатов -->
+      <div class="arc-panel" id="arcPanel">
+        <div class="sp-page-hdr">
+          <button class="sp-tb-btn" onclick="_arcClose()" title="Назад"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+          <div class="sp-tb-title">Архив</div>
+        </div>
+        <div class="arc-hero"><div class="arc-hero-ico"><svg viewBox="0 0 24 24"><path class="arc-box" d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM6.24 5h11.52l.81.97H5.44l.8-.97zM5 19V8h14v11H5z"/><path class="arc-arrow" d="M13.45 10h-2.9v3H8l4 4 4-4h-2.55z"/></svg></div>
+          <div class="arc-hero-txt">Здесь чаты, которые ты убрал в архив. Новые сообщения их не достают.</div></div>
+        <div class="arc-body" id="arcBody"></div>
+      </div>
       <div class="sp-panel" id="spPanel" aria-hidden="true">
         <div class="sp-base" id="spBase">
         <div class="sp-topbar" id="spTopbar">

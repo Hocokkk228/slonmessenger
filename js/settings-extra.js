@@ -108,9 +108,11 @@ function _premSparks(cv){
 // через ~2 с после отпускания плавно возвращается в исходную позу
 function _premElephant(THREE,host){
   if(!host)return ()=>{};
-  host.innerHTML='';
+  // Эмодзи-заглушку не удаляем — она спрячется, когда отрисуется первый кадр
   const W=host.clientWidth||260,H=host.clientHeight||200;
-  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  let renderer;
+  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}
+  catch(e){console.warn('[SLON] WebGL недоступен:',e);return ()=>{};} // остаётся эмодзи-слон
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setSize(W,H);
   renderer.outputEncoding=THREE.sRGBEncoding;
@@ -125,7 +127,7 @@ function _premElephant(THREE,host){
   const l2=new THREE.PointLight(0xff7ad9,1.4,20);l2.position.set(4,1,3);scene.add(l2);
   const l3=new THREE.DirectionalLight(0xffffff,.45);l3.position.set(0,5,2);scene.add(l3);
 
-  const mat=new THREE.MeshPhysicalMaterial({color:0x8f7bff,roughness:.32,metalness:.08,clearcoat:.9,clearcoatRoughness:.25,sheen:1});
+  const mat=new THREE.MeshPhysicalMaterial({color:0x8f7bff,roughness:.32,metalness:.08,clearcoat:.9,clearcoatRoughness:.25});
   const matDark=new THREE.MeshStandardMaterial({color:0x6b58e6,roughness:.45});
   const matTusk=new THREE.MeshPhysicalMaterial({color:0xfdf4ff,roughness:.25,clearcoat:1});
   const matEye=new THREE.MeshStandardMaterial({color:0x1b1238,roughness:.2});
@@ -195,11 +197,14 @@ function _premElephant(THREE,host){
     }
     g.rotation.y=ry;g.rotation.x=rx;
     g.position.y=.12+Math.sin(t*1.6)*.06; // лёгкое «парение»
-    renderer.render(scene,cam);
+    try{
+      renderer.render(scene,cam);
+      // Эмодзи-заглушку прячем только после первого удачного кадра
+      if(!host.classList.contains('ready'))host.classList.add('ready');
+    }catch(e){console.warn('[SLON] Ошибка рендера слона:',e);alive=false;renderer.domElement.remove();return;}
     raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
-  host.classList.add('ready');
   return ()=>{
     alive=false;cancelAnimationFrame(raf);
     el.removeEventListener('pointerdown',down);el.removeEventListener('pointermove',move);
@@ -675,6 +680,201 @@ function _insertEmoji(em){
 }
 document.addEventListener('click',e=>{if(!e.target.closest?.('#emojiPanel,#emojiBtn'))$('emojiPanel')?.classList.remove('show');});
 
+// ════════════════════════════════════════
+// ── ПКМ ПО ЧАТУ → «ДОБАВИТЬ В ПАПКУ» ──
+// ════════════════════════════════════════
+function _ctxFolderMenu(id){
+  const menu=$('chatCtxMenu');if(!menu)return;
+  const check='<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+  const rows=myFolders.map(f=>`<div class="ctx-item ctx-folder${_folderHas(f,id)?' on':''}" onclick="event.stopPropagation();_ctxFolderToggle('${f.id}','${id}',this)">
+      <span class="ctx-f-emo">${f.emoji||'📁'}</span><span style="flex:1">${esc(f.name)}</span><span class="ctx-f-chk">${check}</span></div>`).join('');
+  menu.innerHTML=`<div class="ctx-item ctx-back" onclick="event.stopPropagation();showChatCtxMenuAgain()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg><span>Добавить в папку</span></div>
+    <div class="ctx-sep"></div>${rows||'<div class="ctx-empty">Папок пока нет</div>'}
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="_ctxNewFolderWith('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><span>Новая папка</span></div>`;
+  [...menu.children].forEach((el,i)=>{el.style.animationDelay=(i*0.02)+'s';});
+  // Меню не должно вылезать за экран после смены содержимого
+  const r=menu.getBoundingClientRect();
+  if(r.bottom>window.innerHeight-8)menu.style.top=Math.max(8,window.innerHeight-r.height-8)+'px';
+}
+// «Назад» из подменю: заново открываем основное меню на том же месте
+function showChatCtxMenuAgain(){
+  const m=$('chatCtxMenu');const r=m.getBoundingClientRect();
+  showChatCtxMenu({preventDefault(){},stopPropagation(){},clientX:r.left,clientY:r.top},ctxTargetId);
+}
+function _ctxFolderToggle(fid,id,row){
+  const f=myFolders.find(x=>x.id===fid);if(!f)return;
+  f.chats=f.chats||[];f.exclude=f.exclude||[];
+  if(_folderHas(f,id)){
+    f.chats=f.chats.filter(x=>x!==id);
+    if(_folderHas(f,id))f.exclude.push(id); // попадает по типу — исключаем явно
+  }else{
+    f.exclude=f.exclude.filter(x=>x!==id);
+    if(!_folderHas(f,id))f.chats.push(id);
+  }
+  _foldersSave();
+  row.classList.toggle('on',_folderHas(f,id));
+}
+function _ctxNewFolderWith(id){
+  $('chatCtxMenu')?.classList.remove('show');
+  openMyProfilePanel();
+  setTimeout(()=>{_spFolders();setTimeout(()=>{_spFolderEdit();_fDraft.chats=[id];$('fdChats').innerHTML=_fdChatsHtml();},420);},250);
+}
+
+// ════════════════════════════════════════
+// ── АРХИВ: вытягивается сверху списка, открывается своей панелью ──
+// ════════════════════════════════════════
+const _ARC_SVG=`<svg class="arc-ico" viewBox="0 0 24 24"><path class="arc-box" d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM6.24 5h11.52l.81.97H5.44l.8-.97zM5 19V8h14v11H5z"/><path class="arc-arrow" d="M13.45 10h-2.9v3H8l4 4 4-4h-2.55z"/></svg>`;
+let _arcShown=false;
+function _arcCount(){return $('archiveList')?.querySelectorAll('.sb-item').length||0;}
+function _arcInit(){
+  const list=$('sbList'),arcList=$('archiveList');if(!list||!arcList)return;
+  // Строка «Архив» — всегда первая в списке чатов
+  let row=$('arcRow');
+  if(!row){
+    row=document.createElement('div');row.id='arcRow';row.className='arc-row';
+    row.innerHTML=`<div class="arc-row-in" onclick="_arcOpen()" oncontextmenu="event.preventDefault();_arcHide()">
+        <div class="arc-av">${_ARC_SVG}</div>
+        <div class="sb-info"><div class="sb-row1"><div class="arc-title">Архив</div></div>
+        <div class="sb-row2"><div class="arc-prev" id="arcPrev"></div></div></div></div>`;
+    list.prepend(row);
+  }
+  // Старый список архива переезжает в панель архива
+  $('arcBody')?.appendChild(arcList);arcList.classList.add('open');
+  _arcShown=LS.get('sl_arcShown',false);
+  _arcUpdate(true);
+  _arcGestures(list);
+}
+function _arcUpdate(instant){
+  const row=$('arcRow');if(!row)return;
+  const n=_arcCount();
+  const names=[...$('archiveList').querySelectorAll('.sb-name')].map(e=>e.textContent.trim()).filter(Boolean);
+  const prev=$('arcPrev');if(prev)prev.textContent=names.slice(0,4).join(', ')||'Пусто';
+  if(instant)row.style.transition='none';
+  row.classList.toggle('show',_arcShown&&n>0);
+  if(instant){void row.offsetHeight;row.style.transition='';}
+  if(!n&&$('arcPanel')?.classList.contains('open'))_arcClose();
+}
+function _arcReveal(){
+  if(_arcShown||!_arcCount())return;
+  _arcShown=true;LS.set('sl_arcShown',true);
+  const row=$('arcRow');row.style.maxHeight='';row.classList.add('show','pop');
+  setTimeout(()=>row.classList.remove('pop'),700);
+}
+function _arcHide(){_arcShown=false;LS.set('sl_arcShown',false);$('arcRow')?.classList.remove('show');toast('Архив скрыт — потяни список вниз, чтобы вернуть');}
+// Жест: тянешь список вниз, находясь в самом верху → архив вытягивается
+function _arcGestures(list){
+  let startY=null,pull=0;
+  const row=$('arcRow');
+  list.addEventListener('touchstart',e=>{startY=(list.scrollTop<=0&&!_arcShown&&_arcCount())?e.touches[0].clientY:null;pull=0;},{passive:true});
+  list.addEventListener('touchmove',e=>{
+    if(startY==null)return;
+    pull=Math.max(0,e.touches[0].clientY-startY);
+    row.style.transition='none';row.style.maxHeight=Math.min(72,pull*.6)+'px';row.style.opacity=Math.min(1,pull/110);
+  },{passive:true});
+  list.addEventListener('touchend',()=>{
+    if(startY==null)return;startY=null;
+    row.style.transition='';row.style.opacity='';
+    if(pull*.6>44)_arcReveal();else row.style.maxHeight='';
+  });
+  // Колесо мыши вверх, когда список уже в самом верху
+  let acc=0,t=null;
+  list.addEventListener('wheel',e=>{
+    if(_arcShown||!_arcCount()||list.scrollTop>0||e.deltaY>=0){acc=0;return;}
+    acc+=-e.deltaY;clearTimeout(t);t=setTimeout(()=>acc=0,400);
+    if(acc>160){acc=0;_arcReveal();}
+  },{passive:true});
+}
+function _arcOpen(){
+  const p=$('arcPanel');if(!p)return;
+  p.classList.remove('open');void p.offsetWidth;p.classList.add('open');
+  $('sidebar').classList.add('arc-open');
+  [...$('archiveList').querySelectorAll('.sb-item')].forEach((el,i)=>{el.style.animation='none';void el.offsetWidth;el.style.animation=`arcItemIn .45s cubic-bezier(.32,.72,0,1) both ${120+i*40}ms`;});
+}
+function _arcClose(){$('arcPanel')?.classList.remove('open');$('sidebar')?.classList.remove('arc-open');}
+
+// ════════════════════════════════════════
+// ── ОСТРОВОК ЗВОНКА (жидкое стекло) ──
+// Маленький, перетаскивается; тап — разворачивается с кнопками;
+// «на экран» — окно звонка «высасывается» из островка.
+// ════════════════════════════════════════
+function _islandPos(){
+  const el=$('miniCall');if(!el)return;
+  const p=LS.get('sl_islandPos',null);
+  const w=el.offsetWidth||124,h=el.offsetHeight||56;
+  let x=p?.x??(window.innerWidth-w-20),y=p?.y??(window.innerHeight-h-100);
+  x=Math.max(8,Math.min(window.innerWidth-w-8,x));y=Math.max(8,Math.min(window.innerHeight-h-8,y));
+  el.style.left=x+'px';el.style.top=y+'px';
+}
+function _islandInit(){
+  const el=$('miniCall');if(!el||el.dataset.ready)return;el.dataset.ready='1';
+  let sx=0,sy=0,ox=0,oy=0,moved=false,down=false;
+  el.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button'))return;
+    down=true;moved=false;sx=e.clientX;sy=e.clientY;ox=el.offsetLeft;oy=el.offsetTop;
+    el.setPointerCapture(e.pointerId);el.classList.add('grab');
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!down)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(!moved&&Math.hypot(dx,dy)<5)return;
+    moved=true;
+    const x=Math.max(8,Math.min(window.innerWidth-el.offsetWidth-8,ox+dx));
+    const y=Math.max(8,Math.min(window.innerHeight-el.offsetHeight-8,oy+dy));
+    el.style.left=x+'px';el.style.top=y+'px';
+  });
+  const up=()=>{
+    if(!down)return;down=false;el.classList.remove('grab');
+    if(moved){LS.set('sl_islandPos',{x:el.offsetLeft,y:el.offsetTop});return;}
+    _islandToggle(); // просто тап — разворачиваем/сворачиваем
+  };
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  window.addEventListener('resize',()=>{if(el.classList.contains('show'))_islandPos();});
+}
+function _islandToggle(force){
+  const el=$('miniCall');if(!el)return;
+  const open=force??!el.classList.contains('open');
+  el.classList.toggle('open',open);
+  // После изменения ширины островок не должен вылезти за край экрана
+  setTimeout(_islandPos,20);setTimeout(_islandPos,420);
+}
+// Нажатие на кнопку островка — «пружинка»
+function _islandBtn(btn){btn.classList.remove('tap');void btn.offsetWidth;btn.classList.add('tap');}
+
+// Свернуть звонок в островок: карточка звонка сжимается в точку островка
+function _callMinimizeAnimated(){
+  const scr=$('callScreen'),card=$('callCard'),isl=$('miniCall');
+  _islandInit();
+  isl.classList.remove('open');
+  isl.classList.add('show','hidden-pre');_islandPos();
+  const cr=card.getBoundingClientRect(),ir=isl.getBoundingClientRect();
+  const dx=(ir.left+ir.width/2)-(cr.left+cr.width/2),dy=(ir.top+ir.height/2)-(cr.top+cr.height/2);
+  const s=Math.max(ir.width/cr.width,.06);
+  card.animate([{transform:'none',opacity:1,borderRadius:getComputedStyle(card).borderRadius},
+    {transform:`translate(${dx}px,${dy}px) scale(${s})`,opacity:.15,borderRadius:'50%'}],{duration:420,easing:'cubic-bezier(.5,0,.3,1)'});
+  scr.animate([{backgroundColor:getComputedStyle(scr).backgroundColor},{backgroundColor:'rgba(0,0,0,0)'}],{duration:420,easing:'ease'});
+  setTimeout(()=>{
+    scr.classList.remove('show');
+    isl.classList.remove('hidden-pre');isl.classList.add('pop');
+    setTimeout(()=>isl.classList.remove('pop'),650);
+  },400);
+}
+// Вернуть звонок на экран: карточка «высасывается» из островка
+function _callMaximizeAnimated(){
+  const scr=$('callScreen'),card=$('callCard'),isl=$('miniCall');
+  const ir=isl.getBoundingClientRect();
+  scr.classList.add('show');
+  const cr=card.getBoundingClientRect();
+  const dx=(ir.left+ir.width/2)-(cr.left+cr.width/2),dy=(ir.top+ir.height/2)-(cr.top+cr.height/2);
+  const s=Math.max(ir.width/cr.width,.06);
+  card.animate([{transform:`translate(${dx}px,${dy}px) scale(${s},${Math.max(ir.height/cr.height,.04)})`,opacity:.3,borderRadius:'40px',filter:'blur(6px)'},
+    {transform:'translate(0,0) scale(1.02)',opacity:1,borderRadius:getComputedStyle(card).borderRadius,filter:'blur(0)',offset:.8},
+    {transform:'none',opacity:1,borderRadius:getComputedStyle(card).borderRadius,filter:'blur(0)'}],{duration:520,easing:'cubic-bezier(.2,.8,.2,1)'});
+  scr.animate([{backgroundColor:'rgba(0,0,0,0)'},{backgroundColor:getComputedStyle(scr).backgroundColor}],{duration:420,easing:'ease'});
+  isl.animate([{transform:'scale(1)',opacity:1},{transform:'scale(.6)',opacity:0}],{duration:260,easing:'ease-in'});
+  setTimeout(()=>isl.classList.remove('show','open'),250);
+}
+
 // ── ЗАПУСК ──
 document.addEventListener('DOMContentLoaded',()=>{
   _perfLoad();
@@ -685,6 +885,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   _foldersLoad();
   myStickerCfg=LS.get(_getAccountPrefix(myUsername)+'stickerCfg',{})||{};
   _renderFolderTabs();_applyFolderFilter();
+  _arcInit();
+  _islandInit();
   // Новые/перерисованные чаты в списке — снова применяем фильтр папки
   const list=$('sbList');
   if(list){let t=null;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(_applyFolderFilter,60);}).observe(list,{childList:true,subtree:true,characterData:true});}

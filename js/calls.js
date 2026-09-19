@@ -492,9 +492,10 @@ function startCallTimer(){
   },1000);
 }
 
-function minimizeCall(){callMinimized=true;$('callScreen').classList.remove('show');$('miniCall').classList.add('show');}
+// Сворачивание/разворачивание — с анимацией островка (settings-extra.js)
+function minimizeCall(){callMinimized=true;_callMinimizeAnimated();}
 
-function maximizeCall(){callMinimized=false;$('miniCall').classList.remove('show');$('callScreen').classList.add('show');}
+function maximizeCall(){callMinimized=false;_callMaximizeAnimated();}
 
 function toggleCallFullscreen(){
   _callFullscreen=!_callFullscreen;
@@ -547,7 +548,7 @@ function endCallCleanup(){playHangupSound();stopRingSound();
   const a=$('remAudio');a.srcObject=null;a.pause();
   $('remoteVideo').srcObject=null;$('localVideo').srcObject=null;
   $('callScreen').classList.remove('show');$('callScreen').classList.remove('fullscreen');_callFullscreen=false;
-  $('miniCall').classList.remove('show');
+  $('miniCall').classList.remove('show','open');
   activeCall=null;isMuted=false;isCamOff=false;callMinimized=false;
   _camFacing='user';
   _remoteStream=null;
