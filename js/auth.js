@@ -55,15 +55,17 @@ async function _fbSetPasswordHash(username,hash){
 }
 
 async function _fbAccountExists(username){
+  // Аккаунт «существует» если есть узел auth/{username} целиком —
+  // даже без пароля (сброшенный админом), чтобы юзернейм нельзя было переоформить
   if(!_fbReady()||!window._fbDb)return false;
   try{
     const snap=await new Promise(res=>{
       window._fbOnValue(
-        window._fbRef(window._fbDb,'auth/'+username+'/hash'),
+        window._fbRef(window._fbDb,'auth/'+username),
         s=>res(s),{onlyOnce:true}
       );
     });
-    return !!(snap?.val());
+    return !!(snap&&snap.exists&&snap.exists());
   }catch(e){return false;}
 }
 
@@ -103,6 +105,15 @@ async function doLogin(){
     // Получаем хэш из Firebase
     const storedHash=await _fbGetPasswordHash(raw);
     if(!storedHash){
+      // Пароля нет: либо аккаунта не существует, либо админ сбросил пароль —
+      // тогда узел auth/{raw} на месте, и предлагаем установить новый пароль
+      if(await _fbAccountExists(raw)){
+        myUsername=raw;LS.set('sl_username',raw);
+        LS.remove?.('sl_pass_'+raw);try{localStorage.removeItem('sl_pass_'+raw);}catch(e){}
+        loadStorage();
+        showSetPassword(raw);
+        return;
+      }
       errEl.textContent='Аккаунт не найден — зарегистрируйся!';
       errEl.style.display='block';return;
     }

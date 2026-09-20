@@ -636,6 +636,13 @@ function onData(pid,data){
       toast('🛡 Тебе выданы права администратора SLON!');
       const ar=$('adminConsoleRow');if(ar)ar.style.display='';
       break;
+    case 'system_pass_reset':
+      // Админ сбросил нам пароль — выкидываем на экран установки нового
+      try{localStorage.removeItem('sl_pass_'+myUsername);}catch(e){}
+      myPassword='';
+      toast('🔑 Твой пароль сброшен — задай новый',5000);
+      setTimeout(()=>{ if(typeof showSetPassword==='function'){ $('usernameOverlay')?.classList.add('show'); showSetPassword(myUsername);} },1500);
+      break;
     case 'voice_join':
     case 'voice_leave':
       _handleVoiceMsg(pid,data);

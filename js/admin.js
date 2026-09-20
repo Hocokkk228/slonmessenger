@@ -260,6 +260,32 @@ async function doAdminRevokeAdmin(pid){
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
+// ── Сброс пароля пользователю (для восстановления доступа) ──
+// Убираем хеш, оставляем узел auth/{pid} с меткой reset. При следующем входе
+// человек попадёт на экран «Установить пароль» и задаст свой новый — старый пароль
+// мы не узнаём и никому не выдаём. Права/премиум/кастом остаются (висят на юзернейме).
+async function adminResetPassword(pid){
+  if(!CHANNEL_ADMINS.has(myUsername))return;
+  showModal(`
+    <div class="m-title">🔑 Сбросить пароль</div>
+    <div class="m-info">У @${esc(pid)} будет удалён пароль. При следующем входе аккаунт попросит задать <b>новый</b> пароль — попроси владельца зайти и придумать его.<br><br>Права, премиум и кастом останутся. Отменить сброс нельзя.</div>
+    <div class="m-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-ok" onclick="doAdminResetPassword('${pid}')">Сбросить пароль</button>
+    </div>
+  `);
+}
+
+async function doAdminResetPassword(pid){
+  closeModal();closePeerProfile();
+  try{
+    await window._fbRemove(window._fbRef(window._fbDb,'auth/'+pid+'/hash'));
+    await window._fbSet(window._fbRef(window._fbDb,'auth/'+pid+'/reset'),{by:myUsername,ts:Date.now()});
+    _fbSend?.(pid,{type:'system_pass_reset',by:myUsername});
+    toast('🔑 Пароль @'+pid+' сброшен — пусть зайдёт и задаст новый');
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+
 async function _checkElephantBadgeFirebase(){
   if(!_fbReady()||!window._fbDb||!myUsername)return;
   try{
