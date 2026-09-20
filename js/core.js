@@ -1497,6 +1497,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   openChat('ai');
   _hideSplash();
+  // Подстраховка: восстановить историю из IndexedDB, если LS её потерял
+  if(myUsername)setTimeout(_restoreChatsFromIdb,800);
 });
 
 // ── Заставка: скрываем после загрузки (мин. показ + аварийный таймаут) ──
@@ -1641,6 +1643,15 @@ function saveAll(){
   const co={};for(const[k,v]of Object.entries(chatHist))if(k!=='saved')co[k]=prep(v);
   const go={};for(const[k,v]of Object.entries(grpHist))go[k]=prep(v);
   const p=_getAccountPrefix(myUsername);
+  // Надёжная копия истории в IndexedDB (большая квота) — не страдает от обрезки
+  // localStorage при переполнении. Копируем ДО возможного тримминга co/go ниже.
+  try{
+    if(typeof _idb!=='undefined'&&_idb){
+      const u=myUsername||'';
+      _idb.put('bk_chats_'+u,JSON.parse(JSON.stringify(co)));
+      _idb.put('bk_grph_'+u,JSON.parse(JSON.stringify(go)));
+    }
+  }catch(e){}
   // Избранное сохраняем ОТДЕЛЬНО от общей истории — небольшой объём, не подвержен
   // обрезке по квоте остальных чатов, поэтому надёжно переживает перезагрузку
   const savedPrepped=prep(chatHist.saved||[]);
@@ -1711,6 +1722,33 @@ function saveAll(){
 function _getAccountPrefix(username){
   // Данные каждого аккаунта хранятся с префиксом чтобы не мешаться
   return username?'sl_u_'+username+'_':'sl_';
+}
+
+// Восстановление истории из IndexedDB-копии, если localStorage потерял/обрезал сообщения
+async function _restoreChatsFromIdb(){
+  try{
+    if(typeof _idb==='undefined'||!_idb)return;
+    const u=myUsername||'';
+    const [bc,bg]=await Promise.all([_idb.get('bk_chats_'+u),_idb.get('bk_grph_'+u)]);
+    let changed=false;
+    const merge=(target,backup)=>{
+      if(!backup||typeof backup!=='object')return;
+      for(const k in backup){
+        const cur=Array.isArray(target[k])?target[k]:[];
+        const bk=Array.isArray(backup[k])?backup[k]:[];
+        const map=new Map();
+        // сначала бэкап, потом текущее — свежее локальное перекрывает по id
+        bk.concat(cur).forEach(m=>{ if(m&&m.id!=null)map.set(m.id,m); else map.set('_'+map.size,m); });
+        const merged=[...map.values()].sort((a,b)=>(a?.ts||0)-(b?.ts||0));
+        if(merged.length>cur.length){target[k]=merged;changed=true;}
+      }
+    };
+    merge(chatHist,bc);merge(grpHist,bg);
+    if(changed){
+      if(typeof rebuildSidebar==='function')rebuildSidebar();
+      if(typeof renderChat==='function'&&typeof activeChat!=='undefined'&&activeChat)renderChat(activeChat);
+    }
+  }catch(e){console.warn('restore chats err',e);}
 }
 
 function loadStorage(){

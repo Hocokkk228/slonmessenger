@@ -26,7 +26,10 @@ function _stContacts(){
 }
 async function _stLoadUser(u){
   const snap=await _fbOnce('stories/'+u,6000);
-  const v=snap&&snap.val?snap.val():null;
+  // Таймаут/обрыв связи (snap===null) — НЕ трогаем, что уже показано,
+  // иначе истории мигают/пропадают на плохой сети.
+  if(!snap)return;
+  const v=snap.val?snap.val():null;
   const now=Date.now(),list=[];
   if(v)Object.keys(v).forEach(id=>{const s=v[id];if(!s||!s.ts)return;
     if(now-s.ts<ST_TTL)list.push({id,ts:s.ts,cap:s.cap||'',thumb:s.thumb||''});
