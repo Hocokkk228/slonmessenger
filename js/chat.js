@@ -207,7 +207,29 @@ function appendMsg(msg,container){
     w.innerHTML=esc(msg.name)+elephantBadge+badge;
     body.appendChild(w);
   }
-  if(msg.photoId){
+  if(msg.type==='call'){
+    const out=!!msg.callOutgoing, oc=msg.callOutcome, vid=!!msg.isVideo;
+    const kind=vid?'видеозвонок':'звонок', Kind=vid?'Видеозвонок':'Звонок';
+    const label = oc==='answered' ? (out?'Исходящий ':'Входящий ')+kind
+      : oc==='missed' ? 'Пропущенный '+kind
+      : oc==='declined' ? Kind+' отклонён'
+      : oc==='cancelled' ? Kind+' отменён'
+      : Kind;
+    const bad = (oc==='missed'||oc==='declined'||oc==='cancelled');
+    const dur = (oc==='answered'&&msg.callSecs) ? _fmtCallDur(msg.callSecs) : '';
+    const icoPath = vid
+      ? 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'
+      : 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z';
+    const arrow = out
+      ? '<svg viewBox="0 0 24 24"><path d="M9 5v2h6.59L4 18.59 5.41 20 17 8.41V15h2V5z"/></svg>'
+      : '<svg viewBox="0 0 24 24"><path d="M19 17.59L17.59 19 6 7.41V14H4V4h10v2H7.41z"/></svg>';
+    const bub=document.createElement('div');
+    bub.className='msg-bub call-bub'+(bad?' call-bad':'');
+    bub.innerHTML=`<span class="call-ico"><svg viewBox="0 0 24 24"><path d="${icoPath}"/></svg></span>
+      <span class="call-info"><span class="call-title">${esc(label)}</span>
+      <span class="call-sub"><span class="call-arrow">${arrow}</span>${esc(msg.time||fmtTime(msg.ts||Date.now()))}${dur?' · '+esc(dur):''}</span></span>`;
+    body.appendChild(bub);
+  }else if(msg.photoId){
     const bub=document.createElement('div');bub.className='photo-bub';
     const pid2=msg.photoId;bub.onclick=()=>openPhoto(pid2);
     const img=document.createElement('img');img.loading='lazy';

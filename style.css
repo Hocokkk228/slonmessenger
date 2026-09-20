@@ -2120,3 +2120,14 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 [data-theme="joker"]{--bg1:#0d0716;--bg2:#150a24;--bg3:#241238;--bg4:#341a50;--accent:#7ee060;--accent2:#b06bff;--text1:#f0ffe8;--text2:#bfa8e0;--msg-out:#4a2d7a;--msg-in:#241238;--border:#341a50;--shadow:0 4px 24px rgba(126,224,96,.3);--input-bg:#0d0716;--hover:rgba(126,224,96,.09);--online:#7ee060;--red:#f87171;--btn-primary:#7ee060;--btn-primary2:#b06bff;--btn-ok-bg:#4a2d7a;--btn-cancel-bg:#241238;--btn-cancel-border:#341a50;--btn-danger-bg:rgba(248,113,113,.1);--btn-danger-border:rgba(248,113,113,.4);--btn-danger-color:#f87171;--call-end:#4a2d7a;--call-end2:#3b2462;--call-btn:rgba(126,224,96,.18);--ic-ok:#7ee060;--ic-no:#f87171;--perm-allow1:#7ee060;--perm-allow2:#b06bff;}
 [data-theme="interstellar"]{--bg1:#000205;--bg2:#05080f;--bg3:#0d141f;--bg4:#182430;--accent:#d9a34a;--accent2:#6a8bb0;--text1:#eef2f7;--text2:#93a4b8;--msg-out:#2a3a52;--msg-in:#0d141f;--border:#182430;--shadow:0 4px 24px rgba(217,163,74,.3);--input-bg:#000205;--hover:rgba(217,163,74,.09);--online:#34d399;--red:#f87171;--btn-primary:#d9a34a;--btn-primary2:#6a8bb0;--btn-ok-bg:#2a3a52;--btn-cancel-bg:#0d141f;--btn-cancel-border:#182430;--btn-danger-bg:rgba(248,113,113,.1);--btn-danger-border:rgba(248,113,113,.4);--btn-danger-color:#f87171;--call-end:#2a3a52;--call-end2:#222e42;--call-btn:rgba(217,163,74,.18);--ic-ok:#34d399;--ic-no:#f87171;--perm-allow1:#d9a34a;--perm-allow2:#6a8bb0;}
 [data-theme="barbie"]{--bg1:#fff0f6;--bg2:#ffffff;--bg3:#ffe0ee;--bg4:#ffb8d8;--accent:#ff2e93;--accent2:#ff7ac0;--text1:#4a0d2e;--text2:#b83a78;--msg-out:#ff2e93;--msg-in:#ffffff;--border:#ffb8d8;--shadow:0 2px 12px rgba(255,46,147,.18);--input-bg:#fff0f6;--hover:rgba(255,46,147,.08);--online:#16a34a;--red:#e02020;--btn-primary:#ff2e93;--btn-primary2:#ff7ac0;--btn-ok-bg:#ff2e93;--btn-cancel-bg:#ffe0ee;--btn-cancel-border:#ffb8d8;--btn-danger-bg:rgba(224,32,32,.1);--btn-danger-border:rgba(224,32,32,.4);--btn-danger-color:#e02020;--call-end:#ff2e93;--call-end2:#cc2576;--call-btn:rgba(255,46,147,.18);--ic-ok:#16a34a;--ic-no:#e02020;--perm-allow1:#ff2e93;--perm-allow2:#ff7ac0;}
+
+/* ── Звонок как сообщение в чате ── */
+.call-bub{display:flex;align-items:center;gap:10px;min-width:150px;}
+.call-ico{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.call-ico svg{width:19px;height:19px;fill:#fff;}
+.call-bad .call-ico{background:var(--red);}
+.call-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.call-title{font-size:14px;font-weight:600;color:inherit;}
+.call-sub{display:flex;align-items:center;gap:4px;font-size:12px;color:inherit;opacity:.72;}
+.call-arrow svg{width:14px;height:14px;fill:currentColor;vertical-align:middle;}
+.call-bad .call-arrow svg{fill:var(--red);}

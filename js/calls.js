@@ -122,7 +122,7 @@ async function doStartCall(peerId,isVideo,stream){
     }
   };
   const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
-  activeCall={call:fakeCall,peerId,isVideo,answered:false,callId};
+  activeCall={call:fakeCall,peerId,isVideo,answered:false,callId,outgoing:true};
   setupCallUI(peerId,isVideo);
   // Уведомляем собеседника о звонке (с callId чтобы отмена корректно привязалась)
   _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null,callId});
@@ -162,7 +162,7 @@ async function answerCall(){
       }
     };
     const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
-    activeCall={call:fakeCall,peerId,isVideo,answered:true};
+    activeCall={call:fakeCall,peerId,isVideo,answered:true,outgoing:false,callId};
     setupCallUI(peerId,isVideo);
 
     if(sdp){
@@ -183,9 +183,10 @@ async function answerCall(){
 function rejectCall(){
   $('incoming').classList.remove('show');stopRingSound();playHangupSound();
   if(pendingCall){
-    const{callId,peerId}=pendingCall;
+    const{callId,peerId,isVideo}=pendingCall;
     _callSend(peerId,{type:'call_reject',callId});
     _syncCallToSelf('rejected',callId,peerId); // сообщаем другим устройствам
+    _logCallMessage(peerId,{outgoing:false,outcome:'declined',isVideo});
     pendingCall=null;
   }
 }
@@ -547,7 +548,30 @@ function cancelOutgoingCall(){
   endCallCleanup();
 }
 
+// Записать завершённый звонок сообщением в чат (у каждой стороны — свой взгляд)
+function _logCallMessage(peerId,o){
+  if(!peerId||peerId==='ai'||peerId==='saved'||peerId.startsWith('g_'))return;
+  const ts=Date.now();
+  const msg={id:'call'+ts.toString(36)+Math.random().toString(36).slice(2,5),ts,time:fmtTime(ts),
+    type:'call',sender:o.outgoing?'me':'inc',senderId:peerId,
+    name:o.outgoing?undefined:(peerNames[peerId]||('@'+peerId)),
+    avatar:o.outgoing?null:(peerAvatars[peerId]||null),
+    callOutgoing:!!o.outgoing,callOutcome:o.outcome,callSecs:o.secs||0,isVideo:!!o.isVideo};
+  if(!chatHist[peerId])chatHist[peerId]=[];
+  chatHist[peerId].push(msg);
+  if(typeof activeChat!=='undefined'&&activeChat===peerId){appendMsg(msg);scrollDown();}
+  const prev=o.outcome==='missed'?'Пропущенный звонок':o.outcome==='answered'?(o.outgoing?'Исходящий звонок':'Входящий звонок'):o.outcome==='declined'?'Звонок отклонён':'Звонок отменён';
+  if(typeof updatePreview==='function')updatePreview(peerId,prev);
+  saveAll();
+}
+
 function endCallCleanup(){playHangupSound();stopRingSound();
+  // Запись звонка сообщением в чат (один раз)
+  if(activeCall&&activeCall.peerId&&!activeCall._logged){
+    activeCall._logged=true;
+    const outcome=activeCall._rejected?'declined':activeCall.answered?'answered':activeCall.outgoing?'cancelled':'missed';
+    _logCallMessage(activeCall.peerId,{outgoing:!!activeCall.outgoing,outcome,secs:callSecs||0,isVideo:!!activeCall.isVideo});
+  }
   // Сброс буферов сигналинга
   _pendingIceCandidates=[];
   _pendingRemoteOffer=null;

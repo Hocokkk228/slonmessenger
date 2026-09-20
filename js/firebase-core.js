@@ -548,10 +548,15 @@ function onData(pid,data){
         $('incoming').classList.remove('show');
         if(isForUs||!pendingCall){
           // Отмена звонка — убираем pending независимо от состояния
+          if(pendingCall?.peerId===pid&&data.type==='call_cancel'&&typeof _logCallMessage==='function')
+            _logCallMessage(pid,{outgoing:false,outcome:'missed',isVideo:pendingCall.isVideo});
           pendingCall=null;
           _lastIncomingCallId=null;
         }
-        if(activeCall?.peerId===pid){endCallCleanup();}
+        if(activeCall?.peerId===pid){
+          if(data.type==='call_reject')activeCall._rejected=true; // собеседник отклонил мой звонок
+          endCallCleanup();
+        }
         if(isForUs||!activeCall)
           toast(data.type==='call_reject'?'Звонок отклонён':'Звонок отменён');
       }
@@ -566,7 +571,10 @@ function onData(pid,data){
     case 'call_end':
       stopRingSound();
       $('incoming').classList.remove('show');
-      if(pendingCall?.peerId===pid){pendingCall=null;_lastIncomingCallId=null;}
+      if(pendingCall?.peerId===pid){
+        if(typeof _logCallMessage==='function')_logCallMessage(pid,{outgoing:false,outcome:'missed',isVideo:pendingCall.isVideo});
+        pendingCall=null;_lastIncomingCallId=null;
+      }
       if(activeCall?.peerId===pid){endCallCleanup();}
       break;
     case 'call_incoming':
