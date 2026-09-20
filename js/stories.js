@@ -116,7 +116,7 @@ function _stEdOpen(file){
     _stEdClose(true);
     const ov=document.createElement('div');ov.className='st-ed';ov.id='stEd';
     ov.innerHTML=`<div class="st-ed-box">
-      <div class="st-stage" id="stStage"><img src="${url}" alt="" draggable="false"><div class="st-layer" id="stLayer"></div>
+      <div class="st-stage" id="stStage"><img class="st-bg" src="${url}" alt="" draggable="false"><img class="st-fg" src="${url}" alt="" draggable="false"><div class="st-layer" id="stLayer"></div>
         <div class="st-trash" id="stTrash"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div></div>
       <div class="st-ed-top">
         <button class="st-ib" onclick="_stEdClose()" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
@@ -252,7 +252,15 @@ function _stRenderCanvas(){
   const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const ctx=cv.getContext('2d'),img=_stEd.img;
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  const k=Math.max(W/img.naturalWidth,H/img.naturalHeight),iw=img.naturalWidth*k,ih=img.naturalHeight*k;
+  const iw0=img.naturalWidth,ih0=img.naturalHeight;
+  // Фон — фото «cover» с размытием, чтобы не было чёрных полос
+  const kc=Math.max(W/iw0,H/ih0);
+  ctx.save();ctx.filter='blur(28px)';ctx.globalAlpha=.9;
+  ctx.drawImage(img,(W-iw0*kc)/2,(H-ih0*kc)/2,iw0*kc,ih0*kc);
+  ctx.restore();
+  ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(0,0,W,H);
+  // Само фото — «contain», целиком помещается в кадр (горизонтальные не обрезаются)
+  const kf=Math.min(W/iw0,H/ih0),iw=iw0*kf,ih=ih0*kf;
   ctx.drawImage(img,(W-iw)/2,(H-ih)/2,iw,ih);
   _stEd.items.forEach(it=>{
     const px=it.size*W,lh=px*1.25,lines=it.text.split('\n'),c=_stColors(it);
