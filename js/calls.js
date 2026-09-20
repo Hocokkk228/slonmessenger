@@ -51,6 +51,25 @@ async function _tuneVideoSender(sender,isScreen){
 function _hintTrack(track,isScreen){
   try{if(track)track.contentHint=isScreen?'motion':'motion';}catch(e){}
 }
+// Ограничиваем битрейт звука — меньше нагрузка на канал, меньше рассинхрон с видео
+async function _tuneAudioSender(sender){
+  if(!sender||!sender.getParameters)return;
+  try{
+    const p=sender.getParameters();
+    if(!p.encodings||!p.encodings.length)p.encodings=[{}];
+    p.encodings[0].maxBitrate=64000; // 64 кбит/с — с запасом для речи
+    await sender.setParameters(p);
+  }catch(e){}
+}
+// Привести все отправители звонка к ограничениям (звук + видео)
+function _tuneAllSenders(pc,isScreen){
+  if(!pc||!pc.getSenders)return;
+  pc.getSenders().forEach(s=>{
+    if(!s.track)return;
+    if(s.track.kind==='audio')_tuneAudioSender(s);
+    else if(s.track.kind==='video')_tuneVideoSender(s,!!isScreen);
+  });
+}
 
 async function permDoRequest(){
   const isVideo=_permIsVideo;
@@ -168,7 +187,7 @@ async function doStartCall(peerId,isVideo,stream){
   const callId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
   stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
-  _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;_tuneVideoSender(s,false);});
+  _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;});_tuneAllSenders(_callPC,false);
   _callPC.onicecandidate=e=>{
     if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
   };
@@ -210,7 +229,7 @@ async function answerCall(){
     localStream=stream;
     _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
     stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
-    _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;_tuneVideoSender(s,false);});
+    _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;});_tuneAllSenders(_callPC,false);
     _callPC.onicecandidate=e=>{
       if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
     };
