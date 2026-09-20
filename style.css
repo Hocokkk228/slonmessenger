@@ -957,7 +957,10 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .sp-hero{position:relative;display:flex;flex-direction:column;align-items:center;padding:62px 16px 22px;overflow:hidden;}
 .sp-hero-bg{position:absolute;inset:0;z-index:0;background:var(--accent);background-size:60px 60px,cover;transition:background .3s ease;}
 .sp-hero>*:not(.sp-hero-bg){position:relative;z-index:1;}
-.sp-av{width:108px;height:108px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.25);position:relative;}
+.sp-av{width:108px;height:108px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;overflow:visible;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.25);position:relative;}
+/* Аватар-контент клипаем ВНУТРЕННИМ кругом, а не самим .sp-av/.pp-av/.sp-cust-av —
+   иначе декорации (уши/крылья/ворон), которые должны выходить за круг, обрезаются. */
+.av-clip{position:absolute;inset:0;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .sp-av img{width:100%;height:100%;object-fit:cover;}
 .sp-av .sp-av-letter{font-size:44px;font-weight:700;color:#fff;background:none;}
 .sp-av-cam{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s;}
@@ -1042,7 +1045,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 
 /* Кастомизация профиля */
 .sp-cust-prev{height:150px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:12px;background-size:60px 60px,cover;transition:background .25s;}
-.sp-cust-av{width:62px;height:62px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.sp-cust-av{width:62px;height:62px;border-radius:50%;overflow:visible;position:relative;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.25);}
 .sp-cust-av img{width:100%;height:100%;object-fit:cover;}
 .sp-cust-name{margin-top:8px;color:#fff;font-weight:700;font-size:16px;text-shadow:0 1px 6px rgba(0,0,0,.3);}
 .sp-cust-st{color:rgba(255,255,255,.8);font-size:12px;}
@@ -1206,7 +1209,7 @@ body{background:var(--bg1);color:var(--text1);height:100dvh;overflow:hidden;font
 .pp-hero{position:relative;display:flex;flex-direction:column;align-items:center;padding:14px 16px 20px;margin:0 12px 12px;border-radius:20px;overflow:hidden;flex-shrink:0;animation:spCardIn .45s cubic-bezier(.32,.72,0,1) both .06s;}
 .pp-hero-bg{position:absolute;inset:0;z-index:0;background-size:60px 60px,cover;}
 .pp-hero>*:not(.pp-hero-bg){position:relative;z-index:1;}
-.pp-av{width:118px;height:118px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#9b8cff,#6a4fe0);box-shadow:0 6px 22px rgba(0,0,0,.2);cursor:pointer;}
+.pp-av{width:118px;height:118px;border-radius:50%;overflow:visible;position:relative;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#9b8cff,#6a4fe0);box-shadow:0 6px 22px rgba(0,0,0,.2);cursor:pointer;}
 .pp-av img{width:100%;height:100%;object-fit:cover;}
 .pp-av .sp-av-letter{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;background:none;}
 .pp-name{margin-top:14px;font-size:21px;font-weight:700;color:var(--text1);text-align:center;word-break:break-word;}
@@ -2081,13 +2084,14 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .avf-snow>i:nth-child(8){left:60%;animation-delay:3.3s;}
 .avf-snow>i:nth-child(9){left:90%;animation-delay:.3s;}
 @keyframes avfSnowFall{0%{transform:translateY(0);opacity:0;}12%{opacity:1;}100%{transform:translateY(1500%);opacity:0;}}
-/* — кошачьи ушки: покачиваются, дремлющая мордочка — */
+/* — кошачьи ушки: полноценный капюшон-кигуруми вокруг всей аватарки — */
 .avf-catears{overflow:visible;}
-.avf-catears i.l,.avf-catears i.r{position:absolute;top:-22%;width:30%;height:38%;background:linear-gradient(160deg,#3a3a42,#1c1c22);clip-path:polygon(50% 0%,0% 100%,100% 100%);transform-origin:bottom center;animation:avfEarWig 2.6s ease-in-out infinite;}
-.avf-catears i.l{left:6%;animation-delay:0s;}
-.avf-catears i.r{right:6%;transform:scaleX(-1);animation-delay:.15s;}
-.avf-catears i.l::after,.avf-catears i.r::after{content:'';position:absolute;left:50%;top:38%;width:46%;height:46%;background:#ff9db6;clip-path:polygon(50% 0%,10% 100%,90% 100%);transform:translateX(-50%);}
-.avf-catears i.nose{position:absolute;left:50%;bottom:-6%;transform:translateX(-50%);font-size:20cqw;opacity:.9;}
+.avf-catears .ring{position:absolute;inset:-6%;border-radius:50%;border:9% solid #ffb703;box-sizing:border-box;-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 86%);mask:radial-gradient(closest-side,transparent 84%,#000 86%);}
+.avf-catears i.l,.avf-catears i.r{position:absolute;top:-26%;width:34%;height:42%;background:linear-gradient(160deg,#ffc93c,#ffa900);clip-path:polygon(50% 0%,4% 100%,96% 100%);transform-origin:bottom center;animation:avfEarWig 2.6s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
+.avf-catears i.l{left:2%;animation-delay:0s;}
+.avf-catears i.r{right:2%;transform:scaleX(-1);animation-delay:.15s;}
+.avf-catears i.l::after,.avf-catears i.r::after{content:'';position:absolute;left:50%;top:40%;width:48%;height:48%;background:#ff9db6;clip-path:polygon(50% 0%,10% 100%,90% 100%);transform:translateX(-50%);}
+.avf-catears i.nose{position:absolute;left:50%;bottom:-8%;transform:translateX(-50%);font-size:22cqw;opacity:.95;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));}
 @keyframes avfEarWig{0%,100%{transform:rotate(-6deg);}50%{transform:rotate(6deg);}}
 .avf-catears i.r{animation-name:avfEarWigR;}
 @keyframes avfEarWigR{0%,100%{transform:scaleX(-1) rotate(-6deg);}50%{transform:scaleX(-1) rotate(6deg);}}
@@ -2119,14 +2123,22 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .avf-crown i.sp2{right:6%;top:-14%;animation-delay:1.2s;}
 @keyframes avfCrownBob{0%,100%{transform:translateX(-50%) translateY(0) rotate(-3deg);}50%{transform:translateX(-50%) translateY(-8%) rotate(3deg);}}
 @keyframes avfSparkPop{0%,100%{opacity:0;transform:scale(.5);}50%{opacity:1;transform:scale(1.1);}}
-/* — крылья: мягкий взмах по бокам — */
+/* — крылья: размах по бокам, не закрывают лицо — */
 .avf-wings{overflow:visible;}
-.avf-wings i.l,.avf-wings i.r{position:absolute;top:14%;width:46%;height:70%;background:linear-gradient(135deg,#c9b8ff,#8a6fe8);border-radius:80% 20% 60% 40%/60% 30% 70% 40%;opacity:.92;filter:drop-shadow(0 2px 4px rgba(80,50,180,.35));animation:avfWingFlap 2.2s ease-in-out infinite;}
-.avf-wings i.l{left:-26%;transform-origin:right center;}
-.avf-wings i.r{right:-26%;transform-origin:left center;transform:scaleX(-1);animation-delay:.1s;}
-@keyframes avfWingFlap{0%,100%{transform:rotate(-10deg);}50%{transform:rotate(6deg);}}
+.avf-wings i.l,.avf-wings i.r{position:absolute;top:6%;width:42%;height:88%;background:linear-gradient(150deg,#e4d9ff,#9b83f0 45%,#5a3fc0 90%);clip-path:polygon(100% 8%,72% 0%,48% 10%,28% 24%,12% 44%,2% 68%,10% 100%,30% 86%,46% 92%,58% 78%,70% 84%,80% 66%,72% 58%,88% 48%,78% 40%,94% 28%,82% 24%,100% 8%);opacity:.96;filter:drop-shadow(0 3px 6px rgba(60,30,150,.45));animation:avfWingFlap 2.4s ease-in-out infinite;}
+.avf-wings i.l{left:-30%;transform-origin:right center;}
+.avf-wings i.r{right:-30%;transform-origin:left center;transform:scaleX(-1);animation-delay:.12s;}
+@keyframes avfWingFlap{0%,100%{transform:rotate(-16deg);}50%{transform:rotate(-4deg);}}
 .avf-wings i.r{animation-name:avfWingFlapR;}
-@keyframes avfWingFlapR{0%,100%{transform:scaleX(-1) rotate(-10deg);}50%{transform:scaleX(-1) rotate(6deg);}}
+@keyframes avfWingFlapR{0%,100%{transform:scaleX(-1) rotate(-16deg);}50%{transform:scaleX(-1) rotate(-4deg);}}
+/* — акульи челюсти: два ряда зубов у нижнего края — */
+.avf-shark{overflow:visible;}
+.avf-shark-svg{position:absolute;left:0;right:0;bottom:0;height:46%;width:100%;border-radius:0 0 50% 50%/0 0 40% 40%;overflow:hidden;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));animation:avfSharkChomp 2.6s ease-in-out infinite;transform-origin:50% 100%;}
+@keyframes avfSharkChomp{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.86);}}
+/* — ворон: сидит наверху, крыло свисает на плечо — */
+.avf-raven{overflow:visible;}
+.avf-raven-svg{position:absolute;top:-20%;right:-12%;width:52%;height:52%;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));animation:avfRavenBob 3s ease-in-out infinite;transform-origin:70% 20%;}
+@keyframes avfRavenBob{0%,100%{transform:rotate(-4deg);}50%{transform:rotate(3deg);}}
 /* — звёздная пыль: искры по кругу — */
 .avf-sparkle{overflow:visible;}
 .avf-sparkle>i{position:absolute;left:50%;top:50%;font-size:15cqw;opacity:0;animation:avfSparkleOrbit 3.6s linear infinite;animation-delay:calc(var(--n)*-.5s);}
@@ -2150,6 +2162,12 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .avf-cell-nm{font-size:11px;color:var(--text2);text-align:center;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .avf-cell.sel .avf-cell-nm{color:var(--text1);}
 .avf-lock{position:absolute;top:4px;right:6px;font-size:12px;}
+/* — карточка-«шапка» под цвет декорации, как в референсе магазина — */
+.avf-cell.has-card,.wp-cell.has-card{padding:10px 6px 8px;border-radius:16px;border-color:rgba(255,255,255,.08);}
+.avf-cell.has-card .avf-cell-nm,.wp-cell.has-card .wp-cell-nm{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);font-weight:600;}
+.avf-cell.has-card.sel,.wp-cell.has-card.sel{border-color:#fff;box-shadow:0 0 0 2px var(--accent);}
+.avf-cell.has-card .avf-demo-face{background:rgba(255,255,255,.18);backdrop-filter:blur(2px);}
+.avf-cell.has-card:hover,.wp-cell.has-card:hover{filter:brightness(1.08);}
 /* в демо-сетке маска всегда закрыта (не раскрываем) */
 .avf-demo .avf-ironman.open .avf-plate{transform:none;opacity:1;}
 .avf-demo .avf-ironman.open .avf-shellg{opacity:1;}
@@ -2181,26 +2199,28 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .sp-hero-wp,.pp-hero-wp,.prof-hero2-wp,.sp-cust-wp,.wp-demo{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;opacity:0;transition:opacity .35s ease;}
 .sp-hero-wp.active,.pp-hero-wp.active,.prof-hero2-wp.active,.sp-cust-wp.active,.wp-demo.active{opacity:1;}
 .wp-demo{position:absolute;inset:0;border-radius:inherit;}
-/* — черепа: тёмный баннер, светящиеся глазницы, тлеющие искры — */
-.wp-bg-skull{background:radial-gradient(120% 100% at 50% 100%,#241019 0%,#150910 60%,#0a0509 100%);}
-.wp-skull-glow{position:absolute;left:50%;bottom:6%;width:50%;height:50%;transform:translateX(-50%);background:radial-gradient(circle,rgba(180,60,90,.35),transparent 70%);filter:blur(6px);animation:wpGlowPulse 3.4s ease-in-out infinite;}
-@keyframes wpGlowPulse{0%,100%{opacity:.6;}50%{opacity:1;}}
-.wp-skull-svg{position:absolute;left:0;bottom:0;width:100%;height:70%;opacity:.9;}
-.wp-cell .wp-skull-svg{height:130%;bottom:-25%;}
-.wp-skull-main{animation:wpSkullSway 6s ease-in-out infinite;transform-origin:100px 90px;}
-@keyframes wpSkullSway{0%,100%{transform:translateY(0);}50%{transform:translateY(-2%);}}
-.wp-skull-eye{fill:#ff6b7a;filter:drop-shadow(0 0 4px #ff3355);animation:wpEyeGlow 2.4s ease-in-out infinite;}
-@keyframes wpEyeGlow{0%,100%{opacity:.55;}50%{opacity:1;}}
-.wp-ember{position:absolute;left:var(--x);bottom:4%;width:3px;height:3px;border-radius:50%;background:#ff8a5c;box-shadow:0 0 5px #ff5a2c;opacity:0;animation:wpEmberRise 4s ease-in infinite;animation-delay:var(--d);}
+/* Обои НЕ перекрывают выбранный цвет градиента профиля — только лёгкая
+   виньетка для контраста под артом, сам градиент виден по краям/сверху. */
+/* — черепа: детальный череп на тёмной виньетке, тлеющие искры — */
+.wp-bg-skull{background:radial-gradient(120% 90% at 50% 118%,rgba(8,4,7,.82) 0%,rgba(8,4,7,.5) 45%,rgba(8,4,7,0) 78%);}
+.wp-skull-glow{position:absolute;left:50%;bottom:2%;width:56%;height:56%;transform:translateX(-50%);background:radial-gradient(circle,rgba(200,50,80,.4),transparent 72%);filter:blur(7px);animation:wpGlowPulse 3.4s ease-in-out infinite;}
+@keyframes wpGlowPulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+.wp-skull-svg{position:absolute;left:50%;bottom:-6%;width:78%;height:88%;transform:translateX(-50%);filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));}
+.wp-cell .wp-skull-svg{width:98%;bottom:-10%;}
+.wp-skull-main{animation:wpSkullSway 6s ease-in-out infinite;transform-origin:50% 60%;}
+@keyframes wpSkullSway{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-2%) rotate(-.6deg);}}
+.wp-skull-eye{fill:url(#wpEyeGrad);filter:drop-shadow(0 0 5px #ff2d4d);animation:wpEyeGlow 2.4s ease-in-out infinite;}
+@keyframes wpEyeGlow{0%,100%{opacity:.6;}50%{opacity:1;}}
+.wp-ember{position:absolute;left:var(--x);bottom:2%;width:3px;height:3px;border-radius:50%;background:#ff8a5c;box-shadow:0 0 5px #ff5a2c;opacity:0;animation:wpEmberRise 4s ease-in infinite;animation-delay:var(--d);}
 @keyframes wpEmberRise{0%{transform:translateY(0) scale(.6);opacity:0;}15%{opacity:1;}80%{opacity:.7;}100%{transform:translateY(-260%) scale(1.3) translateX(6px);opacity:0;}}
-/* — сакура: розовый закат, падающие лепестки — */
-.wp-bg-sakura{background:linear-gradient(180deg,#ffd9e6 0%,#ffc2d6 45%,#ff9fc0 100%);}
-.wp-sakura-sky{position:absolute;inset:0;background:radial-gradient(60% 50% at 80% 15%,rgba(255,255,255,.55),transparent 70%);}
-.wp-petal{position:absolute;left:var(--x);top:-8%;width:9px;height:7px;border-radius:70% 30% 70% 30%;background:linear-gradient(135deg,#ffb3cf,#ff8fb8);opacity:0;animation:wpPetalFall var(--sp,6s) linear infinite;animation-delay:var(--d);}
+/* — сакура: лепестки поверх собственного цвета профиля, лёгкая розовая дымка снизу — */
+.wp-bg-sakura{background:linear-gradient(180deg,rgba(255,214,232,0) 0%,rgba(255,170,205,.35) 100%);}
+.wp-sakura-sky{position:absolute;inset:0;background:radial-gradient(55% 45% at 82% 10%,rgba(255,255,255,.35),transparent 72%);}
+.wp-petal{position:absolute;left:var(--x);top:-8%;width:9px;height:7px;border-radius:70% 30% 70% 30%;background:linear-gradient(135deg,#ffc2dc,#ff8fb8);opacity:0;animation:wpPetalFall var(--sp,6s) linear infinite;animation-delay:var(--d);}
 @keyframes wpPetalFall{0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0;}8%{opacity:.95;}50%{transform:translateY(140%) translateX(14px) rotate(180deg);}100%{transform:translateY(280%) translateX(-6px) rotate(360deg);opacity:0;}}
-/* — звёздное небо: мерцающие звёзды, падающая звезда — */
-.wp-bg-stars{background:linear-gradient(180deg,#050815 0%,#0c1230 55%,#161c40 100%);}
-.wp-night-sky{position:absolute;inset:0;background:radial-gradient(40% 30% at 30% 20%,rgba(120,140,255,.18),transparent 70%);}
+/* — звёздное небо: только звёзды и дымка, свой градиент виден насквозь — */
+.wp-bg-stars{background:radial-gradient(120% 90% at 50% 100%,rgba(5,7,20,.55) 0%,rgba(5,7,20,.2) 55%,rgba(5,7,20,0) 80%);}
+.wp-night-sky{position:absolute;inset:0;background:radial-gradient(40% 30% at 30% 20%,rgba(150,170,255,.22),transparent 70%);}
 .wp-star{position:absolute;left:var(--x);top:var(--y);width:2px;height:2px;border-radius:50%;background:#fff;box-shadow:0 0 3px #fff;animation:wpStarTwinkle 2.6s ease-in-out infinite;animation-delay:var(--d);}
 @keyframes wpStarTwinkle{0%,100%{opacity:.25;transform:scale(1);}50%{opacity:1;transform:scale(1.6);}}
 .wp-shoot{position:absolute;left:-10%;top:18%;width:46px;height:2px;background:linear-gradient(90deg,transparent,#fff);border-radius:2px;opacity:0;animation:wpShoot 5.5s ease-in infinite 1.5s;}

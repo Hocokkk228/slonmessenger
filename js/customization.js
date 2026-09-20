@@ -18,8 +18,28 @@ const AV_FRAMES=[
   {id:'hearts',   name:'Влюблён(а)',         prem:false, kind:'fx'},
   {id:'snow',     name:'Снежок',             prem:true,  kind:'fx'},
   {id:'bday',     name:'День рождения',      prem:true,  kind:'fx'},
+  {id:'shark',    name:'Акульи челюсти',     prem:true,  kind:'fx'},
+  {id:'raven',    name:'Ворон',              prem:true,  kind:'fx'},
 ];
 const AV_FRAME_MAP=Object.fromEntries(AV_FRAMES.map(f=>[f.id,f]));
+// Цветная «шапка» карточки в сетке выбора — как в референсе (розовая карточка «Мяу-мяу» и т.д.)
+const AV_FRAME_CARD_BG={
+  cobweb:'linear-gradient(160deg,#3a3a42,#101012)',
+  blood:'linear-gradient(160deg,#7a1620,#1a0508)',
+  ironman:'linear-gradient(160deg,#e8352b,#3a0d08)',
+  catears:'linear-gradient(160deg,#ffd66b,#ff9dc0)',
+  bunny:'linear-gradient(160deg,#ffe3ef,#ffb6cf)',
+  halo:'linear-gradient(160deg,#fff6d8,#ffe27a)',
+  devil:'linear-gradient(160deg,#ff6a52,#5c0e08)',
+  crown:'linear-gradient(160deg,#ffe9a8,#d99a14)',
+  wings:'linear-gradient(160deg,#d8c9ff,#5a3fc0)',
+  sparkle:'linear-gradient(160deg,#c9b6ff,#6a4fe0)',
+  hearts:'linear-gradient(160deg,#ffc2d6,#ff6a92)',
+  snow:'linear-gradient(160deg,#e3f4ff,#8fc4ea)',
+  bday:'linear-gradient(160deg,#ffd9ec,#a6d8ff)',
+  shark:'linear-gradient(160deg,#1e5a78,#03121c)',
+  raven:'linear-gradient(160deg,#3a3a42,#0a0a0c)',
+};
 const AV_CONTOUR_DEFAULT='#3390ec';
 // avFrame может нести цвет для контура: "contour|#ff0000"
 function _avFrameParse(val){const [id,color]=String(val||'').split('|');return {id:id||'',color:color||''};}
@@ -30,7 +50,7 @@ function _avFrameInner(id){
     case 'blood':  return '<i></i><i></i>'; // 2 капли стекают в левом нижнем углу
     case 'snow':   return Array.from({length:9},()=>'<i></i>').join('');
     case 'hearts': return '<i>❤️</i><i>💜</i><i>❤️</i>';
-    case 'catears':return '<i class="l"></i><i class="r"></i><i class="nose">🐾</i>';
+    case 'catears':return '<i class="ring"></i><i class="l"></i><i class="r"></i><i class="nose">🐾</i>';
     case 'bunny':  return '<i class="l"></i><i class="r"></i>';
     case 'halo':   return '<i class="ring"></i><i class="spark">✨</i>';
     case 'devil':  return '<i class="l"></i><i class="r"></i><i class="tail"></i>';
@@ -38,6 +58,31 @@ function _avFrameInner(id){
     case 'wings':  return '<i class="l"></i><i class="r"></i>';
     case 'sparkle':return Array.from({length:7},(_,i)=>`<i style="--n:${i}">✨</i>`).join('');
     case 'bday':   return '<i class="cake">🎂</i><i class="b1">🎈</i><i class="b2">🎈</i>';
+    case 'shark':{
+      // Программно строим два ряда острых зубов (верхний/нижний), чтобы не накосячить в координатах руками
+      const teeth=(baseY,peakY,n)=>{const step=100/n;let d=`M0,${baseY}`;
+        for(let i=0;i<n;i++){const x0=i*step,xm=x0+step/2,x1=x0+step;d+=` L${x0},${baseY} L${xm},${peakY} L${x1},${baseY}`;}
+        return d;};
+      const upper=teeth(2,26,7)+' L100,2 Z';
+      const lower=teeth(58,34,7)+' L100,58 Z';
+      return `<svg class="avf-shark-svg" viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="0" y="0" width="100" height="60" fill="#0a0a0c"/>
+        <path fill="#f4f4ef" d="${upper}"/>
+        <path fill="#f4f4ef" d="${lower}"/>
+      </svg>`;
+    }
+    case 'raven':  return `<svg class="avf-raven-svg" viewBox="0 0 100 100" aria-hidden="true">
+        <defs><linearGradient id="wpRavenGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#4a4a54"/><stop offset="1" stop-color="#0a0a0d"/>
+        </linearGradient></defs>
+        <g fill="url(#wpRavenGrad)">
+          <ellipse cx="52" cy="60" rx="26" ry="20"/>
+          <circle cx="30" cy="38" r="16"/>
+          <path d="M14 36l-14 4 14 5z"/>
+          <path d="M46 42c14-4 30 2 34 16-10 6-24 8-34 0-4-6-4-12 0-16z"/>
+        </g>
+        <circle cx="24" cy="34" r="2.6" fill="#ffd75e"/>
+      </svg>`;
     case 'cobweb': // классическая угловая паутина: радиальные нити + дуги
       return `<svg class="avf-web tl" viewBox="0 0 100 100" aria-hidden="true">
           <g fill="none" stroke="#e8ecf2" stroke-width="1.1" stroke-linecap="round">
@@ -123,7 +168,8 @@ function _spAvFramesSection(){
     const locked=f.prem&&!myPremium;
     const demoVal=f.id==='contour'?('contour|'+(cur.color||AV_CONTOUR_DEFAULT)):f.id;
     const inner=f.id?`<span class="avf avf-${f.id}${(f.kind==='ring'||f.kind==='contour')?' avf-ring':''}"${f.id==='contour'?` style="--avf-col:${cur.color||AV_CONTOUR_DEFAULT}"`:''}>${_avFrameInner(f.id)}</span>`:'';
-    return `<button class="avf-cell${cur.id===f.id?' sel':''}${locked?' locked':''}" data-f="${f.id}" onclick="_spPickFrame('${f.id}')" title="${esc(f.name)}${locked?' · Premium':''}">
+    const card=f.id&&AV_FRAME_CARD_BG[f.id];
+    return `<button class="avf-cell${cur.id===f.id?' sel':''}${locked?' locked':''}${card?' has-card':''}" data-f="${f.id}" onclick="_spPickFrame('${f.id}')" title="${esc(f.name)}${locked?' · Premium':''}"${card?` style="background:${card}"`:''}>
       <span class="avf-demo avf-host"${f.id?` data-avframe="${f.id}"`:''}>
         <span class="avf-demo-face">${face}</span>${inner}
       </span>
@@ -177,17 +223,29 @@ function _wallpaperInner(id){
   switch(id){
     case 'skull':
       return `<div class="wp-skull-glow"></div>
-        <svg class="wp-skull-svg" viewBox="0 0 200 90" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <svg class="wp-skull-svg" viewBox="0 0 100 120" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <defs>
+            <linearGradient id="wpBoneGrad" x1="0" y1="0" x2=".7" y2="1">
+              <stop offset="0" stop-color="#fdfdff"/><stop offset=".55" stop-color="#e2e4ee"/><stop offset="1" stop-color="#aeb2c2"/>
+            </linearGradient>
+            <radialGradient id="wpEyeGrad" cx="50%" cy="35%" r="75%">
+              <stop offset="0" stop-color="#fff2f2"/><stop offset=".4" stop-color="#ff4560"/><stop offset="1" stop-color="#6e0016"/>
+            </radialGradient>
+          </defs>
           <g class="wp-skull-main">
-            <path fill="#eef0f5" d="M100 8c-19 0-33 13-33 31 0 10 4 18 10 24l2 15c0 4 3 7 7 7h28c4 0 7-3 7-7l2-15c6-6 10-14 10-24 0-18-14-31-33-31z"/>
-            <ellipse class="wp-skull-eye" cx="86" cy="42" rx="9" ry="12"/>
-            <ellipse class="wp-skull-eye" cx="114" cy="42" rx="9" ry="12"/>
-            <path fill="#eef0f5" d="M96 52l4 10 4-10z"/>
-            <path fill="none" stroke="#c7cbd6" stroke-width="1.6" d="M84 66h32M90 72h20"/>
+            <path fill="url(#wpBoneGrad)" stroke="#7d7f8c" stroke-width="1" d="M50 3C29 3 15 17 13 37c-2 15 3 26 12 34l2 13c0 6 5 10 11 10h24c6 0 11-4 11-10l2-13c9-8 14-19 12-34C85 17 71 3 50 3z"/>
+            <path fill="#8b8ea0" opacity=".35" d="M18 26c-3 8-4 16-2 24 1-9 3-17 7-24z"/>
+            <path fill="#8b8ea0" opacity=".35" d="M82 26c3 8 4 16 2 24-1-9-3-17-7-24z"/>
+            <path class="wp-skull-eye" d="M27 41l19-3 2 15-16 6-11-9z"/>
+            <path class="wp-skull-eye" d="M73 41l-19-3-2 15 16 6 11-9z"/>
+            <path fill="#7d7f8c" opacity=".85" d="M47 56h6l3 12-6 8-6-8z"/>
+            <path fill="url(#wpBoneGrad)" stroke="#7d7f8c" stroke-width="1" d="M34 78h32l-2 10c-1 4-4 6-8 6H44c-4 0-7-2-8-6z"/>
+            <path stroke="#7d7f8c" stroke-width="1" d="M40 78v14M46 78v16M50 78v17M54 78v16M60 78v14"/>
+            <path stroke="#9296a6" stroke-width="1" opacity=".5" fill="none" d="M18 20l9 15M83 17l-10 16"/>
           </g>
         </svg>
-        <i class="wp-ember" style="--x:14%;--d:0s"></i><i class="wp-ember" style="--x:32%;--d:1.1s"></i>
-        <i class="wp-ember" style="--x:58%;--d:.5s"></i><i class="wp-ember" style="--x:76%;--d:1.8s"></i>
+        <i class="wp-ember" style="--x:12%;--d:0s"></i><i class="wp-ember" style="--x:28%;--d:1.1s"></i>
+        <i class="wp-ember" style="--x:60%;--d:.5s"></i><i class="wp-ember" style="--x:78%;--d:1.8s"></i>
         <i class="wp-ember" style="--x:90%;--d:2.4s"></i>`;
     case 'sakura':
       return `<div class="wp-sakura-sky"></div>

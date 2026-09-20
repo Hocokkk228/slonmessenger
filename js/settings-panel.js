@@ -200,8 +200,7 @@ function _myFullName(){return (myNick||'')+(myLastName?' '+myLastName:'');}
 function _spRender(quiet){
   $('spHeroBg').style.background=_getProfileBgStyle(myProfileBg,myProfileBgColor,myProfilePattern);
   const displayName=_myFullName().trim()||('@'+myUsername);
-  $('spAv').innerHTML=(myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,_myFullName().trim()||myUsername))
-    +`<div class="sp-av-cam">${_spSvg('camera')}</div>`;
+  $('spAv').innerHTML=`<span class="av-clip">${myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,_myFullName().trim()||myUsername)}<div class="sp-av-cam">${_spSvg('camera')}</div></span>`;
   if(typeof _avFrameApply==='function')_avFrameApply($('spAv'),myAvFrame||'');
   if(typeof _wallpaperApply==='function')_wallpaperApply($('spHeroWp'),myProfileWallpaper||'');
   $('spName').innerHTML=esc(displayName)
@@ -819,7 +818,7 @@ function _spCustomize(){
   _spPush('Кастомизация профиля',`
     <div class="sp-cust-prev" id="spCustPrev">
       <div class="sp-cust-wp" id="spCustPrevWp"></div>
-      <div class="sp-cust-av">${myAvatar?`<img src="${myAvatar}" alt="">`:esc(((myNick||myUsername)[0]||'?').toUpperCase())}</div>
+      <div class="sp-cust-av"><span class="av-clip">${myAvatar?`<img src="${myAvatar}" alt="">`:esc(((myNick||myUsername)[0]||'?').toUpperCase())}</span></div>
       <div class="sp-cust-name">${esc(_myFullName().trim()||'@'+myUsername)}</div>
       <div class="sp-cust-st">в сети</div>
     </div>
@@ -964,7 +963,7 @@ function _ppRender(pid){
   const hero=$('peerProfHero');
   hero.classList.toggle('pp-custom',custom);
   $('peerProfBg').style.background=custom?_getProfileBgStyle(peerProfileBgs[pid]||'bg0',bgColor,pattern):'';
-  $('peerProfAv').innerHTML=av?`<img src="${av}" alt="">`:_avHtml(pid,name);
+  $('peerProfAv').innerHTML=`<span class="av-clip">${av?`<img src="${av}" alt="">`:_avHtml(pid,name)}</span>`;
   if(typeof _avFrameApply==='function')_avFrameApply($('peerProfAv'),peerAvFrames[pid]||'');
   if(typeof _wallpaperApply==='function')_wallpaperApply($('peerProfWp'),peerProfileWallpapers[pid]||'');
   $('peerProfAv').onclick=av?()=>{$('photoImg').src=av;$('photoView').classList.add('show');}:null;
