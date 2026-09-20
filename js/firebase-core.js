@@ -674,6 +674,11 @@ function onData(pid,data){
       (async()=>{
         if(!_callPC||!data.sdp)return;
         try{
+          // Коллизия офферов: если мы сами ждём ответ — откатываем свой,
+          // иначе setRemoteDescription упадёт и демонстрация не дойдёт
+          if(_callPC.signalingState!=='stable'){
+            try{await _callPC.setLocalDescription({type:'rollback'});}catch(e){}
+          }
           await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
           await _flushPendingIce();
           const answer=await _callPC.createAnswer();

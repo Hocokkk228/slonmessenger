@@ -9,13 +9,54 @@ function showPermRequest(isVideo,onGranted,onDenied){
   $('permOverlay').classList.add('show');
 }
 
+// ── Ограничения качества видео ──
+// Без них камера/экран отдаются в максимальном разрешении (вплоть до 4K),
+// канал захлёбывается и получается «1 кадр в 2 секунды» либо чёрный экран.
+const CAM_MAX={w:1280,h:720,fps:30};
+const SCREEN_MAX={w:1920,h:1080,fps:30};
+const CAM_BITRATE=900000;     // ~0.9 Мбит/с на камеру
+const SCREEN_BITRATE=2000000; // ~2 Мбит/с на экран
+
+// Видео-констрейнты камеры с лимитами (deviceId/facingMode сохраняем)
+function _camConstraints(extra){
+  const vc=Object.assign({},extra||{});
+  if(selCam&&selCam!=='default')vc.deviceId={ideal:selCam};
+  if(!vc.facingMode)vc.facingMode=_camFacing||'user';
+  vc.width={ideal:CAM_MAX.w,max:CAM_MAX.w};
+  vc.height={ideal:CAM_MAX.h,max:CAM_MAX.h};
+  vc.frameRate={ideal:CAM_MAX.fps,max:CAM_MAX.fps};
+  return vc;
+}
+// Констрейнты демонстрации экрана
+function _screenConstraints(){
+  return {width:{max:SCREEN_MAX.w},height:{max:SCREEN_MAX.h},
+    frameRate:{ideal:SCREEN_MAX.fps,max:SCREEN_MAX.fps}};
+}
+// Ограничиваем битрейт/фпс у отправителя и просим держать плавность,
+// иначе браузер шлёт огромный поток и картинка замирает/рассинхронится со звуком
+async function _tuneVideoSender(sender,isScreen){
+  if(!sender||!sender.getParameters)return;
+  try{
+    const p=sender.getParameters();
+    if(!p.encodings||!p.encodings.length)p.encodings=[{}];
+    p.encodings[0].maxBitrate=isScreen?SCREEN_BITRATE:CAM_BITRATE;
+    p.encodings[0].maxFramerate=isScreen?SCREEN_MAX.fps:CAM_MAX.fps;
+    p.encodings[0].scaleResolutionDownBy=1;
+    // плавность важнее детализации — держим 30 кадров
+    p.degradationPreference='maintain-framerate';
+    await sender.setParameters(p);
+  }catch(e){console.warn('tune sender:',e);}
+}
+// Подсказка кодеку: движение (плавность) вместо статичной детализации
+function _hintTrack(track,isScreen){
+  try{if(track)track.contentHint=isScreen?'motion':'motion';}catch(e){}
+}
+
 async function permDoRequest(){
   const isVideo=_permIsVideo;
   const ac={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
   if(selMic&&selMic!=='default')ac.deviceId={ideal:selMic};
-  const constraints=isVideo
-    ?{audio:ac,video:selCam&&selCam!=='default'?{deviceId:{ideal:selCam},facingMode:{ideal:'user'}}:{facingMode:'user'}}
-    :{audio:ac};
+  const constraints=isVideo?{audio:ac,video:_camConstraints()}:{audio:ac};
   try{
     const stream=await navigator.mediaDevices.getUserMedia(constraints);
     $('permOverlay').classList.remove('show');_permResolve?.onGranted(stream);_permResolve=null;
@@ -56,8 +97,7 @@ async function getMediaStream(isVideo){
         if(result.state==='granted'){
           const ac={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
           if(selMic&&selMic!=='default')ac.deviceId={ideal:selMic};
-          const vc=selCam&&selCam!=='default'?{deviceId:{ideal:selCam},facingMode:{ideal:'user'}}:{facingMode:'user'};
-          const c=isVideo?{audio:ac,video:vc}:{audio:ac};
+          const c=isVideo?{audio:ac,video:_camConstraints()}:{audio:ac};
           navigator.mediaDevices.getUserMedia(c)
             .then(resolve)
             .catch(e=>{
@@ -72,11 +112,30 @@ async function getMediaStream(isVideo){
 }
 
 function _callSend(peerId,data){
-  // Сигналинг для звонков — через DataChannel если есть, иначе Firebase
+  // В Firebase-режиме всегда шлём через inbox: DataChannel может числиться
+  // открытым, но быть мёртвым — тогда пакеты (в т.ч. ренеготиация демки) молча пропадают
+  if(typeof _fbMode!=='undefined'&&_fbMode){_fbSend(peerId,data);return;}
   if(conns[peerId]?.open){
     try{conns[peerId].send(data);return;}catch(e){}
   }
   _fbSend(peerId,data);
+}
+
+// Отправка offer'а ренеготиации (включили камеру/демонстрацию) с повтором:
+// если ответ не пришёл за 2.5 с — шлём ещё раз, иначе демка «не доходит» вообще
+function _sendRenegOffer(pc,peerId,attempt){
+  if(!pc||!peerId||!pc.localDescription)return;
+  _callSend(peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+  const n=attempt||0;
+  if(n>=2)return;
+  setTimeout(()=>{
+    try{
+      if(pc.signalingState==='have-local-offer'&&activeCall&&activeCall.peerId===peerId){
+        console.warn('[SLON] ответ на ренеготиацию не пришёл, повтор #'+(n+1));
+        _sendRenegOffer(pc,peerId,n+1);
+      }
+    }catch(e){}
+  },2500);
 }
 
 async function _flushPendingIce(){
@@ -108,7 +167,8 @@ async function doStartCall(peerId,isVideo,stream){
   // Уникальный ID этого звонка — для идентификации при оффлайн-доставке
   const callId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
-  stream.getTracks().forEach(t=>_callPC.addTrack(t,stream));
+  stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
+  _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;_tuneVideoSender(s,false);});
   _callPC.onicecandidate=e=>{
     if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
   };
@@ -149,7 +209,8 @@ async function answerCall(){
     _remoteStream=new MediaStream();
     localStream=stream;
     _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
-    stream.getTracks().forEach(t=>_callPC.addTrack(t,stream));
+    stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
+    _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;_tuneVideoSender(s,false);});
     _callPC.onicecandidate=e=>{
       if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
     };
@@ -312,7 +373,7 @@ async function stopScreenShare(){
       }
       const offer=await pc.createOffer();await pc.setLocalDescription(offer);
       if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+      else _sendRenegOffer(pc,activeCall?.peerId);
     }catch(e){console.warn('stop screen renegotiate',pid,e);}
   }
   const camTracks=localStream?.getVideoTracks()||[];
@@ -652,7 +713,7 @@ async function toggleCam(){
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
       if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+      else _sendRenegOffer(pc,activeCall?.peerId);
     }catch(e){console.warn('cam off renegotiate:',e);}
   }
   // Скрываем своё локальное превью
@@ -680,7 +741,7 @@ async function _renegotiateAll(){
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
       if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-      else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+      else _sendRenegOffer(pc,activeCall?.peerId);
     }catch(e){console.warn('renegotiate error:',e);}
   }
 }
@@ -688,12 +749,10 @@ async function _renegotiateAll(){
 async function _activateCam(){
   if(!activeCall&&!_vr){toast('Нет активного звонка');return;}
   try{
-    const vc=selCam&&selCam!=='default'
-      ?{deviceId:{ideal:selCam},facingMode:{ideal:_camFacing||'user'}}
-      :{facingMode:_camFacing||'user'};
-    const camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
+    const camStream=await navigator.mediaDevices.getUserMedia({video:_camConstraints(),audio:false});
     const videoTrack=camStream.getVideoTracks()[0];
     if(!videoTrack){toast('Камера не найдена');return;}
+    _hintTrack(videoTrack,false);
 
     // Добавляем трек в localStream
     if(localStream){
@@ -709,18 +768,20 @@ async function _activateCam(){
       try{
         const tr=pc.getTransceivers().find(t=>
           t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        let vs=null;
         if(tr){
           await tr.sender.replaceTrack(videoTrack);
-          tr.sender._isVideoSender=true;
+          tr.sender._isVideoSender=true;vs=tr.sender;
           if(tr.direction==='recvonly'||tr.direction==='inactive')try{tr.direction='sendrecv';}catch(e){}
         }else{
           const s=pc.addTrack(videoTrack,localStream);
-          if(s)s._isVideoSender=true;
+          if(s){s._isVideoSender=true;vs=s;}
         }
+        await _tuneVideoSender(vs,false);
         const offer=await pc.createOffer();
         await pc.setLocalDescription(offer);
         if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-        else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+        else _sendRenegOffer(pc,activeCall?.peerId);
       }catch(e){console.warn('cam on renegotiate:',e);}
     }
 
@@ -756,9 +817,12 @@ async function toggleScreenShare(){
   // Разрешаем начать демку даже без соединений — новые участники получат трек при входе
   try{
     if(!navigator.mediaDevices?.getDisplayMedia){toast('Демонстрация экрана не поддерживается');return;}
-    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:_screenConstraints(),audio:true});
     const screenTrack=screenShareStream.getVideoTracks()[0];
     if(!screenTrack){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;toast('Нет видео экрана');return;}
+    _hintTrack(screenTrack,true);
+    // Если браузер выдал больше 30 к/с или 1080p — дожимаем ограничениями
+    try{await screenTrack.applyConstraints(_screenConstraints());}catch(e){}
     const screenAudioTracks=screenShareStream.getAudioTracks();
 
     // Renegotiate со всеми PC
@@ -773,16 +837,18 @@ async function toggleScreenShare(){
         // Видео трек экрана
         const vTr=pc.getTransceivers().find(t=>
           t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        let vs=null;
         if(vTr){
           await vTr.sender.replaceTrack(screenTrack);
-          vTr.sender._isVideoSender=true;
+          vTr.sender._isVideoSender=true;vs=vTr.sender;
           if(vTr.direction==='recvonly'||vTr.direction==='inactive')try{vTr.direction='sendrecv';}catch(e){}
         }else{
-          const s=pc.addTrack(screenTrack,screenShareStream);if(s)s._isVideoSender=true;
+          const s=pc.addTrack(screenTrack,screenShareStream);if(s){s._isVideoSender=true;vs=s;}
         }
+        await _tuneVideoSender(vs,true);
         const offer=await pc.createOffer();await pc.setLocalDescription(offer);
         if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-        else _callSend(activeCall?.peerId,{type:'webrtc_offer',sdp:pc.localDescription.toJSON()});
+        else _sendRenegOffer(pc,activeCall?.peerId);
       }catch(e){console.warn('screen share renegotiate',pid,e);}
     }
 

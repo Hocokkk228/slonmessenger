@@ -1076,6 +1076,7 @@ function _deleteChatFull(id){
 // иначе ICE-кандидаты/answer/end теряются и звонок звонит, но не соединяется (нет звука/чёрный экран).
 const _CHAT_CREATING_TYPES=new Set(['msg','media_start','media_url','media_rtdb','file_start',
   'call_incoming','call_offer','call_answer','call_ice','call_end','call_cancel','call_reject','call_mute',
+  'webrtc_offer','webrtc_answer',
   'group_invite','group_add']);
 function _mayCreateChat(payload){return !!payload&&_CHAT_CREATING_TYPES.has(payload.type);}
 
