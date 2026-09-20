@@ -218,9 +218,11 @@ let myPremium=false;
 let peerPremium={};
 let myProfileBgColor='';
 let myProfilePattern='';
+let myAvFrame='';           // рамка/эффект аватара (id из AV_FRAMES)
 let myChatWallpaper='none';
 let peerProfileBgColors={}; // pid->rgbColor
 let peerProfilePatterns={}; // pid->patternId
+let peerAvFrames={};        // pid->avFrame id
 let myLinkedChannel=''; // username своего канала, привязанного к профилю
 let peerLinkedChannels={}; // pid->username канала, привязанного к профилю
 // ── Профиль/настройки в стиле Telegram (settings-panel.js) ──
@@ -1652,6 +1654,7 @@ function saveAll(){
       localStorage.setItem(p+'premium',JSON.stringify(myPremium));
       localStorage.setItem(p+'bgColor',JSON.stringify(myProfileBgColor));
       localStorage.setItem(p+'bgPattern',JSON.stringify(myProfilePattern));
+      localStorage.setItem(p+'avFrame',JSON.stringify(myAvFrame));
       localStorage.setItem(p+'linkedCh',JSON.stringify(myLinkedChannel));
       localStorage.setItem(p+'lastName',JSON.stringify(myLastName));
       localStorage.setItem(p+'birthday',JSON.stringify(myBirthday));
@@ -1734,6 +1737,7 @@ function loadStorage(){
   myPremium=LS.get(p+'premium',false);
   myProfileBgColor=LS.get(p+'bgColor','');
   myProfilePattern=LS.get(p+'bgPattern','');
+  myAvFrame=LS.get(p+'avFrame','');
   myLinkedChannel=LS.get(p+'linkedCh','');
   myLastName=LS.get(p+'lastName','');
   myBirthday=LS.get(p+'birthday',null);

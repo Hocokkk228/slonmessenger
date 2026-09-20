@@ -114,6 +114,7 @@ function showPeerProfile(pid){
   $('peerProfBackdrop')?.classList.add('show');
   $('peerProfOverlay').scrollTop=0;
   $('peerProfOverlay').classList.add('show');
+  if(typeof _avFrameReveal==='function')_avFrameReveal($('peerProfAv'));
   _rpDock(true);
 }
 
