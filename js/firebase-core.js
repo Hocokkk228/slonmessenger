@@ -341,6 +341,7 @@ function _fetchProfile(pid){
     if(d.bgColor!==undefined)peerProfileBgColors[pid]=d.bgColor||'';
     if(d.bgPattern!==undefined)peerProfilePatterns[pid]=d.bgPattern||'';
     if(d.avFrame!==undefined)peerAvFrames[pid]=d.avFrame||'';
+    if(d.profileWallpaper!==undefined)peerProfileWallpapers[pid]=d.profileWallpaper||'';
     peerLinkedChannels[pid]=d.linkedChannel||'';
     _applyExtraProfile(pid,d);
     // Если username изменился — следим и за новым профилем
@@ -481,6 +482,7 @@ function onData(pid,data){
       if(data.bgColor!==undefined){peerProfileBgColors[pid]=data.bgColor||'';}
       if(data.bgPattern!==undefined){peerProfilePatterns[pid]=data.bgPattern||'';}
       if(data.avFrame!==undefined){peerAvFrames[pid]=data.avFrame||'';}
+      if(data.profileWallpaper!==undefined){peerProfileWallpapers[pid]=data.profileWallpaper||'';}
       if(data.bio!==undefined){peerBios[pid]=data.bio;}
       _applyExtraProfile(pid,data);
       // Миграция по oldUsername

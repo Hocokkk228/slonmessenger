@@ -8,6 +8,16 @@ const AV_FRAMES=[
   {id:'cobweb',   name:'Паутина',            prem:true,  kind:'fx'},
   {id:'blood',    name:'Кровь',              prem:true,  kind:'fx'},
   {id:'ironman',  name:'Железный человек',   prem:true,  kind:'fx'},
+  {id:'catears',  name:'Кошачьи ушки',       prem:false, kind:'fx'},
+  {id:'bunny',    name:'Зайка',              prem:true,  kind:'fx'},
+  {id:'halo',     name:'Ангел',              prem:true,  kind:'fx'},
+  {id:'devil',    name:'Чертёнок',           prem:true,  kind:'fx'},
+  {id:'crown',    name:'Корона',             prem:true,  kind:'fx'},
+  {id:'wings',    name:'Крылья',             prem:true,  kind:'fx'},
+  {id:'sparkle',  name:'Звёздная пыль',      prem:true,  kind:'fx'},
+  {id:'hearts',   name:'Влюблён(а)',         prem:false, kind:'fx'},
+  {id:'snow',     name:'Снежок',             prem:true,  kind:'fx'},
+  {id:'bday',     name:'День рождения',      prem:true,  kind:'fx'},
 ];
 const AV_FRAME_MAP=Object.fromEntries(AV_FRAMES.map(f=>[f.id,f]));
 const AV_CONTOUR_DEFAULT='#3390ec';
@@ -20,6 +30,14 @@ function _avFrameInner(id){
     case 'blood':  return '<i></i><i></i>'; // 2 капли стекают в левом нижнем углу
     case 'snow':   return Array.from({length:9},()=>'<i></i>').join('');
     case 'hearts': return '<i>❤️</i><i>💜</i><i>❤️</i>';
+    case 'catears':return '<i class="l"></i><i class="r"></i><i class="nose">🐾</i>';
+    case 'bunny':  return '<i class="l"></i><i class="r"></i>';
+    case 'halo':   return '<i class="ring"></i><i class="spark">✨</i>';
+    case 'devil':  return '<i class="l"></i><i class="r"></i><i class="tail"></i>';
+    case 'crown':  return '<i class="cr">👑</i><i class="sp1">✨</i><i class="sp2">✨</i>';
+    case 'wings':  return '<i class="l"></i><i class="r"></i>';
+    case 'sparkle':return Array.from({length:7},(_,i)=>`<i style="--n:${i}">✨</i>`).join('');
+    case 'bday':   return '<i class="cake">🎂</i><i class="b1">🎈</i><i class="b2">🎈</i>';
     case 'cobweb': // классическая угловая паутина: радиальные нити + дуги
       return `<svg class="avf-web tl" viewBox="0 0 100 100" aria-hidden="true">
           <g fill="none" stroke="#e8ecf2" stroke-width="1.1" stroke-linecap="round">
@@ -139,5 +157,77 @@ function _spContourColor(color){
   document.querySelectorAll('.avf-cell[data-f="contour"] .avf-contour').forEach(e=>e.style.setProperty('--avf-col',color));
   const prevAv=document.querySelector('#spCustPrev .sp-cust-av');
   _avFrameApply(prevAv,'contour|'+color);
+  $('custSave')?.classList.add('show');
+}
+
+// ════════════════════════════════════════
+// ── ОБОИ ПРОФИЛЯ: большой анимированный баннер за аватаркой ──
+// Синхронизируется как поле profileWallpaper (см. _myHelloFor / _myPublicProfile).
+// Применяется к .sp-hero-wp (свой профиль) и .pp-hero-wp (профиль собеседника).
+// ════════════════════════════════════════
+const PROFILE_WALLPAPERS=[
+  {id:'',       name:'Нет',            prem:false},
+  {id:'skull',  name:'Черепа',         prem:true},
+  {id:'sakura', name:'Сакура',         prem:true},
+  {id:'stars',  name:'Звёздное небо',  prem:true},
+];
+const PROFILE_WALLPAPER_MAP=Object.fromEntries(PROFILE_WALLPAPERS.map(w=>[w.id,w]));
+
+function _wallpaperInner(id){
+  switch(id){
+    case 'skull':
+      return `<div class="wp-skull-glow"></div>
+        <svg class="wp-skull-svg" viewBox="0 0 200 90" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <g class="wp-skull-main">
+            <path fill="#eef0f5" d="M100 8c-19 0-33 13-33 31 0 10 4 18 10 24l2 15c0 4 3 7 7 7h28c4 0 7-3 7-7l2-15c6-6 10-14 10-24 0-18-14-31-33-31z"/>
+            <ellipse class="wp-skull-eye" cx="86" cy="42" rx="9" ry="12"/>
+            <ellipse class="wp-skull-eye" cx="114" cy="42" rx="9" ry="12"/>
+            <path fill="#eef0f5" d="M96 52l4 10 4-10z"/>
+            <path fill="none" stroke="#c7cbd6" stroke-width="1.6" d="M84 66h32M90 72h20"/>
+          </g>
+        </svg>
+        <i class="wp-ember" style="--x:14%;--d:0s"></i><i class="wp-ember" style="--x:32%;--d:1.1s"></i>
+        <i class="wp-ember" style="--x:58%;--d:.5s"></i><i class="wp-ember" style="--x:76%;--d:1.8s"></i>
+        <i class="wp-ember" style="--x:90%;--d:2.4s"></i>`;
+    case 'sakura':
+      return `<div class="wp-sakura-sky"></div>
+        ${Array.from({length:10},(_,i)=>`<i class="wp-petal" style="--x:${(i*97)%100}%;--d:${(i*0.9)%6}s;--sp:${5+(i%4)}s"></i>`).join('')}`;
+    case 'stars':
+      return `<div class="wp-night-sky"></div>
+        ${Array.from({length:16},(_,i)=>`<i class="wp-star" style="--x:${(i*61)%100}%;--y:${(i*37)%75}%;--d:${(i*0.4)%3}s"></i>`).join('')}
+        <i class="wp-shoot"></i>`;
+    default: return '';
+  }
+}
+// Применить обои к контейнеру (host — #spHeroWp / #peerProfWp)
+function _wallpaperApply(host,id){
+  if(!host)return;
+  host.className=host.className.replace(/\bwp-bg-\S+/g,'').trim();
+  if(!id||!PROFILE_WALLPAPER_MAP[id]){host.innerHTML='';host.classList.remove('active');return;}
+  host.classList.add('active','wp-bg-'+id);
+  host.innerHTML=_wallpaperInner(id);
+}
+
+// ── Секция выбора обоев в странице кастомизации ──
+function _spWallpaperSection(){
+  const cur=(typeof _spDraft==='object'&&_spDraft)?(_spDraft.profileWallpaper||''):(myProfileWallpaper||'');
+  const cell=w=>{
+    const locked=w.prem&&!myPremium;
+    return `<button class="wp-cell${cur===w.id?' sel':''}${locked?' locked':''}" data-w="${w.id}" onclick="_spPickWallpaper('${w.id}')" title="${esc(w.name)}${locked?' · Premium':''}">
+      <span class="wp-demo${w.id?' active wp-bg-'+w.id:''}">${w.id?_wallpaperInner(w.id):''}</span>
+      <span class="wp-cell-nm">${w.id?esc(w.name):'Нет'}</span>
+      ${locked?'<span class="avf-lock">🔒</span>':''}
+    </button>`;
+  };
+  return _spSec('Обои профиля'+(myPremium?'':' <span class="sp-lock">часть ⭐ Premium</span>'))
+    +`<div class="sp-card sp-pad"><div class="wp-grid">${PROFILE_WALLPAPERS.map(cell).join('')}</div></div>`
+    +_spHint('Большой анимированный фон за аватаркой — его видят все, кто открывает твой профиль.');
+}
+function _spPickWallpaper(id){
+  const w=PROFILE_WALLPAPER_MAP[id];if(!w)return;
+  if(w.prem&&!myPremium){toast('⭐ Эти обои — в SLON Premium');return;}
+  if(_spDraft)_spDraft.profileWallpaper=id;
+  document.querySelectorAll('.wp-grid .wp-cell').forEach(b=>b.classList.toggle('sel',b.dataset.w===id));
+  _wallpaperApply($('spCustPrevWp'),id);
   $('custSave')?.classList.add('show');
 }

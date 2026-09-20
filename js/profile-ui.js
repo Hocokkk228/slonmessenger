@@ -239,12 +239,14 @@ function updateProfileDisplay(){
   _updateStoryAvatar();
   const bg=BG_COLORS.find(b=>b.id===myProfileBg)||BG_COLORS[0];
   const bgEl=$('profHeroBg');if(bgEl)bgEl.style.background=bg.grad;
+  if(typeof _wallpaperApply==='function')_wallpaperApply($('profHeroWp'),myProfileWallpaper||'');
   const avEl=$('profAvEl');
   if(avEl){
     avEl.innerHTML='';
     if(myAvatar){const i=document.createElement('img');i.src=myAvatar;avEl.appendChild(i);}
     else avEl.innerHTML=_avHtml(myUsername,(typeof _myFullName==='function'?_myFullName().trim():'')||myNick||myUsername);
   }
+  if(typeof _avFrameApply==='function')_avFrameApply(avEl,myAvFrame||'');
   const nameEl=$('profNameEl');
   if(nameEl){
     nameEl.innerHTML='';

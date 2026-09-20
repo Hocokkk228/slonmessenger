@@ -203,6 +203,7 @@ function _spRender(quiet){
   $('spAv').innerHTML=(myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,_myFullName().trim()||myUsername))
     +`<div class="sp-av-cam">${_spSvg('camera')}</div>`;
   if(typeof _avFrameApply==='function')_avFrameApply($('spAv'),myAvFrame||'');
+  if(typeof _wallpaperApply==='function')_wallpaperApply($('spHeroWp'),myProfileWallpaper||'');
   $('spName').innerHTML=esc(displayName)
     +(hasElephantBadge?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
     +(myPremium?' <span class="sp-badge" title="SLON Premium">⭐</span>':'');
@@ -812,11 +813,12 @@ function _spSetWallpaper(id,el){
 let _spDraft=null;
 function _spCustomize(){
   _spCloseMenu();
-  _spDraft={bg:myProfileBg||'bg0',color:myProfileBgColor||'',pattern:myProfilePattern||'',avFrame:myAvFrame||''};
+  _spDraft={bg:myProfileBg||'bg0',color:myProfileBgColor||'',pattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||''};
   const cur=(_spDraft.color&&_spDraft.color.includes('|'))?_spDraft.color.split('|'):['#7cb8ff','#3b6fe0'];
   const lock=myPremium?'':' <span class="sp-lock">⭐ Premium</span>';
   _spPush('Кастомизация профиля',`
     <div class="sp-cust-prev" id="spCustPrev">
+      <div class="sp-cust-wp" id="spCustPrevWp"></div>
       <div class="sp-cust-av">${myAvatar?`<img src="${myAvatar}" alt="">`:esc(((myNick||myUsername)[0]||'?').toUpperCase())}</div>
       <div class="sp-cust-name">${esc(_myFullName().trim()||'@'+myUsername)}</div>
       <div class="sp-cust-st">в сети</div>
@@ -836,6 +838,7 @@ function _spCustomize(){
       ${PREMIUM_BG_PATTERNS.map(p=>`<button class="sp-pat" data-p="${p.id}" onclick="_spPickPattern('${p.id}')">${p.emoji} ${p.label}</button>`).join('')}
     </div></div>
     ${_spAvFramesSection()}
+    ${typeof _spWallpaperSection==='function'?_spWallpaperSection():''}
     <div style="height:70px"></div>`,
     {fab:`<button class="sp-fab" id="custSave" onclick="_spSaveCustom()" title="Сохранить">${_spSvg('check')}</button>`});
   _spUpdateCustPrev();
@@ -854,13 +857,14 @@ function _spUpdateCustPrev(dirty){
   pr.style.background=_getProfileBgStyle(_spDraft.bg,_spDraft.color,_spDraft.pattern);
   const prevAv=pr.querySelector('.sp-cust-av');
   if(prevAv&&typeof _avFrameApply==='function'){_avFrameApply(prevAv,_spDraft.avFrame||'');_avFrameReveal(prevAv);}
+  if(typeof _wallpaperApply==='function')_wallpaperApply($('spCustPrevWp'),_spDraft.profileWallpaper||'');
   document.querySelectorAll('#spSwatches .sp-sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===_spDraft.color));
   document.querySelectorAll('#spPatterns .sp-pat').forEach(b=>b.classList.toggle('sel',b.dataset.p===_spDraft.pattern));
   if(dirty)$('custSave')?.classList.add('show');
 }
 function _spSaveCustom(){
   if(!_spDraft)return;
-  myProfileBg=_spDraft.bg;myProfileBgColor=_spDraft.color;myProfilePattern=_spDraft.pattern;myAvFrame=_spDraft.avFrame||'';
+  myProfileBg=_spDraft.bg;myProfileBgColor=_spDraft.color;myProfilePattern=_spDraft.pattern;myAvFrame=_spDraft.avFrame||'';myProfileWallpaper=_spDraft.profileWallpaper||'';
   saveAll();updateProfileDisplay();
   if(_fbMode)_publishMyProfile();
   if(_fbMode&&typeof _broadcastHello==='function')_broadcastHello();
@@ -879,14 +883,14 @@ function _myHelloFor(pid){
     birthday:_privAllowed('birthday',pid)?(myBirthday||null):null,
     businessHours:myBusinessHours?.enabled?{...myBusinessHours,tz:_myTz()}:null,
     username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',
-    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',linkedChannel:myLinkedChannel||''};
+    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',linkedChannel:myLinkedChannel||''};
 }
 
 // Публичный профиль в Firebase — его видят все, поэтому скрытое не кладём.
 // «Мои контакты» получают скрытые поля через hello.
 function _myPublicProfile(base){
   const data={nick:base.nick,lastName:myLastName||'',username:myUsername,iid:myInternalId,profileBg:base.profileBg,
-    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',linkedChannel:myLinkedChannel||'',
+    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',linkedChannel:myLinkedChannel||'',
     businessHours:myBusinessHours?.enabled?{...myBusinessHours,tz:_myTz()}:null,ts:Date.now()};
   const put=(k,key,val,empty)=>{const v=_priv(k);if(v==='all')data[key]=val;else if(v==='nobody')data[key]=empty;};
   put('photo','avatar',base.avatar||null,null);
@@ -962,6 +966,7 @@ function _ppRender(pid){
   $('peerProfBg').style.background=custom?_getProfileBgStyle(peerProfileBgs[pid]||'bg0',bgColor,pattern):'';
   $('peerProfAv').innerHTML=av?`<img src="${av}" alt="">`:_avHtml(pid,name);
   if(typeof _avFrameApply==='function')_avFrameApply($('peerProfAv'),peerAvFrames[pid]||'');
+  if(typeof _wallpaperApply==='function')_wallpaperApply($('peerProfWp'),peerProfileWallpapers[pid]||'');
   $('peerProfAv').onclick=av?()=>{$('photoImg').src=av;$('photoView').classList.add('show');}:null;
   $('peerProfName').innerHTML=(isBanned?'❄️ ':'')+esc(name)
     +(hasElephant?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
