@@ -567,7 +567,7 @@ function onData(pid,data){
       stopRingSound();
       $('incoming').classList.remove('show');
       if(pendingCall?.peerId===pid){pendingCall=null;_lastIncomingCallId=null;}
-      if(activeCall?.peerId===pid){endCallCleanup();toast('Звонок завершён');}
+      if(activeCall?.peerId===pid){endCallCleanup();}
       break;
     case 'call_incoming':
       // Входящий звонок — показываем UI, ждём offer
@@ -631,7 +631,6 @@ function onData(pid,data){
       break;
     case 'system_premium':
       myPremium=true;saveAll();buildThemeGrids();updateProfileDisplay();
-      toast('⭐ Добро пожаловать в SLON Premium!');
       break;
     case 'system_admin_granted':
       CHANNEL_ADMINS.add(myUsername);

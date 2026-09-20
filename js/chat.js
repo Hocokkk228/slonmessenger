@@ -662,7 +662,6 @@ function _renderProgressRing(el,pct){
 function _showIncomingFileProgress(pid,fid,name,totalChunks){
   // Прогресс показываем в превью чата (опционально); просто toast при больших файлах
   if(totalChunks>5){
-    toast('📥 Получаю файл: '+name.slice(0,30));
   }
 }
 
@@ -837,10 +836,8 @@ function ctxMuteToggle(){
   const id=ctxTargetId;
   if(mutedChats[id]){
     delete mutedChats[id];
-    toast('Уведомления включены 🔔');
   }else{
     mutedChats[id]=true;
-    toast('Уведомления выключены 🔕');
   }
   saveAll();
   // Обновляем иконку в сайдбаре

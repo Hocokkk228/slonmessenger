@@ -492,11 +492,18 @@ function tapPlay(){
   a.play().then(()=>{$('tapHint').style.display='none';$('callSub').textContent='';toast('Звук включён');}).catch(()=>toast('Не удалось включить звук'));
 }
 
+// Длительность: с часами (2:18:29) когда звонок длиннее часа, иначе 18:29
+function _fmtCallDur(sec){
+  sec=Math.max(0,Math.floor(sec));
+  const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  const mm=String(m).padStart(2,'0'),ss=String(s).padStart(2,'0');
+  return h>0?h+':'+mm+':'+ss:mm+':'+ss;
+}
 function startCallTimer(){
   if(callTimer)return;callSecs=0;
   callTimer=setInterval(()=>{
     callSecs++;
-    const s=String(Math.floor(callSecs/60)).padStart(2,'0')+':'+String(callSecs%60).padStart(2,'0');
+    const s=_fmtCallDur(callSecs);
     $('callTimer').textContent=s;$('mcTimer').textContent=s;
   },1000);
 }
@@ -565,7 +572,6 @@ function endCallCleanup(){playHangupSound();stopRingSound();
   _audioUnlockBound=false;
   const fbw=$('flipCamWrap');if(fbw)fbw.style.display='none';
   updateMuteBtn();updateCamBtn();updateScreenShareBtn();
-  toast('Звонок завершён');
 }
 
 function toggleMute(){
@@ -949,6 +955,7 @@ function _setCallVolume(val){
 }
 
 function playNotifSound(){
+  return; // временно отключено по просьбе — звуки уведомлений убраны
   try{
     const ac=getAC();
     // Громкость из настроек уведомлений (0..10, по умолчанию 5)
@@ -985,6 +992,7 @@ function _playRingOnce(){
 }
 
 function playHangupSound(){
+  return; // временно отключено — звук завершения звонка убран
   try{
     const ac=getAC();
     const o=ac.createOscillator(),g=ac.createGain();

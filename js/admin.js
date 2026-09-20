@@ -136,7 +136,6 @@ async function _checkPremiumStatus(){
     const hasPrem=!!(val&&(val===true||(val.until&&val.until>Date.now())));
     if(hasPrem!==myPremium){
       myPremium=hasPrem;saveAll();buildThemeGrids();updateProfileDisplay();
-      if(hasPrem)toast('⭐ Добро пожаловать в SLON Premium!');
     }
   }catch(e){}
 }
