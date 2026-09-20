@@ -553,6 +553,12 @@ let _permResolve=null,_permIsVideo=false;
 let _callPC=null; // RTCPeerConnection для активного звонка
 let _remoteStream=null;
 let _pendingIceCandidates=[];
+// Постоянные transceiver'ы видео/демонстрации, созданные ДО первого offer —
+// переключение камеры/демонстрации идёт через replaceTrack() без повторного
+// согласования (раньше именно потеря/коллизия повторных offer/answer давала
+// «не доходит»/чёрный экран у собеседника)
+let _camVideoTx=null;
+let _screenAudioTx=null;
 let _pendingRemoteOffer=null;
 let _lastIncomingCallId=null; // callId последнего входящего звонка
 let _cancelledCallIds=new Set(); // callId отменённых звонков (чтобы не показывать при оффлайн-доставке)

@@ -71,6 +71,30 @@ function _tuneAllSenders(pc,isScreen){
   });
 }
 
+// Добавляет исходные треки звонка через addTrack() — ВАЖНО: именно addTrack(),
+// а не addTransceiver(). Проверено изолированным тестом: транссивер, добавленный
+// через addTransceiver() ДО прихода offer, браузером НЕ переиспользуется при
+// setRemoteDescription(offer) — вместо него создаётся отдельный, никак не
+// связанный с нашим треком (наш висит неиспользуемый, «чёрный экран»/тишина).
+// addTrack() же корректно сливается с соответствующей m-строкой оффера.
+// Если звонок стартовал с камерой — сохраняем sender в _camVideoTx: дальше
+// вкл/выкл камеры и переключение на демонстрацию экрана идёт через
+// replaceTrack() на этом же sender'е, без повторного согласования SDP.
+// Если звонок голосовой — _camVideoTx остаётся null, видео/демку первый раз
+// добавляет обычная ренеготиация (см. toggleCam/_activateCam/toggleScreenShare).
+function _setupCallTransceivers(pc,stream){
+  _camVideoTx=null;_screenAudioTx=null;
+  const micTrack=stream.getAudioTracks()[0]||null;
+  if(micTrack)pc.addTrack(micTrack,stream);
+  const camTrack=stream.getVideoTracks()[0]||null;
+  if(camTrack){
+    _hintTrack(camTrack,false);
+    _camVideoTx=pc.addTrack(camTrack,stream);
+    _camVideoTx._isVideoSender=true;
+  }
+  _tuneAllSenders(pc,false);
+}
+
 async function permDoRequest(){
   const isVideo=_permIsVideo;
   const ac={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
@@ -186,8 +210,7 @@ async function doStartCall(peerId,isVideo,stream){
   // Уникальный ID этого звонка — для идентификации при оффлайн-доставке
   const callId='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
-  stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
-  _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;});_tuneAllSenders(_callPC,false);
+  _setupCallTransceivers(_callPC,stream);
   _callPC.onicecandidate=e=>{
     if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
   };
@@ -228,8 +251,7 @@ async function answerCall(){
     _remoteStream=new MediaStream();
     localStream=stream;
     _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
-    stream.getTracks().forEach(t=>{if(t.kind==='video')_hintTrack(t,false);_callPC.addTrack(t,stream);});
-    _callPC.getSenders().filter(s=>s.track&&s.track.kind==='video').forEach(s=>{s._isVideoSender=true;});_tuneAllSenders(_callPC,false);
+    _setupCallTransceivers(_callPC,stream);
     _callPC.onicecandidate=e=>{
       if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
     };
@@ -246,7 +268,9 @@ async function answerCall(){
     setupCallUI(peerId,isVideo);
 
     if(sdp){
-      // Offer уже есть — применяем сразу
+      // Offer уже есть — применяем сразу (и помечаем, чтобы дубль call_offer
+      // из firebase-core.js больше не переприменялся к этому же звонку)
+      activeCall._offerHandled=true;
       try{
         await _callPC.setRemoteDescription(new RTCSessionDescription(sdp));
         await _flushPendingIce();
@@ -374,28 +398,35 @@ async function stopScreenShare(){
   if(screenShareStream){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;}
   isScreenSharing=false;updateScreenShareBtn();
   const lv=$('localVideo');if(lv){lv.srcObject=null;lv.style.display='none';}
-  for(const[pid,pc] of _getActivePCs()){
-    try{
-      // Убираем screen audio
-      const audS=pc.getSenders().find(s=>s._isScreenAudio);
-      if(audS)try{await audS.replaceTrack(null);}catch(e){}
-      // Видео: возвращаем камеру или recvonly
-      const vTr=pc.getTransceivers().find(t=>t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
-      const camTracks=localStream?.getVideoTracks()||[];
-      const hasActiveCam=camTracks.length>0&&camTracks[0].readyState==='live';
-      if(hasActiveCam&&vTr){
-        try{await vTr.sender.replaceTrack(camTracks[0]);}catch(e){}
-        try{vTr.direction='sendrecv';}catch(e){}
-      }else if(vTr){
-        try{await vTr.sender.replaceTrack(null);}catch(e){}
-        try{vTr.direction='recvonly';}catch(e){}
-      }
-      const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-      if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-      else _sendRenegOffer(pc,activeCall?.peerId);
-    }catch(e){console.warn('stop screen renegotiate',pid,e);}
-  }
   const camTracks=localStream?.getVideoTracks()||[];
+  const hasActiveCam=camTracks.length>0&&camTracks[0].readyState==='live';
+  if(!_vr&&_camVideoTx){
+    // 1:1 звонок: возвращаем камеру (или пусто) через replaceTrack на уже
+    // согласованном sender'е — без offer/answer. Звук демонстрации (если был
+    // добавлен) — тоже просто replaceTrack(null) на уже негоциированном sender'е.
+    try{await _camVideoTx.replaceTrack(hasActiveCam?camTracks[0]:null);}catch(e){}
+    if(hasActiveCam)await _tuneVideoSender(_camVideoTx,false);
+    const audS=_callPC?.getSenders().find(s=>s._isScreenAudio);
+    if(audS)try{await audS.replaceTrack(null);}catch(e){}
+  }else{
+    for(const[pid,pc] of _getActivePCs()){
+      try{
+        const audS=pc.getSenders().find(s=>s._isScreenAudio);
+        if(audS)try{await audS.replaceTrack(null);}catch(e){}
+        const vTr=pc.getTransceivers().find(t=>t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        if(hasActiveCam&&vTr){
+          try{await vTr.sender.replaceTrack(camTracks[0]);}catch(e){}
+          try{vTr.direction='sendrecv';}catch(e){}
+        }else if(vTr){
+          try{await vTr.sender.replaceTrack(null);}catch(e){}
+          try{vTr.direction='recvonly';}catch(e){}
+        }
+        const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+        if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+        else _sendRenegOffer(pc,activeCall?.peerId);
+      }catch(e){console.warn('stop screen renegotiate',pid,e);}
+    }
+  }
   if(camTracks.length>0&&camTracks[0].readyState==='live'){
     const lv2=$('localVideo');lv2.srcObject=localStream;lv2.play().catch(()=>{});lv2.style.display='';
     if(!_vr){$('pipSelfInfo').style.display='none';}
@@ -655,6 +686,7 @@ function endCallCleanup(){playHangupSound();stopRingSound();
   // Сброс буферов сигналинга
   _pendingIceCandidates=[];
   _pendingRemoteOffer=null;
+  _camVideoTx=null;_screenAudioTx=null;
   // Останавливаем демонстрацию экрана
   if(screenShareStream){
     screenShareStream.getTracks().forEach(t=>t.stop());
@@ -718,22 +750,26 @@ async function toggleCam(){
   // Есть рабочий видеотрек — выключаем камеру: полностью останавливаем трек
   isCamOff=true;
   videoTracks.forEach(t=>{t.stop();localStream.removeTrack(t);});
-  // Меняем direction трансивера на 'recvonly' — это РЕАЛЬНО меняет SDP и собеседник
-  // увидит что видео ушло (а не просто muted). replaceTrack(null) такого не делает.
-  // Ищем видео-трансивер строго — никогда не берём аудио
-  for(const[pid,pc] of _getActivePCs()){
-    try{
-      const tr=pc.getTransceivers().find(t=>
-        t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
-      if(tr){
-        try{await tr.sender.replaceTrack(null);}catch(e){}
-        try{tr.direction='recvonly';}catch(e){}
-      }
-      const offer=await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-      else _sendRenegOffer(pc,activeCall?.peerId);
-    }catch(e){console.warn('cam off renegotiate:',e);}
+  if(!_vr&&_camVideoTx){
+    // 1:1 звонок: постоянный transceiver уже согласован — просто убираем трек.
+    // Никакого offer/answer — собеседник узнает об этом через onmute на своей стороне.
+    try{await _camVideoTx.replaceTrack(null);}catch(e){}
+  }else{
+    // Групповой звонок (mesh) — трансиверы у каждого пира свои, нужна ренеготиация
+    for(const[pid,pc] of _getActivePCs()){
+      try{
+        const tr=pc.getTransceivers().find(t=>
+          t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+        if(tr){
+          try{await tr.sender.replaceTrack(null);}catch(e){}
+          try{tr.direction='recvonly';}catch(e){}
+        }
+        const offer=await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+        else _sendRenegOffer(pc,activeCall?.peerId);
+      }catch(e){console.warn('cam off renegotiate:',e);}
+    }
   }
   // Скрываем своё локальное превью
   if(!_vr){
@@ -759,7 +795,7 @@ async function _renegotiateAll(){
     try{
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
-      if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+      if(_vr) if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()}); else _sendRenegOffer(pc,activeCall?.peerId);
       else _sendRenegOffer(pc,activeCall?.peerId);
     }catch(e){console.warn('renegotiate error:',e);}
   }
@@ -782,26 +818,35 @@ async function _activateCam(){
       if(_vr)_vr.localStream=localStream;
     }
 
-    // Renegotiate со всеми активными PCs
-    for(const[pid,pc] of _getActivePCs()){
-      try{
-        const tr=pc.getTransceivers().find(t=>
-          t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
-        let vs=null;
-        if(tr){
-          await tr.sender.replaceTrack(videoTrack);
-          tr.sender._isVideoSender=true;vs=tr.sender;
-          if(tr.direction==='recvonly'||tr.direction==='inactive')try{tr.direction='sendrecv';}catch(e){}
-        }else{
-          const s=pc.addTrack(videoTrack,localStream);
-          if(s){s._isVideoSender=true;vs=s;}
-        }
-        await _tuneVideoSender(vs,false);
-        const offer=await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        if(_vr) _vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-        else _sendRenegOffer(pc,activeCall?.peerId);
-      }catch(e){console.warn('cam on renegotiate:',e);}
+    if(!_vr&&_camVideoTx){
+      // 1:1 звонок: просто вставляем трек в уже согласованный transceiver
+      try{await _camVideoTx.replaceTrack(videoTrack);}catch(e){}
+      await _tuneVideoSender(_camVideoTx,false);
+    }else{
+      // Групповой звонок — своя ренеготиация на каждый PC
+      for(const[pid,pc] of _getActivePCs()){
+        try{
+          const tr=pc.getTransceivers().find(t=>
+            t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+          let vs=null;
+          if(tr){
+            await tr.sender.replaceTrack(videoTrack);
+            tr.sender._isVideoSender=true;vs=tr.sender;
+            if(tr.direction==='recvonly'||tr.direction==='inactive')try{tr.direction='sendrecv';}catch(e){}
+          }else{
+            const s=pc.addTrack(videoTrack,localStream);
+            if(s){s._isVideoSender=true;vs=s;}
+          }
+          // Голосовой 1:1 звонок, камера включается впервые — запоминаем sender,
+          // чтобы дальнейшие вкл/выкл и переключение на демонстрацию шли мгновенно
+          if(!_vr)_camVideoTx=vs;
+          await _tuneVideoSender(vs,false);
+          const offer=await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+          else _sendRenegOffer(pc,activeCall?.peerId);
+        }catch(e){console.warn('cam on renegotiate:',e);}
+      }
     }
 
     const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
@@ -844,31 +889,53 @@ async function toggleScreenShare(){
     try{await screenTrack.applyConstraints(_screenConstraints());}catch(e){}
     const screenAudioTracks=screenShareStream.getAudioTracks();
 
-    // Renegotiate со всеми PC
-    for(const[pid,pc] of pcs){
-      try{
-        // Audio трек экрана
-        if(screenAudioTracks.length>0){
-          const existAud=pc.getSenders().find(s=>s._isScreenAudio);
-          if(existAud){try{await existAud.replaceTrack(screenAudioTracks[0]);}catch(e){}}
-          else{try{const s=pc.addTrack(screenAudioTracks[0],screenShareStream);if(s)s._isScreenAudio=true;}catch(e){}}
-        }
-        // Видео трек экрана
-        const vTr=pc.getTransceivers().find(t=>
-          t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
-        let vs=null;
-        if(vTr){
-          await vTr.sender.replaceTrack(screenTrack);
-          vTr.sender._isVideoSender=true;vs=vTr.sender;
-          if(vTr.direction==='recvonly'||vTr.direction==='inactive')try{vTr.direction='sendrecv';}catch(e){}
+    if(!_vr&&_camVideoTx){
+      // 1:1 звонок: видео экрана — на уже согласованный sender, мгновенно,
+      // без offer/answer (та же m-строка, что была у камеры/пред. демки).
+      try{await _camVideoTx.replaceTrack(screenTrack);}catch(e){}
+      await _tuneVideoSender(_camVideoTx,true);
+      // Звук демонстрации — отдельная m-строка. Если уже была добавлена раньше
+      // в этом звонке — просто replaceTrack; если нет — нужна ОДНА маленькая
+      // ренеготиация именно под неё (видео уже пошло без задержки).
+      if(screenAudioTracks.length>0){
+        const audS=_callPC.getSenders().find(s=>s._isScreenAudio);
+        if(audS){
+          try{await audS.replaceTrack(screenAudioTracks[0]);}catch(e){}
         }else{
-          const s=pc.addTrack(screenTrack,screenShareStream);if(s){s._isVideoSender=true;vs=s;}
+          try{
+            const s=_callPC.addTrack(screenAudioTracks[0],screenShareStream);
+            if(s)s._isScreenAudio=true;
+            const offer=await _callPC.createOffer();await _callPC.setLocalDescription(offer);
+            _sendRenegOffer(_callPC,activeCall?.peerId);
+          }catch(e){console.warn('screen audio add:',e);}
         }
-        await _tuneVideoSender(vs,true);
-        const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-        if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
-        else _sendRenegOffer(pc,activeCall?.peerId);
-      }catch(e){console.warn('screen share renegotiate',pid,e);}
+      }
+    }else{
+      // Групповой звонок — своя ренеготиация на каждый PC
+      for(const[pid,pc] of pcs){
+        try{
+          if(screenAudioTracks.length>0){
+            const existAud=pc.getSenders().find(s=>s._isScreenAudio);
+            if(existAud){try{await existAud.replaceTrack(screenAudioTracks[0]);}catch(e){}}
+            else{try{const s=pc.addTrack(screenAudioTracks[0],screenShareStream);if(s)s._isScreenAudio=true;}catch(e){}}
+          }
+          const vTr=pc.getTransceivers().find(t=>
+            t.sender._isVideoSender||t.receiver?.track?.kind==='video'||t.sender?.track?.kind==='video');
+          let vs=null;
+          if(vTr){
+            await vTr.sender.replaceTrack(screenTrack);
+            vTr.sender._isVideoSender=true;vs=vTr.sender;
+            if(vTr.direction==='recvonly'||vTr.direction==='inactive')try{vTr.direction='sendrecv';}catch(e){}
+          }else{
+            const s=pc.addTrack(screenTrack,screenShareStream);if(s){s._isVideoSender=true;vs=s;}
+          }
+          if(!_vr)_camVideoTx=vs;
+          await _tuneVideoSender(vs,true);
+          const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+          if(_vr)_vrSignal(pid,{type:'offer',sdp:pc.localDescription.toJSON()});
+          else _sendRenegOffer(pc,activeCall?.peerId);
+        }catch(e){console.warn('screen share renegotiate',pid,e);}
+      }
     }
 
     // Локальное превью

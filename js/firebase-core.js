@@ -604,8 +604,13 @@ function onData(pid,data){
         if(pendingCall?.peerId===pid){pendingCall.sdp=data.sdp;}
         // На случай если offer пришёл РАНЬШЕ call_incoming — кэшируем
         _pendingRemoteOffer={peerId:pid,sdp:data.sdp,isVideo:data.isVideo};
-        // Если уже нажали "принять" до прихода offer — отвечаем сразу
-        if(activeCall?.peerId===pid&&_callPC){
+        // Если уже нажали "принять" до прихода offer — отвечаем сразу.
+        // Защита от повторной/устаревшей доставки: применяем оффер этого звонка
+        // только один раз (иначе задвоенный call_offer ломает согласование —
+        // именно это давало «не доходит»/чёрный экран у собеседника).
+        if(activeCall?.peerId===pid&&_callPC&&!activeCall._offerHandled&&
+           (!data.callId||!activeCall.callId||data.callId===activeCall.callId)){
+          activeCall._offerHandled=true;
           try{
             await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
             await _flushPendingIce();
