@@ -1497,8 +1497,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   openChat('ai');
   _hideSplash();
-  // Подстраховка: восстановить историю из IndexedDB, если LS её потерял
-  if(myUsername)setTimeout(_restoreChatsFromIdb,800);
+  // Подстраховка: восстановить историю и профиль из IndexedDB, если LS их потерял
+  if(myUsername){setTimeout(_restoreChatsFromIdb,800);setTimeout(_restoreProfileFromIdb,300);}
 });
 
 // ── Заставка: скрываем после загрузки (мин. показ + аварийный таймаут) ──
@@ -1650,6 +1650,14 @@ function saveAll(){
       const u=myUsername||'';
       _idb.put('bk_chats_'+u,JSON.parse(JSON.stringify(co)));
       _idb.put('bk_grph_'+u,JSON.parse(JSON.stringify(go)));
+      // Копия ключевых полей профиля/кастомизации — чтобы не слетали при перезагрузке
+      _idb.put('bk_prof_'+u,{
+        nick:myNick,lastName:myLastName,bio:myBio,avatar:myAvatar,
+        profileBg:myProfileBg,bgColor:myProfileBgColor,bgPattern:myProfilePattern,avFrame:myAvFrame,
+        linkedChannel:myLinkedChannel,birthday:myBirthday,businessHours:myBusinessHours,
+        privacy:myPrivacy,notif:myNotif,premium:myPremium,elephant:hasElephantBadge,
+        myChannels:myChannels,subscribedChannels:subscribedChannels,ts:Date.now()
+      });
     }
   }catch(e){}
   // Избранное сохраняем ОТДЕЛЬНО от общей истории — небольшой объём, не подвержен
@@ -1749,6 +1757,40 @@ async function _restoreChatsFromIdb(){
       if(typeof renderChat==='function'&&typeof activeChat!=='undefined'&&activeChat)renderChat(activeChat);
     }
   }catch(e){console.warn('restore chats err',e);}
+}
+
+// Восстановление полей профиля/кастомизации из IDB, если localStorage их потерял.
+// Заполняем только ПУСТЫЕ локальные поля — не перетираем свежие изменения.
+async function _restoreProfileFromIdb(){
+  try{
+    if(typeof _idb==='undefined'||!_idb)return;
+    const b=await _idb.get('bk_prof_'+(myUsername||''));
+    if(!b)return;
+    let changed=false;
+    const empty=v=>v===''||v===null||v===undefined;
+    const emptyObj=v=>!v||(typeof v==='object'&&Object.keys(v).length===0);
+    if(empty(myNick)&&b.nick){myNick=b.nick;changed=true;}
+    if(empty(myLastName)&&b.lastName){myLastName=b.lastName;changed=true;}
+    if(empty(myBio)&&b.bio){myBio=b.bio;changed=true;}
+    if(empty(myAvatar)&&b.avatar){myAvatar=b.avatar;changed=true;}
+    if((empty(myProfileBg)||myProfileBg==='bg0')&&b.profileBg&&b.profileBg!=='bg0'){myProfileBg=b.profileBg;changed=true;}
+    if(empty(myProfileBgColor)&&b.bgColor){myProfileBgColor=b.bgColor;changed=true;}
+    if(empty(myProfilePattern)&&b.bgPattern){myProfilePattern=b.bgPattern;changed=true;}
+    if(empty(myAvFrame)&&b.avFrame){myAvFrame=b.avFrame;changed=true;}
+    if(empty(myLinkedChannel)&&b.linkedChannel){myLinkedChannel=b.linkedChannel;changed=true;}
+    if(empty(myBirthday)&&b.birthday){myBirthday=b.birthday;changed=true;}
+    if(emptyObj(myBusinessHours)&&b.businessHours){myBusinessHours=b.businessHours;changed=true;}
+    if(emptyObj(myChannels)&&!emptyObj(b.myChannels)){myChannels=b.myChannels;changed=true;}
+    if(emptyObj(subscribedChannels)&&!emptyObj(b.subscribedChannels)){subscribedChannels=b.subscribedChannels;changed=true;}
+    if(!myPremium&&b.premium){myPremium=true;changed=true;}
+    if(!hasElephantBadge&&b.elephant){hasElephantBadge=true;changed=true;}
+    if(changed){
+      saveAll();
+      if(typeof updateProfileDisplay==='function')updateProfileDisplay();
+      if(typeof setMyLabel==='function')setMyLabel();
+      if(typeof buildThemeGrids==='function')buildThemeGrids();
+    }
+  }catch(e){console.warn('restore profile err',e);}
 }
 
 function loadStorage(){
