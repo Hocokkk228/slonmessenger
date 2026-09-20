@@ -1484,7 +1484,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   openChat('ai');
+  _hideSplash();
 });
+
+// ── Заставка: скрываем после загрузки (мин. показ + аварийный таймаут) ──
+let _splashAt=Date.now();
+function _hideSplash(){
+  const s=$('splash');if(!s||s.classList.contains('hide'))return;
+  const wait=Math.max(0,650-(Date.now()-_splashAt));
+  setTimeout(()=>{s.classList.add('hide');setTimeout(()=>s.remove(),650);},wait);
+}
+setTimeout(_hideSplash,6000); // на случай зависшей загрузки
 
 // ════════════════════════════════════════════════════════════════
 // ── ВОЙСЫ — голосовые комнаты в группах (Discord-style) ──

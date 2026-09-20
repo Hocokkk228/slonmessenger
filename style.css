@@ -2017,3 +2017,18 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
   .st-v-hdr{top:calc(18px + env(safe-area-inset-top));}
   .st-ed-top,.st-txbar{padding-top:calc(10px + env(safe-area-inset-top));}
 }
+
+/* ══ ЗАСТАВКА ══ */
+.splash{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 20%,#16273d 0%,#0d1520 60%,#0a0f18 100%);transition:opacity .5s ease,visibility 0s linear .5s;}
+.splash.hide{opacity:0;visibility:hidden;pointer-events:none;}
+.splash-inner{display:flex;flex-direction:column;align-items:center;gap:20px;animation:splIn .6s cubic-bezier(.32,.72,0,1) both;}
+@keyframes splIn{from{opacity:0;transform:translateY(10px) scale(.96);}to{opacity:1;transform:none;}}
+.splash-badge{position:relative;width:104px;height:104px;border-radius:30px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#3390ec,#2366c9);box-shadow:0 16px 44px rgba(51,144,236,.45),inset 0 2px 0 rgba(255,255,255,.25);animation:splBob 2.6s ease-in-out infinite;}
+@keyframes splBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.splash-glow{position:absolute;inset:-30%;border-radius:50%;background:radial-gradient(circle,rgba(90,169,248,.5),transparent 65%);filter:blur(10px);animation:splPulse 2.6s ease-in-out infinite;}
+@keyframes splPulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
+.splash-elk{position:relative;width:58px;height:58px;fill:#fff;filter:drop-shadow(0 3px 6px rgba(0,0,0,.25));}
+.splash-word{font-size:30px;font-weight:800;letter-spacing:5px;color:#fff;text-shadow:0 2px 16px rgba(51,144,236,.5);}
+.splash-bar{width:150px;height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;}
+.splash-bar i{display:block;width:40%;height:100%;border-radius:3px;background:linear-gradient(90deg,transparent,#5aa9f8,#a5d8ff,transparent);animation:splSlide 1.2s ease-in-out infinite;}
+@keyframes splSlide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
