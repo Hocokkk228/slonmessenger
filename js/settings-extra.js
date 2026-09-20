@@ -1072,7 +1072,11 @@ function _deleteChatFull(id){
 // Сообщения, которые МОГУТ создать новый чат (настоящее сообщение/звонок/приглашение).
 // Служебные (hello, typing, read, мьют…) от незнакомого/удалённого — игнорируем,
 // иначе удалённый чат воскресает, когда собеседник просто заходит в сеть.
-const _CHAT_CREATING_TYPES=new Set(['msg','media_start','media_url','media_rtdb','file_start','call_incoming','call_offer','group_invite','group_add']);
+// Все сигнальные типы звонка должны проходить, даже если собеседник ещё не в контактах,
+// иначе ICE-кандидаты/answer/end теряются и звонок звонит, но не соединяется (нет звука/чёрный экран).
+const _CHAT_CREATING_TYPES=new Set(['msg','media_start','media_url','media_rtdb','file_start',
+  'call_incoming','call_offer','call_answer','call_ice','call_end','call_cancel','call_reject','call_mute',
+  'group_invite','group_add']);
 function _mayCreateChat(payload){return !!payload&&_CHAT_CREATING_TYPES.has(payload.type);}
 
 // Сторож видео звонка: если видео собеседника «показывается», но кадров нет — пересобираем поток
