@@ -81,8 +81,17 @@ const THEMES=[
   {id:'deep-space', lbl:'Космос',      grad:'linear-gradient(135deg,#00001a,#818cf8)',     premium:true},
   {id:'golden',     lbl:'Золото',      grad:'linear-gradient(135deg,#0a0800,#fbbf24)',     premium:true},
   {id:'lavender',   lbl:'Лаванда',     grad:'linear-gradient(135deg,#0e0920,#c4b5fd)',     premium:true},
+  // Тематические (фильмы/книги)
+  {id:'dune', lbl:'Дюна', grad:'linear-gradient(135deg,#1a1206,#e0a44a)', premium:true},
+  {id:'gryffindor', lbl:'Гриффиндор', grad:'linear-gradient(135deg,#1a0505,#ffce49)', premium:true},
+  {id:'slytherin', lbl:'Слизерин', grad:'linear-gradient(135deg,#04120c,#2ecf8f)', premium:true},
+  {id:'pandora', lbl:'Пандора', grad:'linear-gradient(135deg,#030a1a,#38d0ff)', premium:true},
+  {id:'bladerunner', lbl:'Бегущий по лезвию', grad:'linear-gradient(135deg,#0a0410,#ff2e88)', premium:true},
+  {id:'joker', lbl:'Джокер', grad:'linear-gradient(135deg,#0d0716,#7ee060)', premium:true},
+  {id:'interstellar', lbl:'Интерстеллар', grad:'linear-gradient(135deg,#000205,#d9a34a)', premium:true},
+  {id:'barbie', lbl:'Барби', grad:'linear-gradient(135deg,#fff0f6,#ff2e93)', premium:true},
 ];
-const THEME_EMOJIS={liketg:'✈️',dark:'🌙',light:'☀️',pink:'🌸',purple:'💜',ocean:'🌊',galaxy:'🌌',green:'🌿',sunset:'🌅',autumn:'🍂',midnight:'🖤',cherry:'🍒',arctic:'🧊',volcano:'🌋',emerald:'💎',neon:'💚',['rose-gold']:'🌹',['deep-space']:'🚀',golden:'✨',lavender:'💜'};
+const THEME_EMOJIS={liketg:'✈️',dark:'🌙',light:'☀️',pink:'🌸',purple:'💜',ocean:'🌊',galaxy:'🌌',green:'🌿',sunset:'🌅',autumn:'🍂',midnight:'🖤',cherry:'🍒',arctic:'🧊',volcano:'🌋',emerald:'💎',neon:'💚',['rose-gold']:'🌹',['deep-space']:'🚀',golden:'✨',lavender:'💜',dune:'🏜️',gryffindor:'🦁',slytherin:'🐍',pandora:'🧝',bladerunner:'🌆',joker:'🃏',interstellar:'🚀',barbie:'💖'};
 
 // Emoji-паттерны для чата (обои)
 // SVG пути для монохромных значков обоев (простые геометрические)
@@ -113,6 +122,7 @@ const THEME_WALLPAPER_COLOR={
   neon:'#16a34a','rose-gold':'#9f1239',
   'deep-space':'#4f46e5',golden:'#92400e',
   lavender:'#6d28d9',
+  dune:'#c9772a',gryffindor:'#d3222a',slytherin:'#9fb0b6',pandora:'#a56bff',bladerunner:'#22d3ee',joker:'#b06bff',interstellar:'#6a8bb0',barbie:'#ff7ac0',
 };
 
 // Premium profile backgrounds — включают RGB и паттерны
