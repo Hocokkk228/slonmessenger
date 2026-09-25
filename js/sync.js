@@ -102,6 +102,40 @@ function _msDownload(id){
   return p;
 }
 
+// ── Медиа на нашем сервере (Cloudflare, Durable Objects) ──
+// Файл уходит одним запросом как есть (не base64), с прогрессом загрузки.
+// Скачивание — по неугадываемому id. Старые медиа (mstore в Firebase) читаются по-прежнему.
+function _srvUpload(dataUrl,meta,onProg){
+  return new Promise((res,rej)=>{
+    const [head,b64]=dataUrl.split(',');
+    const mime=meta.mime||head.match(/:(.*?);/)?.[1]||'application/octet-stream';
+    const bin=atob(b64||''),buf=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+    const x=new XMLHttpRequest();
+    x.open('POST',API_URL+'/media');
+    x.setRequestHeader('Authorization','Bearer '+_apiToken());
+    x.setRequestHeader('X-Mime',mime);
+    x.setRequestHeader('X-Name',encodeURIComponent(meta.name||''));
+    x.upload.onprogress=e=>{if(e.lengthComputable&&onProg)onProg(Math.round(e.loaded/e.total*100));};
+    x.onload=()=>{let d={};try{d=JSON.parse(x.responseText);}catch(e){}
+      if(x.status===200&&d.id)res(d.id);else rej(new Error(d.message||('ошибка '+x.status)));};
+    x.onerror=()=>rej(new Error('нет интернета'));
+    x.send(new Blob([buf],{type:mime}));
+  });
+}
+const _srvCache={};
+function _srvDownload(mid){
+  if(_srvCache[mid])return _srvCache[mid];
+  const p=(async()=>{
+    const r=await fetch(API_URL+'/media/'+mid);
+    if(!r.ok)throw new Error('медиа не найдено');
+    const b=await r.blob();
+    return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});
+  })();
+  _srvCache[mid]=p;p.catch(()=>{delete _srvCache[mid];});
+  return p;
+}
+
 // ── 2. Журнал сообщений ──
 let _mlUser=null,_mlOffs=[];
 const _mlPending=new Set();
@@ -152,8 +186,11 @@ function _mlDelete(chat,msg,forAll){
 async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
   if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId(chat))return false;
   try{
-    await _msUpload(id,dataUrl,{kind,mime:meta.mime||'',name:meta.name||''},onProg);
-    await _mlPost(chat,{id,k:kind,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
+    // На наш сервер; если у устройства ещё нет токена — по-старому, в Firebase
+    let m;
+    if(typeof _apiToken==='function'&&_apiToken())m=await _srvUpload(dataUrl,{mime:meta.mime,name:meta.name},onProg);
+    else await _msUpload(id,dataUrl,{kind,mime:meta.mime||'',name:meta.name||''},onProg);
+    await _mlPost(chat,{id,k:kind,m,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
       dur:meta.dur,wave:meta.wave?meta.wave.join(','):undefined});
     return true;
   }catch(e){console.warn('ml media:',e);toast('Не удалось отправить медиа: '+e.message);return false;}
@@ -168,7 +205,7 @@ async function _mlMaterialize(key,r){
   if(r.edited)base.edited=true;
   const k=r.k||'text';
   if(k==='text')return {...base,text:r.text||''};
-  const data=await _msDownload(r.id);
+  const data=r.m?await _srvDownload(r.m):await _msDownload(r.id);
   if(k==='photo'){
     const photoId=storePhoto(data);const thumb=await makeThumb(data);
     return {...base,photoId,photoThumb:thumb||data,fileName:r.name||'photo'};

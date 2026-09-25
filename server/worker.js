@@ -8,6 +8,34 @@ const FB='https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app';
 const BUILTIN_ADMINS=['mamedov','vadimslonik67'];
 const MAX_FAILS=10,LOCK_MS=5*60*1000,RESET_TTL=15*60*1000;
 
+const MEDIA_SHARDS=8,MEDIA_CHUNK=1024*1024,MEDIA_MAX=100*1024*1024;
+
+// ── Хранилище медиа: Durable Object с SQLite. Файл режется на куски по 1 МБ
+// (лимит строки 2 МБ). Шардируем по id, чтобы нагрузка делилась на 8 объектов.
+import {DurableObject} from 'cloudflare:workers';
+export class MediaStore extends DurableObject{
+  constructor(ctx,env){
+    super(ctx,env);
+    this.sql=ctx.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS meta(id TEXT PRIMARY KEY,mime TEXT,name TEXT,size INTEGER,chunks INTEGER,owner TEXT,created INTEGER);
+      CREATE TABLE IF NOT EXISTS chunks(id TEXT,idx INTEGER,data BLOB,PRIMARY KEY(id,idx));`);
+  }
+  async put(id,buf,mime,name,owner){
+    const b=new Uint8Array(buf),n=Math.max(1,Math.ceil(b.length/MEDIA_CHUNK));
+    for(let i=0;i<n;i++)this.sql.exec('INSERT OR REPLACE INTO chunks(id,idx,data) VALUES(?,?,?)',id,i,b.subarray(i*MEDIA_CHUNK,(i+1)*MEDIA_CHUNK));
+    this.sql.exec('INSERT OR REPLACE INTO meta(id,mime,name,size,chunks,owner,created) VALUES(?,?,?,?,?,?,?)',id,mime,name,b.length,n,owner,Date.now());
+    return {id,size:b.length};
+  }
+  async get(id){
+    const m=[...this.sql.exec('SELECT * FROM meta WHERE id=?',id)][0];
+    if(!m)return null;
+    const parts=[...this.sql.exec('SELECT data FROM chunks WHERE id=? ORDER BY idx',id)].map(x=>new Uint8Array(x.data));
+    const out=new Uint8Array(m.size);let p=0;for(const c of parts){out.set(c,p);p+=c.length;}
+    return {mime:m.mime,name:m.name,size:m.size,body:out.buffer};
+  }
+}
+const mediaStub=(env,id)=>{let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))|0;return env.MEDIA.get(env.MEDIA.idFromName('shard'+(Math.abs(h)%MEDIA_SHARDS)));};
+
 const enc=new TextEncoder();
 const hex=buf=>[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 const sha=async s=>hex(await crypto.subtle.digest('SHA-256',enc.encode(s)));
@@ -17,7 +45,7 @@ const same=(a,b)=>{if(typeof a!=='string'||typeof b!=='string'||a.length!==b.len
 const validUser=u=>typeof u==='string'&&/^[a-z0-9_]{3,20}$/.test(u);
 const validHash=h=>typeof h==='string'&&/^[0-9a-f]{64}$/.test(h);
 
-const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Max-Age':'86400'};
+const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-Mime, X-Name','Access-Control-Max-Age':'86400'};
 const json=(o,s=200)=>new Response(JSON.stringify(o),{status:s,headers:{...CORS,'Content-Type':'application/json'}});
 const err=(code,msg,s=400)=>json({ok:false,error:code,message:msg},s);
 
@@ -155,6 +183,9 @@ const routes={
   // без «144p», когда прямое соединение не получилось). Доступ временный, на сутки.
   async 'GET /turn'(req,env){
     const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    // Статичный TURN (ExpressTURN и т.п. — без карты): секреты TURN_URLS (через запятую), TURN_USER, TURN_PASS
+    if(env.TURN_URLS&&env.TURN_USER&&env.TURN_PASS)
+      return json({ok:true,iceServers:[{urls:String(env.TURN_URLS).split(',').map(x=>x.trim()).filter(Boolean),username:env.TURN_USER,credential:env.TURN_PASS}],ttl:86400});
     if(!env.TURN_KEY_ID||!env.TURN_KEY_TOKEN)return err('no_turn','TURN не настроен',503);
     const r=await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/'+env.TURN_KEY_ID+'/credentials/generate-ice-servers',{
       method:'POST',headers:{'Authorization':'Bearer '+env.TURN_KEY_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({ttl:86400})});
@@ -176,11 +207,34 @@ const routes={
   },
 };
 
+async function mediaUpload(req,env){
+  const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+  const len=+(req.headers.get('Content-Length')||0);
+  if(len>MEDIA_MAX)return err('too_large','Файл больше 100 МБ',413);
+  const buf=await req.arrayBuffer();
+  if(!buf.byteLength)return err('empty','Пустой файл');
+  if(buf.byteLength>MEDIA_MAX)return err('too_large','Файл больше 100 МБ',413);
+  const id=rnd(18);
+  const mime=(req.headers.get('X-Mime')||req.headers.get('Content-Type')||'application/octet-stream').slice(0,100);
+  const name=decodeURIComponent(req.headers.get('X-Name')||'').slice(0,200);
+  await mediaStub(env,id).put(id,buf,mime,name,u);
+  return json({ok:true,id,size:buf.byteLength});
+}
+async function mediaGet(id,env){
+  if(!/^[A-Za-z0-9_-]{16,40}$/.test(id))return err('not_found','Нет файла',404);
+  const f=await mediaStub(env,id).get(id);
+  if(!f)return err('not_found','Файл не найден',404);
+  return new Response(f.body,{headers:{...CORS,'Content-Type':f.mime||'application/octet-stream','Content-Length':String(f.size),
+    'Cache-Control':'public, max-age=31536000, immutable'}});
+}
+
 export default {
   async fetch(req,env){
-    if(req.method==='OPTIONS')return new Response(null,{headers:CORS});
+    if(req.method==='OPTIONS')return new Response(null,{headers:{...CORS,'Access-Control-Allow-Headers':'Content-Type, Authorization, X-Mime, X-Name'}});
     const url=new URL(req.url);
-    if(url.pathname==='/')return json({ok:true,service:'slon-api',version:1});
+    if(url.pathname==='/')return json({ok:true,service:'slon-api',version:2});
+    if(url.pathname==='/media'&&req.method==='POST')return mediaUpload(req,env).catch(e=>{console.error(e);return err('server','Не удалось сохранить файл',500);});
+    if(url.pathname.startsWith('/media/')&&req.method==='GET')return mediaGet(url.pathname.slice(7),env).catch(e=>{console.error(e);return err('server','Ошибка',500);});
     const h=routes[req.method+' '+url.pathname];
     if(!h)return err('not_found','Нет такого метода',404);
     let d={};

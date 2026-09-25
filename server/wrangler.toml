@@ -7,3 +7,12 @@ workers_dev = true
 binding = "DB"
 database_name = "slon-db"
 database_id = "0e31fbcb-1135-4123-a354-8f39c03f2ef9"
+
+# Хранилище медиа — Durable Objects на SQLite (бесплатный тариф, без карты)
+[[durable_objects.bindings]]
+name = "MEDIA"
+class_name = "MediaStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MediaStore"]
