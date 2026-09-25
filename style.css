@@ -2342,3 +2342,15 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .sc-tr:hover{background:rgba(0,0,0,.5)!important;}
 .sc-text{margin-top:4px;padding:8px 12px!important;border-radius:14px;background:var(--msg-in);color:var(--text1);box-shadow:0 1px 2px rgba(16,35,47,.15);}
 .sc-out .sc-text{background:var(--msg-out);color:var(--msg-out-text);}
+
+/* Плашка «Включи уведомления» — показывается один раз на устройстве */
+.notif-ask{position:fixed;left:50%;bottom:18px;z-index:9000;width:min(420px,calc(100vw - 24px));display:grid;grid-template-columns:44px 1fr;gap:4px 12px;align-items:center;padding:14px 14px 10px;border-radius:16px;background:var(--bg2);color:var(--text1);box-shadow:0 8px 32px rgba(0,0,0,.25);transform:translate(-50%,140%);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1.15),opacity .25s;}
+.notif-ask.show{transform:translate(-50%,0);opacity:1;}
+.na-ico{width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;}
+.na-ico svg{width:24px;height:24px;fill:#fff;}
+.na-txt{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--text2);line-height:1.3;}
+.na-txt b{font-size:15px;color:var(--text1);font-weight:600;}
+.na-btns{grid-column:1/-1;display:flex;justify-content:flex-end;gap:4px;margin-top:4px;}
+.na-btns button{border:none;background:none;padding:8px 14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);}
+.na-btns button:hover{background:var(--hover);}
+.na-btns .na-no{color:var(--text2);}

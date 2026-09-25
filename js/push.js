@@ -52,5 +52,29 @@ function _pushCall(to,callId,isVideo){
 }
 function _pushCallGone(to){_pushSend(to,{type:'CLOSE_TAG',tag:'call'});}
 
+// Один раз на устройстве просим разрешить уведомления — плашкой с кнопкой
+// (без нажатия пользователя телефонные браузеры системный запрос не показывают)
+function _notifAskOnce(){
+  if(!('Notification' in window)||Notification.permission!=='default'||!myUsername)return;
+  try{if(localStorage.getItem('sl_notif_asked'))return;}catch(e){}
+  if($('notifAsk'))return;
+  const el=document.createElement('div');
+  el.id='notifAsk';el.className='notif-ask';
+  el.innerHTML=`<div class="na-ico"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-1.7 1.7A1 1 0 0 0 4 19.4h16a1 1 0 0 0 .7-1.7z"/></svg></div>
+    <div class="na-txt"><b>Включи уведомления</b><span>Чтобы не пропускать сообщения и звонки, даже когда SLON закрыт</span></div>
+    <div class="na-btns"><button class="na-no">Не сейчас</button><button class="na-yes">Включить</button></div>`;
+  const done=()=>{try{localStorage.setItem('sl_notif_asked','1');}catch(e){}el.classList.remove('show');setTimeout(()=>el.remove(),300);};
+  el.querySelector('.na-no').onclick=done;
+  el.querySelector('.na-yes').onclick=()=>{
+    done();
+    Notification.requestPermission().then(p=>{
+      _notifPermission=p;try{_updateNotifRow();}catch(e){}
+      if(p==='granted'){toast('Уведомления включены 🔔');_pushSubscribe();}
+    }).catch(()=>{});
+  };
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+}
+
 // Подписываемся, как только есть аккаунт, Firebase и разрешение на уведомления
-setInterval(()=>{if(_fbMode)_pushSubscribe();},5000);
+setInterval(()=>{if(_fbMode){_pushSubscribe();_notifAskOnce();}},5000);

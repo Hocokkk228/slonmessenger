@@ -58,13 +58,8 @@ function initDesktopNotif(){
   _notifPermission=Notification.permission;
   _updateNotifRow();
   _initServiceWorker();
-  if(_notifPermission==='default'){
-    // Запрашиваем разрешение сразу при старте для мобильных
-    const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if(isMob){
-      Notification.requestPermission().then(p=>{_notifPermission=p;_updateNotifRow();});
-    }
-  }
+  // Разрешение спрашиваем плашкой с кнопкой (push.js → _notifAskOnce):
+  // без нажатия телефонные браузеры системный запрос не показывают
 }
 
 function requestNotifPermission(){
