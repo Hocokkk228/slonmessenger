@@ -151,6 +151,18 @@ const routes={
     return json({ok:true,exists});
   },
 
+  // Серверы для звонков: свой TURN Cloudflare (быстрый ретранслятор — демка и видео
+  // без «144p», когда прямое соединение не получилось). Доступ временный, на сутки.
+  async 'GET /turn'(req,env){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    if(!env.TURN_KEY_ID||!env.TURN_KEY_TOKEN)return err('no_turn','TURN не настроен',503);
+    const r=await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/'+env.TURN_KEY_ID+'/credentials/generate-ice-servers',{
+      method:'POST',headers:{'Authorization':'Bearer '+env.TURN_KEY_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({ttl:86400})});
+    if(!r.ok)return err('turn_failed','TURN недоступен',502);
+    const d=await r.json();
+    return json({ok:true,iceServers:d.iceServers||[],ttl:86400});
+  },
+
   // Сброс пароля — только админ
   async 'POST /admin/reset-password'(req,env,d){
     const a=await authed(req,env);if(!a||!(await isAdmin(env,a)))return err('forbidden','Только для админов',403);

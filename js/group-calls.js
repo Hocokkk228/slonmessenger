@@ -121,7 +121,7 @@ function _gcCleanup(){
 
 // ── Соединение с одним участником ──
 function _gcNewPc(pid){
-  const pc=new RTCPeerConnection({iceServers:_GC_ICE});
+  const pc=new RTCPeerConnection({iceServers:ICE_SERVERS}); // общий список (с нашим TURN, когда он есть)
   _gc.pcs[pid]=pc;_gc.iceQ[pid]=[];
   _gc.localStream?.getTracks().forEach(t=>pc.addTrack(t,_gc.localStream));
   // Даже без камеры держим видео-слот, чтобы камеру можно было включить без пересборки

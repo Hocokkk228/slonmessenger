@@ -45,3 +45,16 @@ async function _apiCheckSession(){
     if(e.status===401){_apiSetToken(myUsername,'');toast('Сессия завершена — войди снова',5000);setTimeout(()=>doLogout(),2000);}
   }
 }
+
+// Свой TURN Cloudflare для звонков: подменяем список ICE-серверов «на месте»
+// (ICE_SERVERS — общий массив, его читают все звонки). Нет ключа — остаётся старый.
+async function _apiLoadTurn(){
+  if(!_apiToken())return;
+  try{
+    const d=await api('/turn');
+    const list=(d.iceServers||[]).filter(s=>s&&s.urls);
+    if(list.length){ICE_SERVERS.splice(0,ICE_SERVERS.length,{urls:'stun:stun.cloudflare.com:3478'},...list);}
+  }catch(e){}
+}
+setTimeout(_apiLoadTurn,4000);
+setInterval(_apiLoadTurn,12*3600e3);

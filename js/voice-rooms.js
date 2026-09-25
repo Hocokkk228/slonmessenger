@@ -345,11 +345,7 @@ async function _vrJoin(gid, roomId, roomName, stream){
 
 async function _vrCreatePc(pid, isInitiator){
   if(!_vr||_vr.pcs[pid]) return;
-  const pc = new RTCPeerConnection({iceServers:[
-    {urls:'stun:stun.cloudflare.com:3478'},
-    {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-  ]});
+  const pc = new RTCPeerConnection({iceServers:ICE_SERVERS}); // общий список (с нашим TURN, когда он есть)
   _vr.pcs[pid] = pc;
 
   // Добавляем локальные треки
