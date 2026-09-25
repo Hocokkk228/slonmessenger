@@ -425,17 +425,18 @@ async function _runGlobalSearch(q){
     return;
   }
   const results=[];
+  // «@valeryevich» и «valeryevich» — одно и то же
+  q=q.replace(/^@/,'');
+  if(!q)return;
   try{
     // Ищем человека по юзернейму
-    const userExists=await _fbAccountExists(q);
+    // Профиль читаем всегда: у части юзеров нет узла auth/{username}, но
+    // профиль опубликован — такие тоже должны находиться
+    let prof=null;
+    try{prof=(await _fbOnce('profiles/'+q))?.val()||null;}catch(e){}
+    const userExists=!!prof||await _fbAccountExists(q);
     if(userExists&&q!==myUsername){
-      let profNick=null,profAv=null;
-      try{
-        const psnap=await _fbOnce('profiles/'+q);
-        const p=psnap?.val();
-        profNick=p?.nick||null;profAv=p?.avatar||null;
-      }catch(e){}
-      results.push({type:'user',id:q,title:profNick||('@'+q),sub:'@'+q,avatar:profAv});
+      results.push({type:'user',id:q,title:prof?.nick||('@'+q),sub:'@'+q,avatar:prof?.avatar||null});
     }
     // Ищем канал по юзернейму
     try{
