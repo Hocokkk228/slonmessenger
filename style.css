@@ -2086,7 +2086,7 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 @keyframes avfSnowFall{0%{transform:translateY(0);opacity:0;}12%{opacity:1;}100%{transform:translateY(1500%);opacity:0;}}
 /* — кошачьи ушки: полноценный капюшон-кигуруми вокруг всей аватарки — */
 .avf-catears{overflow:visible;}
-.avf-catears .ring{position:absolute;inset:-6%;border-radius:50%;border:9% solid #ffb703;box-sizing:border-box;-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 86%);mask:radial-gradient(closest-side,transparent 84%,#000 86%);}
+.avf-catears .ring{position:absolute;inset:-6%;border-radius:50%;border:7cqw solid #ffc93c;box-sizing:border-box;box-shadow:inset 0 0 0 1.4cqw rgba(255,255,255,.5),0 2px 6px rgba(0,0,0,.3);}
 .avf-catears i.l,.avf-catears i.r{position:absolute;top:-26%;width:34%;height:42%;background:linear-gradient(160deg,#ffc93c,#ffa900);clip-path:polygon(50% 0%,4% 100%,96% 100%);transform-origin:bottom center;animation:avfEarWig 2.6s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
 .avf-catears i.l{left:2%;animation-delay:0s;}
 .avf-catears i.r{right:2%;transform:scaleX(-1);animation-delay:.15s;}
@@ -2125,16 +2125,19 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 @keyframes avfSparkPop{0%,100%{opacity:0;transform:scale(.5);}50%{opacity:1;transform:scale(1.1);}}
 /* — крылья: размах по бокам, не закрывают лицо — */
 .avf-wings{overflow:visible;}
-.avf-wings i.l,.avf-wings i.r{position:absolute;top:6%;width:42%;height:88%;background:linear-gradient(150deg,#e4d9ff,#9b83f0 45%,#5a3fc0 90%);clip-path:polygon(100% 8%,72% 0%,48% 10%,28% 24%,12% 44%,2% 68%,10% 100%,30% 86%,46% 92%,58% 78%,70% 84%,80% 66%,72% 58%,88% 48%,78% 40%,94% 28%,82% 24%,100% 8%);opacity:.96;filter:drop-shadow(0 3px 6px rgba(60,30,150,.45));animation:avfWingFlap 2.4s ease-in-out infinite;}
+.avf-wings i.l,.avf-wings i.r{position:absolute;top:10%;width:34%;height:78%;background:linear-gradient(150deg,#e4d9ff,#9b83f0 45%,#5a3fc0 90%);clip-path:polygon(100% 8%,72% 0%,48% 10%,28% 24%,12% 44%,2% 68%,10% 100%,30% 86%,46% 92%,58% 78%,70% 84%,80% 66%,72% 58%,88% 48%,78% 40%,94% 28%,82% 24%,100% 8%);opacity:.96;filter:drop-shadow(0 3px 6px rgba(60,30,150,.45));animation:avfWingFlap 2.4s ease-in-out infinite;}
 .avf-wings i.l{left:-30%;transform-origin:right center;}
-.avf-wings i.r{right:-30%;transform-origin:left center;transform:scaleX(-1);animation-delay:.12s;}
+.avf-wings i.r{right:-30%;transform-origin:left center;animation-delay:.12s;background:linear-gradient(210deg,#e4d9ff,#9b83f0 45%,#5a3fc0 90%);clip-path:polygon(0% 8%,28% 0%,52% 10%,72% 24%,88% 44%,98% 68%,90% 100%,70% 86%,54% 92%,42% 78%,30% 84%,20% 66%,28% 58%,12% 48%,22% 40%,6% 28%,18% 24%,0% 8%);}
 @keyframes avfWingFlap{0%,100%{transform:rotate(-16deg);}50%{transform:rotate(-4deg);}}
 .avf-wings i.r{animation-name:avfWingFlapR;}
-@keyframes avfWingFlapR{0%,100%{transform:scaleX(-1) rotate(-16deg);}50%{transform:scaleX(-1) rotate(-4deg);}}
+@keyframes avfWingFlapR{0%,100%{transform:rotate(16deg);}50%{transform:rotate(4deg);}}
 /* — акульи челюсти: два ряда зубов у нижнего края — */
 .avf-shark{overflow:visible;}
-.avf-shark-svg{position:absolute;left:0;right:0;bottom:0;height:46%;width:100%;border-radius:0 0 50% 50%/0 0 40% 40%;overflow:hidden;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));animation:avfSharkChomp 2.6s ease-in-out infinite;transform-origin:50% 100%;}
-@keyframes avfSharkChomp{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.86);}}
+.avf-shark-svg{position:absolute;left:-15%;top:-15%;width:130%;height:130%;overflow:visible;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45));}
+.avf-shark-svg .sh-up{animation:avfSharkUp 2.4s ease-in-out infinite;}
+.avf-shark-svg .sh-lo{animation:avfSharkLo 2.4s ease-in-out infinite;}
+@keyframes avfSharkUp{0%,100%{transform:translateY(0);}50%{transform:translateY(3px);}}
+@keyframes avfSharkLo{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
 /* — ворон: сидит наверху, крыло свисает на плечо — */
 .avf-raven{overflow:visible;}
 .avf-raven-svg{position:absolute;top:-20%;right:-12%;width:52%;height:52%;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));animation:avfRavenBob 3s ease-in-out infinite;transform-origin:70% 20%;}

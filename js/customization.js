@@ -59,16 +59,24 @@ function _avFrameInner(id){
     case 'sparkle':return Array.from({length:7},(_,i)=>`<i style="--n:${i}">✨</i>`).join('');
     case 'bday':   return '<i class="cake">🎂</i><i class="b1">🎈</i><i class="b2">🎈</i>';
     case 'shark':{
-      // Программно строим два ряда острых зубов (верхний/нижний), чтобы не накосячить в координатах руками
-      const teeth=(baseY,peakY,n)=>{const step=100/n;let d=`M0,${baseY}`;
-        for(let i=0;i<n;i++){const x0=i*step,xm=x0+step/2,x1=x0+step;d+=` L${x0},${baseY} L${xm},${peakY} L${x1},${baseY}`;}
+      // Пасть акулы ВОКРУГ аватарки: лицо видно в середине, зубы по кругу
+      // сверху и снизу смотрят внутрь, снаружи — кольцо акульей кожи с глазами.
+      // Координаты 0..100 = сама аватарка, кольцо выходит за её край.
+      const P=(r,a)=>{const t=a*Math.PI/180;return (50+r*Math.cos(t)).toFixed(2)+','+(50+r*Math.sin(t)).toFixed(2);};
+      const teeth=(from,to,n,len)=>{let d='';const st=(to-from)/n;
+        for(let i=0;i<n;i++){const a0=from+i*st;d+=`M${P(49,a0)}L${P(49-len,a0+st/2)}L${P(49,a0+st)}Z`;}
         return d;};
-      const upper=teeth(2,26,7)+' L100,2 Z';
-      const lower=teeth(58,34,7)+' L100,58 Z';
-      return `<svg class="avf-shark-svg" viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
-        <rect x="0" y="0" width="100" height="60" fill="#0a0a0c"/>
-        <path fill="#f4f4ef" d="${upper}"/>
-        <path fill="#f4f4ef" d="${lower}"/>
+      const circ=r=>`M${50-r},50A${r},${r} 0 1,0 ${50+r},50A${r},${r} 0 1,0 ${50-r},50Z`;
+      return `<svg class="avf-shark-svg" viewBox="-15 -15 130 130" aria-hidden="true">
+        <defs><linearGradient id="avfSharkSkin" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#4f7390"/><stop offset=".55" stop-color="#7f9db3"/><stop offset="1" stop-color="#dfe8ee"/>
+        </linearGradient></defs>
+        <path fill="url(#avfSharkSkin)" fill-rule="evenodd" d="${circ(62)}${circ(49)}"/>
+        <circle cx="50" cy="50" r="49.5" fill="none" stroke="#9e2233" stroke-width="3"/>
+        <g class="sh-up"><path fill="#f7f6f0" stroke="#c9c6b8" stroke-width=".6" d="${teeth(200,340,8,15)}"/></g>
+        <g class="sh-lo"><path fill="#f7f6f0" stroke="#c9c6b8" stroke-width=".6" d="${teeth(25,155,7,12)}"/></g>
+        <circle cx="${(50+56*Math.cos(197*Math.PI/180)).toFixed(1)}" cy="${(50+56*Math.sin(197*Math.PI/180)).toFixed(1)}" r="3" fill="#0b0d10"/>
+        <circle cx="${(50+56*Math.cos(343*Math.PI/180)).toFixed(1)}" cy="${(50+56*Math.sin(343*Math.PI/180)).toFixed(1)}" r="3" fill="#0b0d10"/>
       </svg>`;
     }
     case 'raven':  return `<svg class="avf-raven-svg" viewBox="0 0 100 100" aria-hidden="true">
