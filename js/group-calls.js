@@ -163,14 +163,14 @@ async function _gcOnSignal(from,d){
   if(d.type==='offer'){
     if(!pc||['failed','closed'].includes(pc.connectionState))pc=_gcNewPc(from);
     try{
-      await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));
+      await pc.setRemoteDescription(_boostDesc(d.sdp));
       await _gcFlushIce(from);
       const ans=await pc.createAnswer();await pc.setLocalDescription(ans);
       _gcSend(from,{type:'answer',sdp:pc.localDescription.toJSON()});
     }catch(e){console.warn('[gc] answer',from,e);}
   }else if(d.type==='answer'){
     if(!pc||pc.signalingState!=='have-local-offer')return;
-    try{await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));await _gcFlushIce(from);}catch(e){console.warn('[gc] set answer',e);}
+    try{await pc.setRemoteDescription(_boostDesc(d.sdp));await _gcFlushIce(from);}catch(e){console.warn('[gc] set answer',e);}
   }else if(d.type==='need_offer'){
     // Вторая сторона включила камеру — пересогласуем (оффер всегда шлёт оффер-сторона пары)
     if(_gcIsOfferer(from))_gcOffer(from,false);

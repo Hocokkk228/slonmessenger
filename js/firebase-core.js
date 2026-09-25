@@ -648,7 +648,7 @@ function onData(pid,data){
            (!data.callId||!activeCall.callId||data.callId===activeCall.callId)){
           activeCall._offerHandled=true;
           try{
-            await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            await _callPC.setRemoteDescription(_boostDesc(data.sdp));
             await _flushPendingIce();
             const answer=await _callPC.createAnswer();
             await _callPC.setLocalDescription(answer);
@@ -661,7 +661,7 @@ function onData(pid,data){
       (async()=>{
         if(!activeCall||activeCall.peerId!==pid||!_callPC)return;
         try{
-          await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          await _callPC.setRemoteDescription(_boostDesc(data.sdp));
           await _flushPendingIce();
         }catch(e){console.warn('set answer error:',e);}
       })();
@@ -721,7 +721,7 @@ function onData(pid,data){
           if(_callPC.signalingState!=='stable'){
             try{await _callPC.setLocalDescription({type:'rollback'});}catch(e){}
           }
-          await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          await _callPC.setRemoteDescription(_boostDesc(data.sdp));
           await _flushPendingIce();
           const answer=await _callPC.createAnswer();
           await _callPC.setLocalDescription(answer);
@@ -738,7 +738,7 @@ function onData(pid,data){
       (async()=>{
         if(!_callPC||!data.sdp)return;
         try{
-          await _callPC.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          await _callPC.setRemoteDescription(_boostDesc(data.sdp));
           await _flushPendingIce();
           setTimeout(()=>_updateRemoteVideoUI(),200);
           setTimeout(()=>{_updateRemoteVideoUI();_tryPlayRemote();},700);

@@ -355,7 +355,8 @@ async function _vrCreatePc(pid, isInitiator){
     if(!isCamOff && _vrBaseStream.getVideoTracks().length>0){
       _vrBaseStream.getVideoTracks().forEach(t=>pc.addTrack(t, _vrBaseStream));
     }else if(isScreenSharing && screenShareStream){
-      screenShareStream.getVideoTracks().forEach(t=>pc.addTrack(t, screenShareStream));
+      // демка: держим разрешение и битрейт, как в личных звонках (после согласования)
+      screenShareStream.getVideoTracks().forEach(t=>{const snd=pc.addTrack(t, screenShareStream);setTimeout(()=>_tuneVideoSender(snd,true),2500);});
     }
   }
 
@@ -466,14 +467,14 @@ async function _vrHandleSignal(pid, data){
     if(!_vr.pcs[pid]) await _vrCreatePc(pid,false);
     const pc=_vr.pcs[pid];if(!pc)return;
     try{
-      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      await pc.setRemoteDescription(_boostDesc(data.sdp));
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
       _vrSignal(pid,{type:'answer',sdp:pc.localDescription.toJSON()});
     }catch(e){console.warn('vr answer error',e);}
   }else if(sig==='answer'){
     const pc=_vr.pcs[pid];if(!pc)return;
-    try{await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));}catch(e){}
+    try{await pc.setRemoteDescription(_boostDesc(data.sdp));}catch(e){}
   }else if(sig==='ice'){
     const pc=_vr.pcs[pid];if(!pc)return;
     try{await pc.addIceCandidate(new RTCIceCandidate(data.candidate));}catch(e){}

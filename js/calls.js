@@ -14,8 +14,8 @@ function showPermRequest(isVideo,onGranted,onDenied){
 // канал захлёбывается и получается «1 кадр в 2 секунды» либо чёрный экран.
 const CAM_MAX={w:1280,h:720,fps:30};
 const SCREEN_MAX={w:1920,h:1080,fps:30};
-const CAM_BITRATE=900000;     // ~0.9 Мбит/с на камеру
-const SCREEN_BITRATE=2000000; // ~2 Мбит/с на экран
+const CAM_BITRATE=1500000;    // ~1.5 Мбит/с на камеру (720p)
+const SCREEN_BITRATE=4000000; // до 4 Мбит/с на демонстрацию (1080p)
 
 // Видео-констрейнты камеры с лимитами (deviceId/facingMode сохраняем)
 function _camConstraints(extra){
@@ -29,7 +29,7 @@ function _camConstraints(extra){
 }
 // Констрейнты демонстрации экрана
 function _screenConstraints(){
-  return {width:{max:SCREEN_MAX.w},height:{max:SCREEN_MAX.h},
+  return {width:{ideal:SCREEN_MAX.w,max:SCREEN_MAX.w},height:{ideal:SCREEN_MAX.h,max:SCREEN_MAX.h},
     frameRate:{ideal:SCREEN_MAX.fps,max:SCREEN_MAX.fps}};
 }
 // Ограничиваем битрейт/фпс у отправителя и просим держать плавность,
@@ -42,14 +42,50 @@ async function _tuneVideoSender(sender,isScreen){
     p.encodings[0].maxBitrate=isScreen?SCREEN_BITRATE:CAM_BITRATE;
     p.encodings[0].maxFramerate=isScreen?SCREEN_MAX.fps:CAM_MAX.fps;
     p.encodings[0].scaleResolutionDownBy=1;
-    // плавность важнее детализации — держим 30 кадров
-    p.degradationPreference='maintain-framerate';
+    p.encodings[0].priority='high';
+    p.encodings[0].networkPriority='high';
+    // Демка: держим РАЗРЕШЕНИЕ (при слабом канале падает частота кадров, а не
+    // чёткость — иначе браузер ужимал картинку до 144p). Камера — баланс.
+    p.degradationPreference=isScreen?'maintain-resolution':'balanced';
     await sender.setParameters(p);
   }catch(e){console.warn('tune sender:',e);}
 }
-// Подсказка кодеку: движение (плавность) вместо статичной детализации
+// Подсказка кодеку: для демки — детализация (текст и мелочи не размываются),
+// для камеры — движение
 function _hintTrack(track,isScreen){
-  try{if(track)track.contentHint=isScreen?'motion':'motion';}catch(e){}
+  try{if(track)track.contentHint=isScreen?'detail':'motion';}catch(e){}
+}
+
+// Стартовый битрейт: WebRTC начинает с ~300 кбит/с и разгоняется десятки секунд
+// (всё это время — «мыло»). Просим сразу 2.5 Мбит/с, минимум 1 Мбит/с, потолок 6.
+// Применяется к описанию собеседника перед setRemoteDescription — так браузер
+// настраивает СВОЮ отправку. Используется во всех видах звонков.
+function _boostDesc(desc){
+  try{
+    const lines=String(desc.sdp||'').split('\r\n');
+    let inVideo=false;const pts=new Set();
+    for(const l of lines){
+      if(l.startsWith('m='))inVideo=l.startsWith('m=video');
+      const m=inVideo&&l.match(/^a=rtpmap:(\d+) (VP8|VP9|H264|AV1)\//i);
+      if(m)pts.add(m[1]);
+    }
+    if(!pts.size)return new RTCSessionDescription(desc);
+    const X='x-google-start-bitrate=2500;x-google-min-bitrate=1000;x-google-max-bitrate=6000';
+    const out=[];const hasFmtp=new Set();
+    for(const l of lines){
+      const f=l.match(/^a=fmtp:(\d+) (.*)$/);
+      if(f&&pts.has(f[1])){hasFmtp.add(f[1]);out.push(l.includes('x-google-')?l:l+';'+X);continue;}
+      out.push(l);
+    }
+    // у кодека без fmtp — добавляем строку сразу после его rtpmap
+    const res=[];
+    for(const l of out){
+      res.push(l);
+      const m=l.match(/^a=rtpmap:(\d+) /);
+      if(m&&pts.has(m[1])&&!hasFmtp.has(m[1]))res.push('a=fmtp:'+m[1]+' '+X);
+    }
+    return new RTCSessionDescription({type:desc.type,sdp:res.join('\r\n')});
+  }catch(e){return new RTCSessionDescription(desc);}
 }
 // Ограничиваем битрейт звука — меньше нагрузка на канал, меньше рассинхрон с видео
 async function _tuneAudioSender(sender){
@@ -274,7 +310,7 @@ async function answerCall(){
       // из firebase-core.js больше не переприменялся к этому же звонку)
       activeCall._offerHandled=true;
       try{
-        await _callPC.setRemoteDescription(new RTCSessionDescription(sdp));
+        await _callPC.setRemoteDescription(_boostDesc(sdp));
         await _flushPendingIce();
         const answer=await _callPC.createAnswer();
         await _callPC.setLocalDescription(answer);
