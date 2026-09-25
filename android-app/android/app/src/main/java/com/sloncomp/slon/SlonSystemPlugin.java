@@ -80,6 +80,7 @@ public class SlonSystemPlugin extends Plugin {
         getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit()
                 .putString("token", token).putString("api", api).putString("dev", dev).apply();
         SlonBgService.start(getContext());
+        SlonFcmService.register(getContext());      // FCM-токен — на наш сервер
         call.resolve();
     }
     @PluginMethod

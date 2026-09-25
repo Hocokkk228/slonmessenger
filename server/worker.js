@@ -14,6 +14,7 @@ const MEDIA_SHARDS=8,MEDIA_CHUNK=1024*1024,MEDIA_MAX=100*1024*1024;
 // (лимит строки 2 МБ). Шардируем по id, чтобы нагрузка делилась на 8 объектов.
 import {DurableObject} from 'cloudflare:workers';
 import {UserHub} from './hub.js';
+import {sendFcm} from './fcm.js';
 export {UserHub};
 export class MediaStore extends DurableObject{
   constructor(ctx,env){
@@ -175,6 +176,7 @@ const routes={
       await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(th).run();
       // Вышли — это устройство больше не должно получать пуши аккаунта
       if(ses?.device)await dropPushSubs(ses.username,s=>s&&s.dev===ses.device);
+      if(ses?.device)await env.DB.prepare('DELETE FROM fcm_tokens WHERE username=? AND device=?').bind(ses.username,ses.device).run();
     }
     return json({ok:true});
   },
@@ -314,6 +316,24 @@ const routes={
     else await env.DB.prepare('INSERT OR IGNORE INTO vault_keys(username,wrapped,ts) VALUES(?,?,?)').bind(u,d.wrapped,Date.now()).run();
     const r=await env.DB.prepare('SELECT wrapped FROM vault_keys WHERE username=?').bind(u).first();
     return json({ok:true,wrapped:r.wrapped});
+  },
+
+  // ── FCM-токен Android-устройства (пуши как в Telegram) ──
+  async 'POST /push/fcm'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    if(typeof d.token!=='string'||d.token.length<20||d.token.length>4096)return err('bad_request','Неверный токен');
+    await env.DB.prepare('INSERT INTO fcm_tokens(username,device,token,updated) VALUES(?,?,?,?) ON CONFLICT(username,device) DO UPDATE SET token=excluded.token,updated=excluded.updated')
+      .bind(u,String(d.dev||'').slice(0,40)||'android',d.token,Date.now()).run();
+    return json({ok:true});
+  },
+  // Сигнал без открытого соединения (например «Отклонить» прямо из уведомления)
+  async 'POST /signal'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const to=String(d.to||'').toLowerCase();
+    if(!validUser(to)||!d.payload||typeof d.payload.type!=='string')return err('bad_request','Неверные данные');
+    if(!['call_reject','call_cancel','call_end','read'].includes(d.payload.type))return err('forbidden','Нельзя',403);
+    await env.HUB.get(env.HUB.idFromName(to)).deliver(u,d.payload,true);
+    return json({ok:true});
   },
 
   // Сброс пароля — только админ

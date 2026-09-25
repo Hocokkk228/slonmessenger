@@ -8,6 +8,7 @@
 // WebSocket Hibernation: пока сообщений нет, объект спит и ничего не стоит.
 // ════════════════════════════════════════
 import {DurableObject} from 'cloudflare:workers';
+import {sendFcm} from './fcm.js';
 
 const FB='https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app';
 const QUEUE_TTL=7*24*3600e3;
@@ -116,6 +117,11 @@ export class UserHub extends DurableObject{
     // само приложение подключено — всё доставлено; иначе копим (даже если слушает фоновая служба)
     if(this.appSockets().length)return true;
     if(QUEUE_TYPES.has(payload.type))this.sql.exec('INSERT INTO queue(msg,ts) VALUES(?,?)',JSON.stringify(item),Date.now());
+    // Приложение не на связи — будим Android через FCM (как Telegram)
+    if(payload.type==='call_incoming')
+      this.ctx.waitUntil(sendFcm(this.env,this.me,{type:'call',peer:from,title:payload.nick||('@'+from),callId:payload.callId||'',video:payload.isVideo?'1':'0'},{ttl:'45s'}).catch(()=>{}));
+    else if(payload.type==='call_cancel'||payload.type==='call_end')
+      this.ctx.waitUntil(sendFcm(this.env,this.me,{type:'call_end',peer:from,title:'@'+from},{ttl:'60s'}).catch(()=>{}));
     // Переходный мост: у адресата старая версия (APK 1.0.x) — кладём и в старый inbox Firebase
     if(bridge&&this.me)await fetch(FB+'/inbox/'+this.me+'.json',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({from,payload:{...payload,_hub:1},ts:Date.now()})}).catch(()=>{});
@@ -131,6 +137,11 @@ export class UserHub extends DurableObject{
     if(old){try{const o=JSON.parse(old.rec);if(o.del||o.gone)return;}catch(e){}}
     this.sql.exec('INSERT OR REPLACE INTO ml(key,rec,upd) VALUES(?,?,?)',key,JSON.stringify(rec),now);
     this.broadcast({t:'ml',key,rec,upd:now},except);
+    if(!old&&!rec.out&&rec.chat!=='saved'&&!this.appSockets().length){
+      const lbl={photo:'📷 Фото',voice:'🎙️ Голосовое',slon:'🐘 Слонкружок',file:'📎 Файл',e2e:'🔒 Новое сообщение'};
+      const body=lbl[rec.k]||(rec.text?String(rec.text).slice(0,200):'Новое сообщение');
+      this.ctx.waitUntil(sendFcm(this.env,this.me,{type:'msg',chat:rec.chat,title:rec.nick||('@'+rec.chat),body}).catch(()=>{}));
+    }
   }
   mlPatch(key,patch,except){
     const row=[...this.sql.exec('SELECT rec FROM ml WHERE key=?',key)][0];

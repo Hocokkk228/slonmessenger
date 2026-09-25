@@ -32,6 +32,15 @@
             android:exported="false"
             android:foregroundServiceType="remoteMessaging"
             android:stopWithTask="false" />
+        <!-- Пуши как в Telegram: Google будит SLON, даже если он закрыт -->
+        <service
+            android:name=".SlonFcmService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <receiver android:name=".SlonCallActionReceiver" android:exported="false" />
         <receiver
             android:name=".SlonBootReceiver"
             android:exported="true">

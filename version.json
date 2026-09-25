@@ -1,8 +1,8 @@
 {
   "android": {
-    "version": "1.3.2",
-    "size": "5,6 МБ",
+    "version": "1.3.3",
+    "size": "6,2 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Список чатов при запуске, клавиатура не прячется, проверка уведомлений"
+    "notes": "Исправлены «зашифрованные сообщения», синие галочки"
   }
 }

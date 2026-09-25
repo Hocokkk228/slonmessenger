@@ -86,3 +86,12 @@ CREATE TABLE IF NOT EXISTS vault_keys (
   wrapped  TEXT NOT NULL,
   ts       INTEGER NOT NULL
 );
+
+-- FCM-токены Android-устройств (разбудить приложение, как Telegram)
+CREATE TABLE IF NOT EXISTS fcm_tokens (
+  username TEXT NOT NULL,
+  device   TEXT NOT NULL,
+  token    TEXT NOT NULL,
+  updated  INTEGER NOT NULL,
+  PRIMARY KEY(username,device)
+);

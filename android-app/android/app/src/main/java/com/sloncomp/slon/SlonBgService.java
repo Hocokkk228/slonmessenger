@@ -188,7 +188,7 @@ public class SlonBgService extends Service {
                 String type = p.optString("type"), from = m.optString("from");
                 if ("bg_test".equals(type)) {
                     boolean was = appVisible; appVisible = false;
-                    showMessage("__test", "SLON · проверка", "✅ Уведомления работают: сервер → фоновая служба → телефон");
+                    showMessage("__test", "SLON · проверка", "Уведомления работают: сервер → фоновая служба → телефон");
                     appVisible = was;
                 } else if ("call_incoming".equals(type)) {
                     String nick = p.optString("nick", "");

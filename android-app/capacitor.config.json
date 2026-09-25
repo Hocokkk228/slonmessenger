@@ -14,13 +14,6 @@
       "backgroundColor": "#0d1520",
       "showSpinner": false
     },
-    "PushNotifications": {
-      "presentationOptions": [
-        "badge",
-        "sound",
-        "alert"
-      ]
-    },
     "LocalNotifications": {
       "smallIcon": "ic_stat_slon",
       "iconColor": "#3390ec"
