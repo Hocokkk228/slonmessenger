@@ -12,7 +12,7 @@
 let _e2eOn=false;                  // ключи устройства есть и зарегистрированы, ключ бэкапа открыт
 let _e2eMe=null;                   // {deviceId, identity, spk, oldSpks, opks, nextOpk}
 let _e2eVk=null;                   // ключ бэкапа истории (base64)
-let _e2eUser=null,_e2eIniting=false,_e2eNeedVk=false;
+let _e2eUser=null,_e2eIniting=false;
 const _e2eDevCache={};             // user -> {ts, list:[{d,ik}]}
 const _e2eWaiting={};              // ключ журнала -> запись, которую пока нечем расшифровать
 let _e2eChain=Promise.resolve();   // все операции с сессиями — строго по очереди (храповик не терпит гонок)
@@ -70,9 +70,8 @@ async function _e2eInit(){
       await _e2eRotateSpk().catch(()=>{});
     }
     _e2eVk=await _idb.get(_e2eK('vk'));
-    _e2eNeedVk=!_e2eVk;
-    if(!_e2eVk)await _e2eFetchVaultKey();          // пароля не знаем — попросим один раз
-    _e2eOn=!!_e2eVk;
+    _e2eOn=true;                                   // шифруем сразу; ключ бэкапа — только для сейфа истории
+    if(!_e2eVk)_e2eAskVkFromDevices();             // пароля не знаем — ключ пришлёт другое моё устройство
     if(_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp)_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});
   }catch(e){console.warn('[e2e] init:',e);}
   finally{_e2eIniting=false;}
@@ -98,48 +97,42 @@ async function _e2eOnPassword(password){
       if(r.wrapped&&r.wrapped!==(await _e2eWrapWith(password)))_e2eVk=await _e2eUnwrap(password,r.wrapped); // другое устройство успело первым
     }
     await _idb.put(_e2eK('vk'),_e2eVk);
-    _e2eOn=false;_e2eUser=null;_e2eNeedVk=false;_e2eInit();
+    _e2eOn=false;_e2eUser=null;_e2eInit();
   }catch(e){console.warn('[e2e] vault key:',e);}
 }
+// ── Ключ бэкапа между своими устройствами (вместо просьбы ввести пароль) ──
+// Новое устройство без пароля просит ключ; любое моё устройство с ключом присылает
+// его, зашифровав протоколом Signal ТОЛЬКО для этого устройства. Сервер ключ не видит.
+function _e2eAskVkFromDevices(){
+  if(!_e2eMe||typeof _hubSend!=='function')return;
+  _hubSend({t:'send',to:myUsername,payload:{type:'e2e_vk_req',d:_e2eMe.deviceId}});
+}
+async function _e2eSelfSignal(p){
+  if(!_e2eMe)return;
+  if(p.type==='e2e_vk_req'&&_e2eVk&&p.d&&p.d!==_e2eMe.deviceId){
+    await _e2eQ(async()=>{
+      const devs=(await _e2eDevices([myUsername]))[myUsername];
+      const dv=devs.find(x=>x.d===p.d);if(!dv)return;
+      const msg=await _e2eEncryptTo(myUsername,dv.d,dv.ik,_e2eEnc({vk:_e2eVk}));
+      _hubSend({t:'send',to:myUsername,payload:{type:'e2e_vk',to:p.d,from:_e2eMe.deviceId,msg}});
+    }).catch(e=>console.warn('[e2e] vk send',e));
+  }else if(p.type==='e2e_vk'&&!_e2eVk&&p.to===_e2eMe.deviceId){
+    try{
+      const plain=await _e2eQ(()=>_e2eDecryptFrom({u:myUsername,d:p.from},p.msg));
+      const vk=_e2eDec(plain).vk;if(!vk)return;
+      _e2eVk=vk;await _idb.put(_e2eK('vk'),vk);
+      // история: забираем сейф заново и перепроверяем «зашифрованные» сообщения
+      try{localStorage.removeItem(_e2eK('vsince'));}catch(e){}
+      if(typeof _hubUp!=='undefined'&&_hubUp)_hubSend({t:'vault_sync',since:0});
+      for(const k of Object.keys(_e2eWaiting))_e2eRetry(k);
+    }catch(e){console.warn('[e2e] vk recv',e);}
+  }
+}
+
 // Смена пароля: тот же ключ бэкапа, запечатанный новым паролем
 async function _e2eOnPasswordChange(newPassword){
   try{if(_e2eVk)await api('/e2e/vaultkey',{wrapped:await _e2eWrapWith(newPassword),replace:true});}catch(e){}
 }
-// Устройство вошло раньше, пароля мы не знаем: спрашиваем один раз
-async function _e2eFetchVaultKey(){
-  try{if(Date.now()-(+localStorage.getItem(_e2eK('asklater'))||0)<864e5)return;}catch(e){}
-  const d=await api('/e2e/vaultkey').catch(()=>null);
-  if(document.getElementById('e2ePassAsk'))return;
-  const el=document.createElement('div');el.id='e2ePassAsk';el.className='notif-ask';
-  el.innerHTML=`<div class="na-ico"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v3H9V6z"/></svg></div>
-    <div class="na-txt"><b>Включи шифрование</b><span>Введи пароль от аккаунта — сообщения станут защищены как в Signal, а история синхронизируется на все устройства</span>
-      <input type="password" class="e2e-pass" placeholder="пароль" autocomplete="current-password"><i class="e2e-err"></i></div>
-    <div class="na-btns"><button class="na-no">Позже</button><button class="na-yes">Включить</button></div>`;
-  const inp=el.querySelector('.e2e-pass'),errEl=el.querySelector('.e2e-err');
-  const done=()=>{el.classList.remove('show');setTimeout(()=>el.remove(),300);};
-  el.querySelector('.na-no').onclick=()=>{try{localStorage.setItem(_e2eK('asklater'),String(Date.now()));}catch(e){}done();};
-  const go=async()=>{
-    const pass=inp.value;if(!pass)return;
-    errEl.textContent='';
-    try{
-      // сначала проверяем, что пароль правильный (иначе запечатаем ключ не тем паролем)
-      await api('/auth/login',{u:myUsername,h:await hashPassword(pass),device:_apiDevice()},{token:''}).then(r=>{if(r.token)_apiSetToken(myUsername,r.token);});
-      if(d?.wrapped)_e2eVk=await _e2eUnwrap(pass,d.wrapped);
-      else{
-        _e2eVk=await E2E.randomKey();
-        const r=await api('/e2e/vaultkey',{wrapped:await _e2eWrapWith(pass)});
-        if(r.wrapped!==await _e2eWrapWith(pass))_e2eVk=await _e2eUnwrap(pass,r.wrapped);
-      }
-      await _idb.put(_e2eK('vk'),_e2eVk);
-      done();toast('🔒 Шифрование включено');
-      _e2eOn=false;_e2eUser=null;_e2eNeedVk=false;_e2eInit();
-    }catch(e){errEl.textContent=e.code==='wrong_password'?'Неверный пароль':(e.message||'Ошибка');}
-  };
-  el.querySelector('.na-yes').onclick=go;
-  inp.onkeydown=e=>{if(e.key==='Enter')go();};
-  document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));
-}
-
 // ── Устройства собеседника и мои ──
 async function _e2eDevices(users){
   const need=users.filter(u=>!_e2eDevCache[u]||Date.now()-_e2eDevCache[u].ts>60000);
@@ -323,5 +316,7 @@ async function _e2eSafetyCode(peer){
   return E2E.fingerprint(E2E.b64(_e2eMe.identity.sign.pub),devs[0].ik);
 }
 
-setInterval(()=>{if(_fbMode&&myUsername&&!_e2eOn&&!(_e2eNeedVk&&_e2eUser===myUsername))_e2eInit();},5000);
+setInterval(()=>{if(_fbMode&&myUsername&&!_e2eOn)_e2eInit();},5000);
+// нет ключа бэкапа — периодически просим у своих устройств (вдруг другое устройство появилось в сети)
+setInterval(()=>{if(_e2eOn&&!_e2eVk)_e2eAskVkFromDevices();},60000);
 setInterval(()=>{if(_e2eOn){_e2eTopUp().catch(()=>{});_e2eRotateSpk().catch(()=>{});}},6*3600e3);

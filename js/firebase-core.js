@@ -207,6 +207,7 @@ function _handleIncoming(pid,payload){
       if(data.payload?.type==='call_self_sync'){
         onData(myUsername,data.payload);
       }
+      if(/^e2e_vk/.test(data.payload?.type||'')&&typeof _e2eSelfSignal==='function')_e2eSelfSignal(data.payload);
       return;
     }
     // Игнорируем сообщения от заблокированных пользователей

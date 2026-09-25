@@ -169,7 +169,13 @@ const routes={
 
   async 'POST /auth/logout'(req,env){
     const h=req.headers.get('Authorization')||'';
-    if(h.startsWith('Bearer '))await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha(h.slice(7))).run();
+    if(h.startsWith('Bearer ')){
+      const th=await sha(h.slice(7));
+      const ses=await env.DB.prepare('SELECT username,device FROM sessions WHERE token_hash=?').bind(th).first();
+      await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(th).run();
+      // Вышли — это устройство больше не должно получать пуши аккаунта
+      if(ses?.device)await dropPushSubs(ses.username,s=>s&&s.dev===ses.device);
+    }
     return json({ok:true});
   },
 
@@ -324,6 +330,16 @@ const routes={
   },
 };
 
+// Пуш-подписки (пока живут в Firebase push_subs/{u}/{id}) — удалить подходящие
+async function dropPushSubs(u,match){
+  const subs=await fbGet('push_subs/'+u);
+  if(!subs)return 0;
+  let n=0;
+  for(const [id,sub] of Object.entries(subs)){
+    if(match(sub)){await fetch(FB+'/push_subs/'+u+'/'+id+'.json',{method:'DELETE'}).catch(()=>{});n++;}
+  }
+  return n;
+}
 async function putPrekeys(env,u,dev,opks){
   if(!Array.isArray(opks)||!opks.length)return;
   const st=env.DB.prepare('INSERT OR IGNORE INTO e2e_prekeys(username,device_id,key_id,pub) VALUES(?,?,?,?)');

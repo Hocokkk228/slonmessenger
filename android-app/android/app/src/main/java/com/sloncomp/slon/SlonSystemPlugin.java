@@ -41,6 +41,7 @@ public class SlonSystemPlugin extends Plugin {
     @PluginMethod
     public void stopBackground(PluginCall call) {
         getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+        SlonKeepAliveWorker.cancel(getContext());
         getContext().stopService(new Intent(getContext(), SlonBgService.class));
         call.resolve();
     }

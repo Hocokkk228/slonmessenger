@@ -12,6 +12,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SlonSystemPlugin.class);
         super.onCreate(savedInstanceState);
         SlonSystemPlugin.onLaunchIntent(getIntent());
+        if (!getSharedPreferences(SlonBgService.PREFS, MODE_PRIVATE).getString("token", "").isEmpty())
+            SlonBgService.start(this);
     }
     @Override
     protected void onNewIntent(Intent intent) {

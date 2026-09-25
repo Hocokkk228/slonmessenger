@@ -30,7 +30,8 @@
         <service
             android:name=".SlonBgService"
             android:exported="false"
-            android:foregroundServiceType="remoteMessaging" />
+            android:foregroundServiceType="remoteMessaging"
+            android:stopWithTask="false" />
         <receiver
             android:name=".SlonBootReceiver"
             android:exported="true">

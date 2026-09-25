@@ -42,6 +42,8 @@ public class SlonBgService extends Service {
     static final int NID_BG = 1, NID_CALL = 2;
     /** Приложение на экране — оно само всё показывает, служба молчит */
     public static volatile boolean appVisible = false;
+    /** Служба сейчас жива (для страховочного перезапуска) */
+    public static volatile boolean running = false;
 
     private OkHttpClient http;
     private WebSocket ws;
@@ -62,6 +64,8 @@ public class SlonBgService extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+        running = true;
+        SlonKeepAliveWorker.schedule(this);
         channels();
         Notification n = new NotificationCompat.Builder(this, CH_BG)
                 .setSmallIcon(R.drawable.ic_stat_slon)
@@ -91,7 +95,15 @@ public class SlonBgService extends Service {
         return START_STICKY;
     }
 
+    // Смахнули из недавних — многие прошивки при этом убивают и службу: просим поднять её снова
+    @Override public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        if (!prefs().getString("token", "").isEmpty()) SlonKeepAliveWorker.kick(this);
+    }
+
     @Override public void onDestroy() {
+        running = false;
+        if (!prefs().getString("token", "").isEmpty()) SlonKeepAliveWorker.kick(this);   // убили — поднимемся
         stopped = true;
         h.removeCallbacksAndMessages(null);
         try { if (ws != null) ws.close(1000, "stop"); } catch (Exception ignored) { }
@@ -124,7 +136,11 @@ public class SlonBgService extends Service {
         if (s != null && s != ws) return;
         ws = null;
         if (stopped) return;
-        if (code == 401) { stopSelf(); return; }          // сессию отозвали — вышли из аккаунта
+        if (code == 401) {                                 // сессию отозвали — вышли из аккаунта
+            prefs().edit().clear().apply();
+            SlonKeepAliveWorker.cancel(this);
+            stopSelf(); return;
+        }
         long wait = Math.min(60000, 1000L << Math.min(retry++, 6));
         h.postDelayed(this::connect, wait);
     }

@@ -9,7 +9,18 @@ function _apiToken(u){try{return JSON.parse(localStorage.getItem('sl_tok_'+(u||m
 function _apiSetToken(u,t){try{if(t)localStorage.setItem('sl_tok_'+u,JSON.stringify(t));else localStorage.removeItem('sl_tok_'+u);}catch(e){}}
 
 // Запрос к API. Ошибки бросаются как Error с .code и понятным .message
+// Сбои сервера/сети — повторяем (все наши запросы безопасно повторять)
 async function api(path,body,opts={}){
+  for(let i=0;;i++){
+    try{return await _apiOnce(path,body,opts);}
+    catch(e){
+      const retry=(e.code==='network'||(e.status>=500&&e.status<600))&&i<2;
+      if(!retry)throw e;
+      await new Promise(r=>setTimeout(r,600*(i+1)));
+    }
+  }
+}
+async function _apiOnce(path,body,opts={}){
   const headers={'Content-Type':'application/json'};
   const tok=opts.token!==undefined?opts.token:_apiToken();
   if(tok)headers.Authorization='Bearer '+tok;
