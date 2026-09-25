@@ -77,7 +77,7 @@ export default {
     const subsRes=await fetch(DB_URL+'/push_subs/'+to+'.json');
     const subs=(await subsRes.json())||{};
     const isCall=d.payload.kind==='call';
-    const opts={ttl:isCall?45:86400,urgency:isCall?'high':'normal',
+    const opts={ttl:isCall?45:86400,urgency:'high', // high — иначе Android в режиме сна придерживает пуши
       topic:d.payload.tag?String(d.payload.tag).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,32):null};
     const results={};
     await Promise.all(Object.entries(subs).map(async([id,sub])=>{
