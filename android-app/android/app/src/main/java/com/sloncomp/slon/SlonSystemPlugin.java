@@ -29,6 +29,50 @@ public class SlonSystemPlugin extends Plugin {
     @Override public void load() { instance = this; }
 
     // ── Фоновая связь с сервером (уведомления при закрытом приложении) ──
+    // ── «Проверка уведомлений»: что именно мешает уведомлениям ──
+    @PluginMethod
+    public void diag(PluginCall call) {
+        Context c = getContext();
+        JSObject r = new JSObject();
+        r.put("notifEnabled", androidx.core.app.NotificationManagerCompat.from(c).areNotificationsEnabled());
+        int msgImp = -1, callImp = -1;
+        if (Build.VERSION.SDK_INT >= 26) {
+            android.app.NotificationManager nm = (android.app.NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            android.app.NotificationChannel ch = nm.getNotificationChannel("slon_msgs");
+            android.app.NotificationChannel cc = nm.getNotificationChannel("slon_calls");
+            if (ch != null) msgImp = ch.getImportance();
+            if (cc != null) callImp = cc.getImportance();
+        }
+        r.put("msgChannel", msgImp);
+        r.put("callChannel", callImp);
+        r.put("serviceRunning", SlonBgService.running);
+        r.put("connected", SlonBgService.connected);
+        r.put("connectedAt", SlonBgService.connectedAt);
+        r.put("tokenSaved", !c.getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).getString("token", "").isEmpty());
+        r.put("unrestricted", isIgnoringBatteryOptimizations());
+        r.put("manufacturer", Build.MANUFACTURER);
+        r.put("sdk", Build.VERSION.SDK_INT);
+        call.resolve(r);
+    }
+    @PluginMethod
+    public void requestNotifPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 33 && getActivity() != null &&
+                androidx.core.content.ContextCompat.checkSelfPermission(getContext(), "android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            androidx.core.app.ActivityCompat.requestPermissions(getActivity(), new String[]{"android.permission.POST_NOTIFICATIONS"}, 7701);
+        } else openNotifSettingsInternal();
+        call.resolve();
+    }
+    @PluginMethod
+    public void openNotifSettings(PluginCall call) { openNotifSettingsInternal(); call.resolve(); }
+    private void openNotifSettingsInternal() {
+        try {
+            Intent i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        } catch (Exception e) { openAppDetails(); }
+    }
+
     @PluginMethod
     public void startBackground(PluginCall call) {
         String token = call.getString("token", ""), api = call.getString("api", ""), dev = call.getString("dev", "");

@@ -1484,6 +1484,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   openChat('ai');
+  _mobileShowList();
   _hideSplash();
   // Подстраховка: восстановить историю и профиль из IndexedDB, если LS их потерял
   if(myUsername){setTimeout(_restoreChatsFromIdb,800);setTimeout(_restoreProfileFromIdb,300);}

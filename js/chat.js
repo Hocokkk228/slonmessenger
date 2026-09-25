@@ -580,6 +580,10 @@ function showRemoteTyping(pid){
 }
 
 // Поле ввода: есть текст → круглая кнопка «отправить», пусто → «микрофон»
+// Кнопка «Отправить» не забирает фокус у поля — клавиатура остаётся открытой (как в Telegram)
+let _inpHadFocus=false;
+function _keepInpFocus(e){_inpHadFocus=document.activeElement===$('msgInp');if(_inpHadFocus)e.preventDefault();}
+function _restoreInpFocus(){if(_inpHadFocus){const i=$('msgInp');if(i&&document.activeElement!==i)i.focus({preventScroll:true});}_inpHadFocus=false;}
 function _syncInpState(){
   const inp=$('msgInp');$('inpWrap')?.classList.toggle('has-text',!!inp?.value.trim());
 }

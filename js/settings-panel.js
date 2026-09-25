@@ -792,7 +792,9 @@ function _spNotifications(){
    +_spCheckRow(myNotif[k+'Preview']!==false,'Превью сообщений',myNotif[k+'Preview']!==false?'Включено':'Выключено',`_spNotifFlag('${k}Preview',this)`,!_notifOn(k)),
    'sp-notif-'+k);
   _spPush('Уведомления и звуки',
-    _spSec('Веб-уведомления')
+    // В приложении для Android — проверка всех звеньев уведомлений
+    ((typeof IS_NATIVE!=='undefined'&&IS_NATIVE)?_spCard(_spRow({ico:'bell',color:'green',title:'Проверка уведомлений',sub:'Разрешения, фоновая связь, тест',onclick:'_spNotifDiag()'})):'')
+    +_spSec('Веб-уведомления')
     +_spCard(
       _spCheckRow(webOn,'Веб-уведомления',perm==='denied'?'Запрещены в браузере — разреши в настройках сайта':webOn?'Включены':'Выключены','_spNotifWeb(this)')
      +`<div class="sp-slider-row"><div class="sp-slider-top"><span>Громкость звука</span><b id="nVolVal">${vol}</b></div>

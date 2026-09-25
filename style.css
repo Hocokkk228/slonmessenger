@@ -2393,3 +2393,9 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .ios-step svg{width:20px;height:20px;fill:var(--accent);vertical-align:-4px;}
 .ios-n{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .ios-help-ok{width:100%;margin-top:14px;border:none;border-radius:12px;padding:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
+
+/* «Проверка уведомлений» (Android) */
+.nd-row{align-items:center;}
+.nd-ok{color:#2e9e4f;}
+.nd-bad{color:#e53935;}
+.nd-btn{flex-shrink:0;border:none;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-left:8px;}

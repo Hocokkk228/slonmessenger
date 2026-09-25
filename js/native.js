@@ -230,3 +230,36 @@ function downloadAndroidApp(){
   location.href=APK_URL;
   toast('Скачивается SLON.apk — открой его, чтобы установить',6000);
 }
+
+// ── «Проверка уведомлений» (только в приложении для Android) ──
+// Показывает, какое звено мешает уведомлениям, и чинит его в один тап.
+async function _spNotifDiag(){
+  const S=_NP.SlonSystem;if(!S)return;
+  let d={};try{d=await S.diag();}catch(e){}
+  const ok=(v,good,bad)=>v?`<span class="nd-ok">✅ ${good}</span>`:`<span class="nd-bad">❌ ${bad}</span>`;
+  const row=(title,state,btn,fn)=>`<div class="sp-row nd-row"><div class="sp-row-txt"><div class="sp-row-title">${title}</div><div class="sp-row-sub">${state}</div></div>${btn?`<button class="nd-btn" onclick="${fn}">${btn}</button>`:''}</div>`;
+  const m=String(d.manufacturer||'').toLowerCase();
+  const oem=/xiaomi|redmi|poco|oppo|realme|oneplus|huawei|honor|vivo/.test(m);
+  const html=_spSec('Статус')+_spCard(
+      row('Разрешение на уведомления',ok(d.notifEnabled,'Разрешены','Запрещены — SLON не может показывать уведомления'),d.notifEnabled?'':'Разрешить','_NP.SlonSystem.requestNotifPermission().then(()=>setTimeout(_spNotifDiagRefresh,1500))')
+     +row('Уведомления о сообщениях',ok(d.msgChannel!==0,'Включены','Канал «Сообщения» выключен в настройках'),d.msgChannel===0?'Включить':'','_NP.SlonSystem.openNotifSettings()')
+     +row('Уведомления о звонках',ok(d.callChannel!==0,'Включены','Канал «Звонки» выключен в настройках'),d.callChannel===0?'Включить':'','_NP.SlonSystem.openNotifSettings()')
+     +row('Фоновая связь с сервером',d.serviceRunning?(d.connected?'<span class="nd-ok">✅ Подключена</span>':'<span class="nd-bad">⏳ Служба работает, но нет соединения — проверь интернет</span>'):'<span class="nd-bad">❌ Не запущена</span>',d.serviceRunning?'':'Запустить','_nativeBgOn=false;setTimeout(_spNotifDiagRefresh,2500)')
+     +row('Работа в фоне без ограничений',ok(d.unrestricted,'Разрешена','Батарея усыпляет SLON — уведомления будут опаздывать'),d.unrestricted?'':'Разрешить','_NP.SlonSystem.requestUnrestricted().then(()=>setTimeout(_spNotifDiagRefresh,1500))')
+     +(oem?row('Автозапуск ('+esc(d.manufacturer)+')','На этом телефоне без автозапуска система убивает SLON в фоне','Открыть','_NP.SlonSystem.openAutostart()'):'')
+    )
+    +_spSec('Проверка')
+    +_spCard(`<div class="sp-row" onclick="_spNotifTest()"><div class="sp-row-txt"><div class="sp-row-title" style="color:var(--accent)">Отправить тестовое уведомление</div><div class="sp-row-sub">Сигнал пройдёт через сервер и фоновую службу — как настоящее сообщение</div></div></div>`)
+    +_spHint('Если тест пришёл, а сообщения при закрытом приложении — нет: включи автозапуск и в «Недавних» закрепи SLON замочком (так же делают для Telegram на Xiaomi/OPPO).');
+  if($('ndPage'))$('ndPage').innerHTML=html;
+  else _spPush('Проверка уведомлений','<div id="ndPage">'+html+'</div>');
+}
+function _spNotifDiagRefresh(){if($('ndPage'))_spNotifDiag();}
+function _spNotifTest(){
+  if(typeof _hubSend!=='function'||!_hubSend({t:'send',to:myUsername,payload:{type:'bg_test'}})){toast('Нет соединения с сервером');return;}
+  toast('Отправлено — уведомление должно появиться через секунду');
+}
+if(IS_NATIVE){
+  // Android 13+: без этого разрешения уведомлений нет вообще — спрашиваем сразу
+  setTimeout(()=>{_NP.SlonSystem?.diag().then(d=>{if(!d.notifEnabled)_NP.SlonSystem.requestNotifPermission();}).catch(()=>{});},3000);
+}

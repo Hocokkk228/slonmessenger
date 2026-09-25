@@ -113,6 +113,7 @@ function _authEnter(u,token,isNew){
   setMyLabel();updateProfileDisplay();
   rebuildSidebar();
   openChat('ai');
+  _mobileShowList();
   initFirebaseMode();
   if(!isNew)setTimeout(()=>_fetchAndApplyMyProfile(),500);
 }

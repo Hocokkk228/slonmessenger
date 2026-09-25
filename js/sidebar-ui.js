@@ -505,6 +505,13 @@ function closeSidebar(){$('sidebar').classList.remove('open');$('sbOverlay').cla
 
 function backToList(){if(window.innerWidth<=640)toggleSidebar();}
 
+// Телефон: как в Telegram — при запуске открыт СПИСОК чатов, а не какой-то чат
+function _mobileShowList(){
+  if(window.innerWidth>640)return;
+  if(!$('sidebar').classList.contains('open'))toggleSidebar();
+  document.querySelectorAll('.sb-item.active').forEach(el=>el.classList.remove('active'));
+}
+
 function switchTab
 (tab){
   if(tab==='chats'){

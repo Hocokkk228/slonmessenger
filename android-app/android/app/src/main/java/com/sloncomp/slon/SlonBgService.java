@@ -44,6 +44,9 @@ public class SlonBgService extends Service {
     public static volatile boolean appVisible = false;
     /** Служба сейчас жива (для страховочного перезапуска) */
     public static volatile boolean running = false;
+    /** Для экрана «Проверка уведомлений» */
+    public static volatile boolean connected = false;
+    public static volatile long lastEventAt = 0, connectedAt = 0;
 
     private OkHttpClient http;
     private WebSocket ws;
@@ -121,8 +124,8 @@ public class SlonBgService extends Service {
             String url = api.replaceFirst("^http", "ws") + "/ws?bg=1&token=" + URLEncoder.encode(token, "UTF-8")
                     + "&dev=" + URLEncoder.encode("bg-" + prefs().getString("dev", ""), "UTF-8");
             ws = http.newWebSocket(new Request.Builder().url(url).build(), new WebSocketListener() {
-                @Override public void onOpen(WebSocket s, Response r) { retry = 0; schedulePing(); }
-                @Override public void onMessage(WebSocket s, String text) { h.post(() -> handle(text)); }
+                @Override public void onOpen(WebSocket s, Response r) { retry = 0; connected = true; connectedAt = System.currentTimeMillis(); schedulePing(); }
+                @Override public void onMessage(WebSocket s, String text) { lastEventAt = System.currentTimeMillis(); h.post(() -> handle(text)); }
                 @Override public void onClosed(WebSocket s, int code, String reason) { h.post(() -> reconnect(s, code)); }
                 @Override public void onFailure(WebSocket s, Throwable t, Response r) {
                     int code = r != null ? r.code() : 0;
@@ -135,6 +138,7 @@ public class SlonBgService extends Service {
     private void reconnect(WebSocket s, int code) {
         if (s != null && s != ws) return;
         ws = null;
+        connected = false;
         if (stopped) return;
         if (code == 401) {                                 // сессию отозвали — вышли из аккаунта
             prefs().edit().clear().apply();
@@ -182,7 +186,11 @@ public class SlonBgService extends Service {
                 JSONObject p = m.optJSONObject("payload");
                 if (p == null) return;
                 String type = p.optString("type"), from = m.optString("from");
-                if ("call_incoming".equals(type)) {
+                if ("bg_test".equals(type)) {
+                    boolean was = appVisible; appVisible = false;
+                    showMessage("__test", "SLON · проверка", "✅ Уведомления работают: сервер → фоновая служба → телефон");
+                    appVisible = was;
+                } else if ("call_incoming".equals(type)) {
                     String nick = p.optString("nick", "");
                     showCall(from, nick.isEmpty() ? "@" + from : nick, p.optString("callId"), p.optBoolean("isVideo"));
                 } else if ("call_cancel".equals(type) || "call_end".equals(type) || "call_reject".equals(type)) {
