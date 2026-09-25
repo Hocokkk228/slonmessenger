@@ -238,6 +238,7 @@ async function doStartCall(peerId,isVideo,stream){
 
 async function answerCall(){
   $('incoming').classList.remove('show');stopRingSound();
+  if(typeof _closeCallNotif==='function')_closeCallNotif();
   if(!pendingCall)return;
   const{peerId,isVideo,callId}=pendingCall;
   let sdp=pendingCall.sdp;
@@ -286,6 +287,7 @@ async function answerCall(){
 
 function rejectCall(){
   $('incoming').classList.remove('show');stopRingSound();playHangupSound();
+  if(typeof _closeCallNotif==='function')_closeCallNotif();
   if(pendingCall){
     const{callId,peerId,isVideo}=pendingCall;
     _callSend(peerId,{type:'call_reject',callId});

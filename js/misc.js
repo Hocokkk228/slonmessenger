@@ -1,38 +1,48 @@
 function _initServiceWorker(){
   if(!('serviceWorker' in navigator))return;
-  // SW-код прямо в Blob — не нужен отдельный файл
-  const swCode=`
-self.addEventListener('install',e=>self.skipWaiting());
-self.addEventListener('activate',e=>self.clients.claim());
-self.addEventListener('message',e=>{
-  if(e.data?.type==='NOTIFY'){
-    const d=e.data;
-    self.registration.showNotification(d.title,{
-      body:d.body,
-      icon:d.icon||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>',
-      tag:d.tag||'msg',
-      requireInteraction:d.tag==='call',
-      vibrate:d.tag==='call'?[300,100,300,100,300]:[200,100],
-      data:{url:self.location.origin}
-    });
-  }
-});
-self.addEventListener('notificationclick',e=>{
-  e.notification.close();
-  e.waitUntil(clients.matchAll({type:'window'}).then(cs=>{
-    for(const c of cs)if('focus' in c)return c.focus();
-    if(clients.openWindow)return clients.openWindow(e.notification.data?.url||'/');
-  }));
-});
-`;
-  const blob=new Blob([swCode],{type:'application/javascript'});
-  const swUrl=URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl,{scope:'./'})
-    .then(reg=>{
-      _swReg=reg;
-      console.log('[SLON] Service Worker registered');
-    })
+  // Отдельный файл sw.js: из blob: браузеры Service Worker не регистрируют
+  navigator.serviceWorker.register('sw.js',{scope:'./'})
+    .then(reg=>{_swReg=reg;console.log('[SLON] Service Worker registered');})
     .catch(e=>console.warn('[SLON] SW registration failed:',e));
+  navigator.serviceWorker.ready.then(reg=>{_swReg=reg;}).catch(()=>{});
+  // Нажатия на кнопки уведомлений
+  navigator.serviceWorker.addEventListener('message',e=>_onNotifAction(e.data||{}));
+}
+
+// «Ответить»/«Отклонить» у звонка, «Открыть» у сообщения
+function _onNotifAction(d){
+  if(d.type!=='notif_action')return;
+  if(d.kind==='call'){
+    if(d.action==='decline'){if(pendingCall)rejectCall();return;}
+    // ответить: звонок уже висит — берём; ещё не дошёл (приложение только открылось) — ждём
+    if(pendingCall)answerCall();
+    else _naAnswer={peer:d.peerId,cid:d.callId,until:Date.now()+60000};
+    return;
+  }
+  if(d.chat&&(peerNames[d.chat]||d.chat==='saved'))openChat(d.chat);
+}
+// Приложение открыто кнопкой «Ответить» из уведомления (?na=answer&cid=…&peer=…)
+let _naAnswer=null;
+(function(){
+  try{
+    const q=new URLSearchParams(location.search);
+    const na=q.get('na');if(!na)return;
+    if(na==='answer')_naAnswer={peer:q.get('peer')||'',cid:q.get('cid')||'',until:Date.now()+60000};
+    else if(na==='open'&&q.get('chat')){const c=q.get('chat');setTimeout(function t(){if(typeof openChat==='function'&&peerNames[c])openChat(c);else setTimeout(t,500);},800);}
+    history.replaceState(null,'',location.pathname);
+  }catch(e){}
+})();
+// Вызывается при входящем звонке: если его уже «приняли» из уведомления — отвечаем сразу
+function _naTryAnswer(pid,callId){
+  if(!_naAnswer||Date.now()>_naAnswer.until)return;
+  if(_naAnswer.peer&&_naAnswer.peer!==pid)return;
+  if(_naAnswer.cid&&callId&&_naAnswer.cid!==String(callId))return;
+  _naAnswer=null;
+  setTimeout(()=>{if(pendingCall)answerCall();},300);
+}
+// Убрать уведомление о звонке (взяли, отклонили, отменили — в т.ч. на другом устройстве)
+function _closeCallNotif(){
+  try{_swReg?.active?.postMessage({type:'CLOSE_TAG',tag:'call'});}catch(e){}
 }
 
 function _updateNotifRow(){
@@ -66,7 +76,7 @@ function requestNotifPermission(){
   });
 }
 
-function showDesktopNotif(title, body, iconUrl, tag){
+function showDesktopNotif(title, body, iconUrl, tag, extra){
   if(!('Notification' in window))return;
   // Настройки → Уведомления: веб-уведомления выключены (звонки показываем всегда)
   if(myNotif.web===false&&tag!=='call')return;
@@ -77,7 +87,9 @@ function showDesktopNotif(title, body, iconUrl, tag){
 
     // Путь 1: Service Worker (работает когда браузер свёрнут на мобильных)
     if(_swReg?.active){
-      _swReg.active.postMessage({type:'NOTIFY',title:notifTitle,body,icon,tag:tag||'msg'});
+      const kind=extra?.kind||(tag==='call'?'call':'msg');
+      _swReg.active.postMessage({type:'NOTIFY',title:kind==='call'?title:notifTitle,body,icon,tag:tag||'msg',
+        kind,me:myUsername,...(extra||{})});
       return;
     }
     // Путь 2: обычный Notification API (только когда страница открыта)

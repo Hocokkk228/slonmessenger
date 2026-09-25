@@ -233,7 +233,7 @@ async function _mlOnAdd(key,r){
         if(activeChat!==chat)addUnread(chat);
         if((r.ts||0)>_mlSessionStart-120000&&!mutedChats[chat]&&_notifOn('private')){
           playNotifSound();
-          showDesktopNotif(peerNames[chat]||('@'+chat),_notifText('private',k==='text'?r.text:pv).slice(0,60),peerAvatars[chat]||null,'msg:'+chat);
+          showDesktopNotif(peerNames[chat]||('@'+chat),_notifText('private',k==='text'?r.text:pv).slice(0,60),peerAvatars[chat]||null,'msg:'+chat,{kind:'msg',chat});
         }
       }
     }

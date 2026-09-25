@@ -551,6 +551,7 @@ function onData(pid,data){
         const isForUs=pendingCall?.peerId===pid||
           (data.callId&&_lastIncomingCallId===data.callId);
         stopRingSound();
+        if(typeof _closeCallNotif==='function')_closeCallNotif();
         $('incoming').classList.remove('show');
         if(isForUs||!pendingCall){
           // Отмена звонка — убираем pending независимо от состояния
@@ -576,6 +577,7 @@ function onData(pid,data){
       break;
     case 'call_end':
       stopRingSound();
+      if(typeof _closeCallNotif==='function')_closeCallNotif();
       $('incoming').classList.remove('show');
       if(pendingCall?.peerId===pid){
         if(typeof _logCallMessage==='function')_logCallMessage(pid,{outgoing:false,outcome:'missed',isVideo:pendingCall.isVideo});
@@ -601,7 +603,11 @@ function onData(pid,data){
       $('icName').textContent=data.nick||peerNames[pid]||('@'+pid);
       $('icType').textContent=data.isVideo?'Видеозвонок':'Голосовой звонок';
       $('incoming').classList.add('show');startRingSound();
-      showDesktopNotif('📞 Входящий звонок',data.nick||peerNames[pid]||('@'+pid),null,'call');
+      // Уведомление с кнопками «Ответить»/«Отклонить» (когда приложение свёрнуто)
+      if(document.visibilityState!=='visible')
+        showDesktopNotif(data.nick||peerNames[pid]||('@'+pid),data.isVideo?'📹 Входящий видеозвонок':'📞 Входящий звонок',peerAvatars[pid]||null,'call',
+          {kind:'call',callId:data.callId||'',peerId:pid,isVideo:!!data.isVideo});
+      if(typeof _naTryAnswer==='function')_naTryAnswer(pid,data.callId);
       if(navigator.vibrate)navigator.vibrate([300,100,300,100,300]);}
       break;
     case 'call_offer':
