@@ -23,7 +23,9 @@ export class UserHub extends DurableObject{
     this.sql.exec(`CREATE TABLE IF NOT EXISTS ml(key TEXT PRIMARY KEY,rec TEXT NOT NULL,upd INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS ml_upd ON ml(upd);
       CREATE TABLE IF NOT EXISTS queue(id INTEGER PRIMARY KEY AUTOINCREMENT,msg TEXT NOT NULL,ts INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY,v TEXT);`);
+      CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY,v TEXT);
+      CREATE TABLE IF NOT EXISTS vault(key TEXT PRIMARY KEY,blob TEXT NOT NULL,upd INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS vault_upd ON vault(upd);`);
     // пинг от клиента не будит объект
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}','{"t":"pong"}'));
   }
@@ -70,16 +72,29 @@ export class UserHub extends DurableObject{
         this.broadcast({t:'self',payload:m.payload},ws);return;
       case 'ml_post':{     // сообщение в журнал: себе и собеседнику
         const {key,rec,chat}=m;if(!key||!rec||!chat)return;
+        // при шифровании у себя и у собеседника разные копии (разные устройства-получатели)
         this.mlPut(key,{...rec,chat,out:true,from:me},ws);
         if(chat!=='saved'){
-          await this.hub(chat).mlPut(key,{...rec,chat:me,out:false,from:me});
+          await this.hub(chat).mlPut(key,{...(m.recPeer||rec),chat:me,out:false,from:me});
           this.send(ws,{t:'ml_ack',key});
         }
         return;}
       case 'ml_patch':{    // правка/удаление
         const {key,patch,chat}=m;if(!key||!patch)return;
         this.mlPatch(key,patch,null);
-        if(chat&&chat!=='saved'&&!patch.gone)await this.hub(chat).mlPatch(key,patch,null);
+        if(chat&&chat!=='saved'&&!patch.gone)await this.hub(chat).mlPatch(key,m.patchPeer||patch,null);
+        return;}
+      // Зашифрованная история (ключ знают только устройства владельца)
+      case 'vault_put':{
+        if(!m.key||typeof m.blob!=='string'||m.blob.length>1500000)return;
+        const now=Date.now();
+        this.sql.exec('INSERT OR REPLACE INTO vault(key,blob,upd) VALUES(?,?,?)',m.key,m.blob,now);
+        this.broadcast({t:'vault',key:m.key,blob:m.blob,upd:now},ws);
+        return;}
+      case 'vault_sync':{
+        const since=+m.since||0;
+        const rows=[...this.sql.exec('SELECT key,blob,upd FROM vault WHERE upd>? ORDER BY upd LIMIT 2000',since)];
+        this.send(ws,{t:'vault_batch',items:rows,more:rows.length===2000});
         return;}
       case 'ml_sync':{     // догоняем журнал: всё, что изменилось после since
         const since=+m.since||0;

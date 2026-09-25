@@ -136,6 +136,7 @@ async function doLogin(){
       showSetPassword(raw);return;
     }
     _authEnter(raw,d.token,false);
+    if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);   // ключ бэкапа истории
   }catch(e){
     errEl.textContent=e.message;errEl.style.display='block';
   }finally{
@@ -159,6 +160,7 @@ async function doRegister(){
   try{
     const d=await api('/auth/register',{u:raw,h:await hashPassword(pass),device:_apiDevice()},{token:''});
     _authEnter(raw,d.token,true);
+    if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);
     toast('Добро пожаловать в SLON, @'+raw+' 🐘');
   }catch(e){
     errEl.textContent=e.message;errEl.style.display='block';
@@ -181,6 +183,7 @@ async function doSetPassword(){
     const d=await api('/auth/set-password',{u:myUsername,rt:_resetRt,h:await hashPassword(pass),device:_apiDevice()},{token:''});
     _resetRt=null;
     _authEnter(myUsername,d.token,false);
+    if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);
     toast('Пароль установлен 🔒');
   }catch(e){
     errEl.textContent=e.message;errEl.style.display='block';
@@ -220,6 +223,7 @@ async function doChangePassword(){
   try{
     const d=await api('/auth/change-password',{old:await hashPassword(old),h:await hashPassword(nw),device:_apiDevice()});
     _apiSetToken(myUsername,d.token);
+    if(typeof _e2eOnPasswordChange==='function')await _e2eOnPasswordChange(nw);
     closeModal();toast('Пароль изменён 🔒 — на других устройствах нужно войти заново');
   }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
 }
@@ -241,6 +245,7 @@ async function doLogout(){
   // продолжает получать уведомления чужого/старого аккаунта
   try{if(typeof _pushUnsubscribe==='function')await Promise.race([_pushUnsubscribe(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   try{if(typeof _nativeBgStop==='function')_nativeBgStop();}catch(e){}
+  try{if(typeof _e2eLogout==='function')await Promise.race([_e2eLogout(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   // отзываем токен на сервере (не ждём ответа)
   try{const t=_apiToken();if(t)fetch(API_URL+'/auth/logout',{method:'POST',headers:{Authorization:'Bearer '+t},keepalive:true}).catch(()=>{});}catch(e){}
   _apiSetToken(myUsername,'');

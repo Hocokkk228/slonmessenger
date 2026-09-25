@@ -239,6 +239,77 @@ const routes={
     return json({ok:true});
   },
 
+  // ══ Сквозное шифрование (протокол Signal): справочник публичных ключей ══
+  // Сервер хранит только ПУБЛИЧНЫЕ ключи устройств; приватные не покидают устройство.
+  async 'POST /e2e/register'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const dev=+d.deviceId;
+    if(!Number.isInteger(dev)||dev<1||!d.ik||!d.ikd||!d.spk?.pub||!d.spk?.sig)return err('bad_request','Неверные ключи');
+    const cnt=await env.DB.prepare('SELECT COUNT(*) AS n FROM e2e_devices WHERE username=? AND device_id<>?').bind(u,dev).first();
+    if((cnt?.n||0)>=20)return err('too_many_devices','Слишком много устройств',409);
+    await env.DB.prepare(`INSERT INTO e2e_devices(username,device_id,ik,ikd,spk_id,spk_pub,spk_sig,updated) VALUES(?,?,?,?,?,?,?,?)
+      ON CONFLICT(username,device_id) DO UPDATE SET ik=excluded.ik,ikd=excluded.ikd,spk_id=excluded.spk_id,spk_pub=excluded.spk_pub,spk_sig=excluded.spk_sig,updated=excluded.updated`)
+      .bind(u,dev,String(d.ik),String(d.ikd),+d.spk.id,String(d.spk.pub),String(d.spk.sig),Date.now()).run();
+    await putPrekeys(env,u,dev,d.opks);
+    return json({ok:true});
+  },
+  async 'POST /e2e/prekeys'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    await putPrekeys(env,u,+d.deviceId,d.opks);
+    if(d.spk?.pub)await env.DB.prepare('UPDATE e2e_devices SET spk_id=?,spk_pub=?,spk_sig=?,updated=? WHERE username=? AND device_id=?')
+      .bind(+d.spk.id,String(d.spk.pub),String(d.spk.sig),Date.now(),u,+d.deviceId).run();
+    return json({ok:true});
+  },
+  async 'GET /e2e/count'(req,env){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const dev=+new URL(req.url).searchParams.get('d');
+    const r=await env.DB.prepare('SELECT COUNT(*) AS n FROM e2e_prekeys WHERE username=? AND device_id=?').bind(u,dev).first();
+    const reg=await env.DB.prepare('SELECT 1 AS x FROM e2e_devices WHERE username=? AND device_id=?').bind(u,dev).first();
+    return json({ok:true,count:r?.n||0,registered:!!reg});
+  },
+  // Устройства пользователей (для рассылки копий сообщения каждому устройству)
+  async 'GET /e2e/devices'(req,env){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const us=String(new URL(req.url).searchParams.get('u')||'').toLowerCase().split(',').filter(validUser).slice(0,20);
+    if(!us.length)return json({ok:true,devices:{}});
+    const rows=(await env.DB.prepare('SELECT username,device_id,ik FROM e2e_devices WHERE username IN ('+us.map(()=>'?').join(',')+')').bind(...us).all()).results||[];
+    const out={};for(const x of us)out[x]=[];
+    for(const r of rows)out[r.username].push({d:r.device_id,ik:r.ik});
+    return json({ok:true,devices:out});
+  },
+  // Пакет ключей устройства для первого сообщения: одноразовый предключ выдаётся ОДИН раз
+  async 'GET /e2e/bundle'(req,env){
+    const me=await authed(req,env);if(!me)return err('unauthorized','Войди заново',401);
+    const q=new URL(req.url).searchParams,u=String(q.get('u')||'').toLowerCase(),dev=+q.get('d');
+    const r=await env.DB.prepare('SELECT * FROM e2e_devices WHERE username=? AND device_id=?').bind(u,dev).first();
+    if(!r)return err('not_found','Нет такого устройства',404);
+    const opk=await env.DB.prepare('DELETE FROM e2e_prekeys WHERE rowid=(SELECT rowid FROM e2e_prekeys WHERE username=? AND device_id=? LIMIT 1) RETURNING key_id,pub').bind(u,dev).first();
+    return json({ok:true,bundle:{ik:r.ik,ikd:r.ikd,spk:{id:r.spk_id,pub:r.spk_pub,sig:r.spk_sig},opk:opk?{id:opk.key_id,pub:opk.pub}:null}});
+  },
+  async 'POST /e2e/remove'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const dev=+d.deviceId;
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM e2e_devices WHERE username=? AND device_id=?').bind(u,dev),
+      env.DB.prepare('DELETE FROM e2e_prekeys WHERE username=? AND device_id=?').bind(u,dev)]);
+    return json({ok:true});
+  },
+  // Ключ бэкапа истории, ЗАПЕЧАТАННЫЙ паролем на устройстве (сервер открыть не может)
+  async 'GET /e2e/vaultkey'(req,env){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const r=await env.DB.prepare('SELECT wrapped,ts FROM vault_keys WHERE username=?').bind(u).first();
+    return json({ok:true,wrapped:r?.wrapped||null,ts:r?.ts||0});
+  },
+  async 'POST /e2e/vaultkey'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    if(typeof d.wrapped!=='string'||d.wrapped.length>2000)return err('bad_request','Неверные данные');
+    // перезаписать можно только с флагом replace (смена пароля) — иначе создаём, если нет
+    if(d.replace)await env.DB.prepare('INSERT INTO vault_keys(username,wrapped,ts) VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET wrapped=excluded.wrapped,ts=excluded.ts').bind(u,d.wrapped,Date.now()).run();
+    else await env.DB.prepare('INSERT OR IGNORE INTO vault_keys(username,wrapped,ts) VALUES(?,?,?)').bind(u,d.wrapped,Date.now()).run();
+    const r=await env.DB.prepare('SELECT wrapped FROM vault_keys WHERE username=?').bind(u).first();
+    return json({ok:true,wrapped:r.wrapped});
+  },
+
   // Сброс пароля — только админ
   async 'POST /admin/reset-password'(req,env,d){
     const a=await authed(req,env);if(!a||!(await isAdmin(env,a)))return err('forbidden','Только для админов',403);
@@ -247,11 +318,17 @@ const routes={
     await env.DB.prepare(`INSERT INTO users(username,salt,verifier,created,pass_updated,migrated) VALUES(?,NULL,NULL,?,?,1)
       ON CONFLICT(username) DO UPDATE SET salt=NULL,verifier=NULL,pass_updated=excluded.pass_updated`).bind(u,now,now).run();
     await env.DB.prepare('DELETE FROM sessions WHERE username=?').bind(u).run();
+    await env.DB.prepare('DELETE FROM vault_keys WHERE username=?').bind(u).run();
     await fbPut('auth/'+u,{migrated:true,reset:{by:a,ts:now}});
     return json({ok:true});
   },
 };
 
+async function putPrekeys(env,u,dev,opks){
+  if(!Array.isArray(opks)||!opks.length)return;
+  const st=env.DB.prepare('INSERT OR IGNORE INTO e2e_prekeys(username,device_id,key_id,pub) VALUES(?,?,?,?)');
+  await env.DB.batch(opks.slice(0,100).filter(k=>k&&k.pub).map(k=>st.bind(u,dev,+k.id,String(k.pub))));
+}
 async function mediaUpload(req,env){
   const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
   const len=+(req.headers.get('Content-Length')||0);

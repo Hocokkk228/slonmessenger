@@ -59,3 +59,30 @@ CREATE TABLE IF NOT EXISTS user_sync (
   data     TEXT NOT NULL,
   ts       INTEGER NOT NULL
 );
+
+-- Сквозное шифрование: публичные ключи устройств
+CREATE TABLE IF NOT EXISTS e2e_devices (
+  username  TEXT NOT NULL,
+  device_id INTEGER NOT NULL,
+  ik        TEXT NOT NULL,     -- Ed25519 identity (подпись)
+  ikd       TEXT NOT NULL,     -- X25519 identity (DH)
+  spk_id    INTEGER NOT NULL,
+  spk_pub   TEXT NOT NULL,
+  spk_sig   TEXT NOT NULL,
+  updated   INTEGER NOT NULL,
+  PRIMARY KEY(username,device_id)
+);
+-- Одноразовые предключи (каждый выдаётся один раз)
+CREATE TABLE IF NOT EXISTS e2e_prekeys (
+  username  TEXT NOT NULL,
+  device_id INTEGER NOT NULL,
+  key_id    INTEGER NOT NULL,
+  pub       TEXT NOT NULL,
+  PRIMARY KEY(username,device_id,key_id)
+);
+-- Ключ бэкапа истории, запечатанный паролем (сервер не может открыть)
+CREATE TABLE IF NOT EXISTS vault_keys (
+  username TEXT PRIMARY KEY,
+  wrapped  TEXT NOT NULL,
+  ts       INTEGER NOT NULL
+);

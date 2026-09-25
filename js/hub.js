@@ -4,7 +4,7 @@
 // «печатает», звонки, синк журнала и профиля. Firebase остаётся запасным
 // путём (нет токена / нет соединения) и мостом для старых версий приложения.
 // ════════════════════════════════════════
-let _hubWs=null,_hubUp=false,_hubUser=null,_hubRetry=0,_hubTimer=null,_hubPing=null;
+let _hubWs=null,_hubUp=false,_hubUser=null,_hubRetry=0,_hubTimer=null,_hubPing=null,_hubAwaitVault=false;
 const _hubPres={};   // pid -> {online,ts,ls} с нашего сервера
 
 function _hubMlKey(){return _getAccountPrefix(myUsername)+'hubMlUpd';}
@@ -25,8 +25,9 @@ function _hubConnect(){
     if(_hubWs!==ws)return;
     _hubUp=true;_hubRetry=0;
     // догоняем журнал сообщений с последней синхронизации
-    const since=+(localStorage.getItem(_hubMlKey())||0);
-    _hubSend({t:'ml_sync',since});
+    // при шифровании сначала забираем сейф истории — чтобы журнал сразу расшифровался
+    if(typeof _e2eOn!=='undefined'&&_e2eOn){_hubAwaitVault=true;_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});}
+    else _hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});
     clearInterval(_hubPing);_hubPing=setInterval(()=>_hubSend({t:'ping'}),25000);
     _hubPollPresence();
   };
@@ -63,6 +64,12 @@ async function _hubDispatch(m){
         else{await _mlOnAdd(it.key,it.rec);_mlOnChange(it.key,it.rec);}
         _hubMlUpd(it.upd);
       }
+      break;
+    case 'vault':await _e2eOnVault([m]);break;
+    case 'vault_batch':
+      await _e2eOnVault(m.items);
+      if(m.more){_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});break;}
+      if(_hubAwaitVault){_hubAwaitVault=false;_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});}
       break;
     case 'ml_ack':{
       for(const [chat,hist] of Object.entries(chatHist)){

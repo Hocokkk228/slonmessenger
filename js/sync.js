@@ -120,11 +120,15 @@ function _msDownload(id){
 // Файл уходит одним запросом как есть (не base64), с прогрессом загрузки.
 // Скачивание — по неугадываемому id. Старые медиа (mstore в Firebase) читаются по-прежнему.
 function _srvUpload(dataUrl,meta,onProg){
+  const [head,b64]=dataUrl.split(',');
+  const mime=meta.mime||head.match(/:(.*?);/)?.[1]||'application/octet-stream';
+  const bin=atob(b64||''),buf=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+  return _srvUploadBlob(new Blob([buf],{type:mime}),mime,meta.name,onProg);
+}
+function _srvUploadBlob(blob,mime,name,onProg){
+  const meta={name};
   return new Promise((res,rej)=>{
-    const [head,b64]=dataUrl.split(',');
-    const mime=meta.mime||head.match(/:(.*?);/)?.[1]||'application/octet-stream';
-    const bin=atob(b64||''),buf=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
     const x=new XMLHttpRequest();
     x.open('POST',API_URL+'/media');
     x.setRequestHeader('Authorization','Bearer '+_apiToken());
@@ -134,7 +138,7 @@ function _srvUpload(dataUrl,meta,onProg){
     x.onload=()=>{let d={};try{d=JSON.parse(x.responseText);}catch(e){}
       if(x.status===200&&d.id)res(d.id);else rej(new Error(d.message||('ошибка '+x.status)));};
     x.onerror=()=>rej(new Error('нет интернета'));
-    x.send(new Blob([buf],{type:mime}));
+    x.send(blob);
   });
 }
 const _srvCache={};
@@ -164,6 +168,16 @@ function _mlPost(chat,rec){
   if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId?.(chat))return null;
   const key=_mlKey(rec.ts,rec.id);
   const clean={};for(const k in rec)if(rec[k]!==undefined&&rec[k]!==null)clean[k]=rec[k];
+  // Сквозное шифрование (Signal): получилось — всё; у собеседника старая версия — как раньше
+  if(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp&&!clean._plain){
+    return (async()=>{
+      if(await _e2ePost(chat,key,clean))return;
+      if((clean.k||'text')==='text'&&chat!=='saved')
+        sendData(conns[chat]||chat,{type:'msg',id:clean.id,text:clean.text,ts:clean.ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+      return _mlPost(chat,{...clean,_plain:1,mk:undefined});
+    })();
+  }
+  delete clean._plain;
   // Наш сервер: журнал у себя и у собеседника, доставка на все устройства (галочки — по ml_ack)
   if(typeof _hubSend==='function'&&_hubSend({t:'ml_post',chat,key,rec:clean})){
     if(chat!=='saved'&&typeof _pushMsg==='function')_pushMsg(chat,(rec.k||'text')==='text'?rec.text:(ML_PREVIEW[rec.k]||'Медиа'));
@@ -188,6 +202,8 @@ function _mlFindKey(chat,id){
 function _mlEdit(chat,id,patch){
   if(!_mlOn())return;
   const key=_mlFindKey(chat,id);if(!key)return;
+  const em=(chatHist[chat]||[]).find(x=>x.id===id);
+  if(em?._e2e&&typeof _e2eOn!=='undefined'&&_e2eOn&&patch.text!=null){_e2eEdit(chat,key,em,patch.text);return;}
   if(typeof _hubSend==='function'&&_hubSend({t:'ml_patch',chat,key,patch}))return;
   window._fbRef(window._fbDb,'ml/'+myUsername+'/'+key).update(patch).catch(()=>{});
   if(chat!=='saved')window._fbRef(window._fbDb,'ml/'+chat+'/'+key).update(patch).catch(()=>{});
@@ -208,25 +224,38 @@ async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
   if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId(chat))return false;
   try{
     // На наш сервер; если у устройства ещё нет токена — по-старому, в Firebase
-    let m;
-    if(typeof _apiToken==='function'&&_apiToken())m=await _srvUpload(dataUrl,{mime:meta.mime,name:meta.name},onProg);
+    let m,mk;
+    if(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _apiToken==='function'&&_apiToken()){
+      const enc=await _e2eEncryptMedia(dataUrl,meta.mime);
+      mk=enc.mk;m=await _srvUploadBlob(enc.blob,'application/octet-stream','',onProg);
+    }
+    else if(typeof _apiToken==='function'&&_apiToken())m=await _srvUpload(dataUrl,{mime:meta.mime,name:meta.name},onProg);
     else await _msUpload(id,dataUrl,{kind,mime:meta.mime||'',name:meta.name||''},onProg);
-    await _mlPost(chat,{id,k:kind,m,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
+    await _mlPost(chat,{id,k:kind,m,mk,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
       dur:meta.dur,wave:meta.wave?meta.wave.join(','):undefined});
     return true;
   }catch(e){console.warn('ml media:',e);toast('Не удалось отправить медиа: '+e.message);return false;}
 }
 
 // Запись журнала → локальное сообщение
-async function _mlMaterialize(key,r){
+async function _mlMaterialize(key,r0){
+  let r=r0,e2e=false;
+  if(r0.e&&typeof _e2eOpen==='function'){
+    const p=await _e2eOpen(key,r0);
+    const out0=!!r0.out,chat0=r0.chat;
+    if(!p)return {id:r0.id,sender:out0?'me':'inc',senderId:out0?undefined:chat0,name:out0?undefined:(peerNames[chat0]||('@'+chat0)),
+      ts:r0.ts,time:fmtTime(r0.ts),_mk:key,_e2e:true,text:'🔒 Зашифрованное сообщение — откроется, когда на устройство придёт ключ'};
+    r={...r0,...p,k:p.k||'text'};e2e=true;
+  }
   const out=!!r.out,chat=r.chat;
   const base={id:r.id,sender:out?'me':'inc',ts:r.ts,time:fmtTime(r.ts),_mk:key};
   if(!out){base.senderId=chat;base.name=peerNames[chat]||r.nick||('@'+chat);base.avatar=peerAvatars[chat]||null;}
   else base.status='delivered';
   if(r.edited)base.edited=true;
+  if(e2e){base._e2e=true;base._ev=r.ev||0;}
   const k=r.k||'text';
   if(k==='text')return {...base,text:r.text||''};
-  const data=r.m?await _srvDownload(r.m):await _msDownload(r.id);
+  const data=r.mk?await _e2eFetchMedia(r.m,r.mk,r.mime):r.m?await _srvDownload(r.m):await _msDownload(r.id);
   if(k==='photo'){
     const photoId=storePhoto(data);const thumb=await makeThumb(data);
     return {...base,photoId,photoThumb:thumb||data,fileName:r.name||'photo'};
@@ -282,9 +311,10 @@ async function _mlOnAdd(key,r){
       if(isLast){appendMsg(msg);scrollDown();}else renderChat(chat);
       if(!out&&document.visibilityState==='visible')sendData(conns[chat]||chat,{type:'read',ids:[r.id]});
     }
-    const k=r.k||'text';
-    const pv=ML_PREVIEW[k]||(r.text||'').slice(0,28);
-    if(isLast)updatePreview(chat,(out?'Вы: ':'')+(k==='text'?(r.text||'').slice(0,28):pv));
+    const k=msg.text!=null?'text':msg.photoId?'photo':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
+    r={...r,text:msg.text};
+    const pv=ML_PREVIEW[k]||(msg.text||'').slice(0,28);
+    if(isLast)updatePreview(chat,(out?'Вы: ':'')+(k==='text'?(msg.text||'').slice(0,28):pv));
     // Новое входящее: непрочитанное и уведомление (старое из истории — молча)
     const seen=+(localStorage.getItem(_mlSeenKey())||0);
     if(!out&&chat!=='saved'&&(r.ts||0)>seen){
@@ -304,6 +334,11 @@ function _mlOnChange(key,r){
   if(!r||!r.chat)return;
   const chat=r.chat,hist=chatHist[chat];if(!hist)return;
   const m=hist.find(x=>x.id===r.id);if(!m)return;
+  // зашифрованная правка: расшифровываем новую версию
+  if(r.e&&!r.del&&!r.gone&&(r.ev||0)>(m._ev||0)&&typeof _e2eOpen==='function'){
+    _e2eOpen(key,r).then(p=>{if(p&&p.text!=null){m._ev=r.ev;_mlOnChange(key,{id:r.id,chat,text:p.text});}});
+    return;
+  }
   if(r.del||r.gone){
     chatHist[chat]=hist.filter(x=>x.id!==r.id);
     document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();

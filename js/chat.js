@@ -99,7 +99,7 @@ function sendMsg(){
       const bub=document.querySelector('[data-msg-id="'+mid+'"] .msg-bub');
       if(bub)bub.innerHTML=linkify(txt)+'<span style="font-size:10px;opacity:.5;margin-left:4px">ред.</span>';
       saveAll();
-      if(activeChat&&activeChat!=='ai'&&activeChat!=='saved')
+      if(activeChat&&activeChat!=='ai'&&activeChat!=='saved'&&!found.m._e2e)
         sendData(conns[activeChat]||activeChat,{type:'msg_edit',id:mid,text:txt});
       if(typeof _mlEdit==='function')_mlEdit(found.pid,mid,{text:txt,edited:true});
     }
@@ -131,7 +131,9 @@ function sendMsg(){
   }else{
     const c=conns[activeChat];
     if(_fbMode||c?.open){
-      sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+      // при шифровании открытый текст не шлём: сообщение идёт зашифрованным в журнале
+      if(!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp))
+        sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
       // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
       if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts});
     }
