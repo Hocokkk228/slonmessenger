@@ -87,73 +87,57 @@ function _clearLocalForNewAccount(){
   archivedChats={};hasElephantBadge=false;
 }
 
+let _resetRt=null; // одноразовый токен установки пароля после сброса
+
+// Общий финал входа: сессия, данные аккаунта, запуск
+function _authEnter(u,token,isNew){
+  const prevUsername=myUsername;
+  myUsername=u;myPassword='';
+  _apiSetToken(u,token);
+  try{localStorage.removeItem('sl_pass_'+u);}catch(e){}   // хеш пароля на устройстве больше не храним
+  LS.set('sl_username',u);
+  const sess={username:u,verified:true,ts:Date.now()};
+  LS.set('sl_session_'+u,sess);
+  LS.set('sl_session',sess);
+  if(prevUsername&&prevUsername!==u&&_fbMode){
+    _fbMode=false;
+    try{if(window._fbDb&&window._fbRef)window._fbSet(window._fbRef(window._fbDb,'presence/'+prevUsername),{online:false,ts:Date.now()});}catch(e){}
+  }
+  if(isNew){
+    myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    LS.set('sl_iid_'+u,myInternalId);
+  }
+  loadStorage();
+  $('usernameOverlay').classList.remove('show');
+  activeChat='ai';
+  setMyLabel();updateProfileDisplay();
+  rebuildSidebar();
+  openChat('ai');
+  initFirebaseMode();
+  if(!isNew)setTimeout(()=>_fetchAndApplyMyProfile(),500);
+}
+
 async function doLogin(){
   const raw=($('loginUsernameInp')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   const pass=($('loginPassInp')?.value||'').trim();
   const errEl=$('loginError');
   errEl.style.display='none';
-
   if(raw.length<3){errEl.textContent='Юзернейм минимум 3 символа';errEl.style.display='block';return;}
   if(!pass){errEl.textContent='Введи пароль';errEl.style.display='block';return;}
-
-  // Показываем загрузку
   const btn=$('usernameOverlay').querySelector('#authLogin .username-btn');
   const origText=btn?.textContent||'';
   if(btn){btn.textContent='Проверяем…';btn.disabled=true;}
-
   try{
-    // Получаем хэш из Firebase
-    const storedHash=await _fbGetPasswordHash(raw);
-    if(!storedHash){
-      // Пароля нет: либо аккаунта не существует, либо админ сбросил пароль —
-      // тогда узел auth/{raw} на месте, и предлагаем установить новый пароль
-      if(await _fbAccountExists(raw)){
-        myUsername=raw;LS.set('sl_username',raw);
-        LS.remove?.('sl_pass_'+raw);try{localStorage.removeItem('sl_pass_'+raw);}catch(e){}
-        loadStorage();
-        showSetPassword(raw);
-        return;
-      }
-      errEl.textContent='Аккаунт не найден — зарегистрируйся!';
-      errEl.style.display='block';return;
+    // Пароль проверяет сервер — хеш никому не отдаётся
+    const d=await api('/auth/login',{u:raw,h:await hashPassword(pass),device:_apiDevice()},{token:''});
+    if(d.status==='set_password'){
+      // Админ сбросил пароль — задаём новый
+      _resetRt=d.rt;myUsername=raw;LS.set('sl_username',raw);loadStorage();
+      showSetPassword(raw);return;
     }
-    const inputHash=await hashPassword(pass);
-    if(inputHash!==storedHash){
-      errEl.textContent='Неверный пароль';errEl.style.display='block';return;
-    }
-
-    // Вход успешен
-    const prevUsername=myUsername;
-    myUsername=raw;myPassword=storedHash;
-    LS.set('sl_username',raw);
-    LS.set('sl_pass_'+raw,storedHash);
-    const sess={username:raw,verified:true,ts:Date.now()};
-    LS.set('sl_session_'+raw,sess);
-    LS.set('sl_session',sess);
-
-    // Если был другой аккаунт — сбрасываем Firebase соединение
-    if(prevUsername&&prevUsername!==raw&&_fbMode){
-      _fbMode=false;
-      try{
-        if(window._fbDb&&window._fbRef)
-          window._fbSet(window._fbRef(window._fbDb,'presence/'+prevUsername),{online:false,ts:Date.now()});
-      }catch(e){}
-    }
-
-    // Загружаем данные нового аккаунта (с его prefix sl_u_raw_*)
-    loadStorage();
-
-    $('usernameOverlay').classList.remove('show');
-
-    // Сбрасываем UI полностью
-    activeChat='ai';
-    setMyLabel();updateProfileDisplay();
-    rebuildSidebar();
-    openChat('ai');
-
-    initFirebaseMode();
-    // Подгружаем актуальный профиль с Firebase (ник/аватарка могут быть другими)
-    setTimeout(()=>_fetchAndApplyMyProfile(),500);
+    _authEnter(raw,d.token,false);
+  }catch(e){
+    errEl.textContent=e.message;errEl.style.display='block';
   }finally{
     if(btn){btn.textContent=origText;btn.disabled=false;}
   }
@@ -165,44 +149,19 @@ async function doRegister(){
   const conf=($('regPassConfInp')?.value||'');
   const errEl=$('regError');
   errEl.style.display='none';
-
   if(raw.length<3){errEl.textContent='Юзернейм минимум 3 символа';errEl.style.display='block';return;}
   if(raw.length>20){errEl.textContent='Юзернейм максимум 20 символов';errEl.style.display='block';return;}
   if(pass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.style.display='block';return;}
   if(pass!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
-
   const btn=$('usernameOverlay').querySelector('#authRegister .username-btn');
   const origText=btn?.textContent||'';
   if(btn){btn.textContent='Создаём аккаунт…';btn.disabled=true;}
-
   try{
-    // Проверяем занятость юзернейма через Firebase
-    const exists=await _fbAccountExists(raw);
-    if(exists){
-      errEl.textContent='Юзернейм занят — выбери другой или войди';
-      errEl.style.display='block';return;
-    }
-
-    const hash=await hashPassword(pass);
-    myUsername=raw;myPassword=hash;
-    // Новый аккаунт — генерируем уникальный internal ID для ЭТОГО аккаунта
-    myInternalId='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-    LS.set('sl_iid_'+raw,myInternalId);
-    LS.set('sl_username',raw);
-    const sess={username:raw,verified:true,ts:Date.now()};
-    LS.set('sl_session_'+raw,sess);
-    LS.set('sl_session',sess);
-    // Сохраняем пароль
-    await _fbSetPasswordHash(raw,hash);
-
-    loadStorage(); // читает пустые данные для нового username
-    $('usernameOverlay').classList.remove('show');
-    activeChat='ai';
-    setMyLabel();updateProfileDisplay();
-    rebuildSidebar();
-    openChat('ai');
-    initFirebaseMode();
+    const d=await api('/auth/register',{u:raw,h:await hashPassword(pass),device:_apiDevice()},{token:''});
+    _authEnter(raw,d.token,true);
     toast('Добро пожаловать в SLON, @'+raw+' 🐘');
+  }catch(e){
+    errEl.textContent=e.message;errEl.style.display='block';
   }finally{
     if(btn){btn.textContent=origText;btn.disabled=false;}
   }
@@ -215,31 +174,26 @@ async function doSetPassword(){
   errEl.style.display='none';
   if(pass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.style.display='block';return;}
   if(pass!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
-
+  if(!_resetRt){showAuthLogin();const i=$('loginUsernameInp');if(i)i.value=myUsername;return;}
   const btn=$('usernameOverlay').querySelector('#authSetPassword .username-btn');
   if(btn){btn.textContent='Сохраняем…';btn.disabled=true;}
-
   try{
-    const hash=await hashPassword(pass);
-    myPassword=hash;
-    await _fbSetPasswordHash(myUsername,hash);
-    const sess={username:myUsername,verified:true,ts:Date.now()};
-    LS.set('sl_session_'+myUsername,sess);
-    LS.set('sl_session',sess);
-    $('usernameOverlay').classList.remove('show');
+    const d=await api('/auth/set-password',{u:myUsername,rt:_resetRt,h:await hashPassword(pass),device:_apiDevice()},{token:''});
+    _resetRt=null;
+    _authEnter(myUsername,d.token,false);
     toast('Пароль установлен 🔒');
-    initFirebaseMode();
+  }catch(e){
+    errEl.textContent=e.message;errEl.style.display='block';
+    if(e.code==='expired'){_resetRt=null;setTimeout(()=>{showAuthLogin();const i=$('loginUsernameInp');if(i)i.value=myUsername;},1500);}
   }finally{
     if(btn){btn.textContent='Установить пароль';btn.disabled=false;}
   }
 }
 
+// Раньше можно было войти без пароля — теперь пароль обязателен
 function skipSetPassword(){
-  const sess={username:myUsername,verified:true,ts:Date.now()};
-  LS.set('sl_session_'+myUsername,sess);
-  LS.set('sl_session',sess);
-  $('usernameOverlay').classList.remove('show');
-  initFirebaseMode();
+  _resetRt=null;
+  showAuthLogin();const i=$('loginUsernameInp');if(i)i.value=myUsername;
 }
 
 async function showChangePassword(){
@@ -261,19 +215,13 @@ async function doChangePassword(){
   const nw=$('cpNewInp')?.value||'';
   const conf=$('cpConfInp')?.value||'';
   const errEl=$('cpErr');errEl.style.display='none';
-  if(myPassword){
-    const oldHash=await hashPassword(old);
-    if(oldHash!==myPassword){errEl.textContent='Неверный текущий пароль';errEl.style.display='block';return;}
-  }
   if(nw.length<6){errEl.textContent='Новый пароль минимум 6 символов';errEl.style.display='block';return;}
   if(nw!==conf){errEl.textContent='Пароли не совпадают';errEl.style.display='block';return;}
-  const newHash=await hashPassword(nw);
-  myPassword=newHash;
-  await _fbSetPasswordHash(myUsername,newHash);
-  const sess={username:myUsername,verified:true,ts:Date.now()};
-  LS.set('sl_session_'+myUsername,sess);
-  LS.set('sl_session',sess);
-  closeModal();toast('Пароль изменён 🔒');
+  try{
+    const d=await api('/auth/change-password',{old:await hashPassword(old),h:await hashPassword(nw),device:_apiDevice()});
+    _apiSetToken(myUsername,d.token);
+    closeModal();toast('Пароль изменён 🔒 — на других устройствах нужно войти заново');
+  }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
 }
 
 function logout(){
@@ -289,6 +237,9 @@ function logout(){
 
 function doLogout(){
   closeModal();
+  // отзываем токен на сервере (не ждём ответа)
+  try{const t=_apiToken();if(t)fetch(API_URL+'/auth/logout',{method:'POST',headers:{Authorization:'Bearer '+t},keepalive:true}).catch(()=>{});}catch(e){}
+  _apiSetToken(myUsername,'');
   LS.del('sl_session');
   LS.del('sl_username');
   myUsername='';myPassword='';

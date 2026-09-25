@@ -278,8 +278,7 @@ async function adminResetPassword(pid){
 async function doAdminResetPassword(pid){
   closeModal();closePeerProfile();
   try{
-    await window._fbRemove(window._fbRef(window._fbDb,'auth/'+pid+'/hash'));
-    await window._fbSet(window._fbRef(window._fbDb,'auth/'+pid+'/reset'),{by:myUsername,ts:Date.now()});
+    await api('/admin/reset-password',{u:pid});
     _fbSend?.(pid,{type:'system_pass_reset',by:myUsername});
     toast('🔑 Пароль @'+pid+' сброшен — пусть зайдёт и задаст новый');
   }catch(e){toast('Ошибка: '+e.message);}

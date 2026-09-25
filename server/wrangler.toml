@@ -1,0 +1,9 @@
+name = "slon-api"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "slon-db"
+database_id = "0e31fbcb-1135-4123-a354-8f39c03f2ef9"

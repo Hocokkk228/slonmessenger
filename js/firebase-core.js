@@ -668,7 +668,8 @@ function onData(pid,data){
       try{localStorage.removeItem('sl_pass_'+myUsername);}catch(e){}
       myPassword='';
       toast('🔑 Твой пароль сброшен — задай новый',5000);
-      setTimeout(()=>{ if(typeof showSetPassword==='function'){ $('usernameOverlay')?.classList.add('show'); showSetPassword(myUsername);} },1500);
+      // сервер уже отозвал сессии — отправляем на вход, там предложат задать новый пароль
+      setTimeout(()=>doLogout(),1500);
       break;
     case 'voice_join':
     case 'voice_leave':

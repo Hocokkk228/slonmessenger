@@ -1473,36 +1473,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       // Активная сессия — входим без пароля
       myPassword=LS.get('sl_pass_'+myUsername,'');
       initPeer();
-      // Фоновая проверка что пароль не изменился на другом устройстве
-      setTimeout(async()=>{
-        try{
-          const fbHash=await _fbGetPasswordHash(myUsername);
-          if(fbHash&&myPassword&&fbHash!==myPassword){
-            toast('Пароль изменён — войди снова',5000);
-            setTimeout(()=>doLogout(),2000);
-          }else if(fbHash){
-            LS.set('sl_pass_'+myUsername,fbHash);
-            myPassword=fbHash;
-          }
-        }catch(e){}
-      },3000);
+      // Фоновая проверка сессии на сервере (пароль сменили / сброс админом)
+      setTimeout(()=>{if(typeof _apiCheckSession==='function')_apiCheckSession();},3000);
     }else{
-      // Нет сессии или старый формат — проверяем Firebase
+      // Нет сессии — экран входа (если пароль сброшен, сервер сам предложит задать новый)
       $('usernameOverlay').classList.add('show');
-      _fbGetPasswordHash(myUsername).then(fbHash=>{
-        if(fbHash){
-          // Пароль зарегистрирован — экран входа
-          showAuthLogin();
-          const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
-        }else{
-          // Пароля нет — предлагаем установить (уже зарегистрирован без пароля)
-          showSetPassword(myUsername);
-        }
-      }).catch(()=>{
-        // Firebase недоступен — показываем логин с тем что есть
-        showAuthLogin();
-        const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
-      });
+      showAuthLogin();
+      const inp=$('loginUsernameInp');if(inp)inp.value=myUsername;
     }
   }
 
