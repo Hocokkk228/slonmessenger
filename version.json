@@ -1,8 +1,8 @@
 {
   "android": {
-    "version": "1.4.2",
+    "version": "1.4.3",
     "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Реакции на сообщения как в Telegram, эмодзи-статус, узоры W и ХАХА"
+    "notes": "Пак анимированных слоников, узоры профиля вокруг аватарки"
   }
 }

@@ -14,6 +14,9 @@ const RX_CUSTOM={
   'c:w':   {label:'W',   txt:'W',   kw:'w win вин победа топ база'},
   'c:haha':{label:'ХАХА',txt:'ХАХА',kw:'хаха haha смех ржака lol'},
 };
+// пак «Слоники» (js/elephants.js) — анимированные
+if(typeof ELEPHANTS!=='undefined')for(const e of ELEPHANTS)RX_CUSTOM['e:'+e[0]]={label:e[1].split(' ')[0],kw:e[1]+' слон слоник',el:e[0]};
+const RX_ELS=Object.keys(RX_CUSTOM).filter(k=>k.startsWith('e:'));
 // Официальные реакции Telegram
 const RX_POPULAR='👍👎❤️🔥🥰👏😁🤔🤯😱🤬😢🎉🤩🤮💩🙏👌🕊️🤡🥱🥴😍🐳❤️‍🔥🌚🌭💯🤣⚡🍌🏆💔🤨😐🍓🍾💋🖕😈😴😭🤓👻👨‍💻👀🎃🙈😇😨🤝✍️🤗🫡🎅🎄☃️💅🤪🗿🆒💘🙉🦄😘💊🙊😎👾🤷‍♂️🤷🤷‍♀️😡';
 const RX_CATS=[
@@ -53,7 +56,7 @@ const RX_KW=[
   ['звезда star','⭐🌟✨💫'],
   ['секс','😏🍆🍑'],
 ];
-const RX_LAUGH=new Set(['😂','🤣','😹','😆','😁','c:haha']);
+const RX_LAUGH=new Set(['😂','🤣','😹','😆','😁','c:haha','e:laugh','e:rofl']);
 const RX_PARTS={
   '❤️':['❤️','🧡','💛','💚','💙','💜','🩷'],'🥰':['❤️','💕','💖'],'😍':['❤️','💖','💘'],'😘':['💋','❤️'],'💋':['💋','❤️','💕'],
   '💘':['💘','❤️'],'❤️‍🔥':['❤️‍🔥','🔥','❤️'],'💔':['💔'],'🔥':['🔥','✨','💥'],'🎉':['🎊','🎉','✨','🎈'],
@@ -61,10 +64,14 @@ const RX_PARTS={
   '🤯':['💥','✨'],'⚡':['⚡','✨'],'💯':['💯','✨'],'🏆':['⭐','✨','🏆'],'🍾':['🥂','✨','🍾'],'👏':['👏','✨'],
   '🐳':['💦','🫧'],'🌚':['⭐','✨'],'😂':['💦','✨'],'🤣':['💦','✨'],'😹':['💦'],'😆':['✨'],'😁':['✨'],
   'c:haha':['💦','✨'],'c:w':['⭐','✨','👑'],
+  'e:love':['❤️','💖','💕'],'e:heart':['❤️','💖','💕'],'e:kiss':['💋','❤️'],'e:hugs':['💕','✨'],'e:fire':['🔥','✨','💥'],
+  'e:party':['🎊','🎉','✨'],'e:popper':['🎊','🎉','✨'],'e:cake':['🎉','✨'],'e:cry':['💧','💦'],'e:sad':['💧'],'e:broken':['💔'],
+  'e:hundred':['💯','✨'],'e:money':['💵','💸','🪙'],'e:king':['👑','✨'],'e:angry':['💢'],'e:rage':['💢','💥'],'e:boom':['💥','✨'],
+  'e:laugh':['💦','✨'],'e:rofl':['💦','✨'],'e:like':['👍','✨'],'e:dislike':['👎'],'e:star':['⭐','✨','🌟'],'e:cool':['😎','✨'],
 };
 
 const _rxSeg=s=>typeof Intl.Segmenter==='function'?[...new Intl.Segmenter('ru',{granularity:'grapheme'}).segment(s)].map(x=>x.segment):[...s];
-const _rxSplit=s=>{const out=[];let rest=s;while(rest.length){if(rest.startsWith('c:')){const k=Object.keys(RX_CUSTOM).find(k=>rest.startsWith(k));if(k){out.push(k);rest=rest.slice(k.length);continue;}}const g=_rxSeg(rest)[0];out.push(g);rest=rest.slice(g.length);}return out;};
+const _rxSplit=s=>{const out=[];let rest=s;while(rest.length){if(/^[ce]:/.test(rest)){const k=Object.keys(RX_CUSTOM).find(k=>rest.startsWith(k));if(k){out.push(k);rest=rest.slice(k.length);continue;}}const g=_rxSeg(rest)[0];out.push(g);rest=rest.slice(g.length);}return out;};
 // Реакция допустима: кастомная SLON или эмодзи (без букв, кавычек и тегов)
 function _rxValid(e){
   if(typeof e!=='string'||!e)return false;
@@ -73,6 +80,7 @@ function _rxValid(e){
 }
 function rxHtml(e){
   const c=RX_CUSTOM[e];
+  if(c&&c.el)return `<span class="cx-el">${elSvg(c.el)}</span>`;
   if(c)return `<span class="cx cx-${e.slice(2)}"><b>${c.txt}</b></span>`;
   return `<span class="rx-em">${esc(e)}</span>`;
 }
@@ -89,7 +97,7 @@ function _rxRecent(){const a=LS.get(_rxRecentKey(),[]);return Array.isArray(a)?a
 function _rxTouch(e){LS.set(_rxRecentKey(),[e,..._rxRecent().filter(x=>x!==e)].slice(0,24));}
 function _rxQuick(){
   const out=[];
-  for(const e of [..._rxRecent(),'❤️','👍','🔥','c:haha','😭','c:w','🤣','👎'])if(!out.includes(e))out.push(e);
+  for(const e of [..._rxRecent(),'❤️','👍','🔥','c:haha','e:laugh','c:w','😭','🤣','👎'])if(!out.includes(e))out.push(e);
   return out.slice(0,7);
 }
 
@@ -252,16 +260,30 @@ function _rxOpenBar(msg,chat){
   b.style.top=(mt-bh-8)+'px';
   void b.offsetWidth;b.classList.add('show');
 }
+const _rxSec=(id,title,list)=>`<div class="rx-sec" data-s="${id}"><div class="rx-sec-h">${title}</div><div class="rx-grid">${list.map(e=>`<button class="rx-i" data-e="${esc(e)}">${rxHtml(e)}</button>`).join('')}</div></div>`;
+// Эмодзи-статус — только наши паки (без стандартных эмодзи)
+function _rxFullHtmlStatus(){
+  let h='';
+  if(_esGet())h+=`<button class="rx-clear">Убрать эмодзи-статус</button>`;
+  h+=_rxSec('slon','SLON',Object.keys(RX_CUSTOM).filter(k=>k.startsWith('c:')))+_rxSec('elephants','Слоники',RX_ELS);
+  return `<div class="rx-tabs"><button class="rx-tab" data-s="slon" title="SLON">${rxHtml('c:w')}</button><button class="rx-tab" data-s="elephants" title="Слоники">${rxHtml('e:smile')}</button><span class="rx-tab-ind"></span></div>
+    <div class="rx-search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input class="rx-q-inp" placeholder="Поиск статуса" autocomplete="off"></div>
+    <div class="rx-scroll"><div class="rx-res" hidden></div><div class="rx-secs">${h}</div></div>`;
+}
 // Полная панель: паки сверху, поиск, сетка с разделами
 function _rxFullHtml(){
   const rec=_rxRecent();
+  const st=_rxCtx?.mode==='status';
+  if(st)return _rxFullHtmlStatus();
   const tabs=[['recent','<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z"/></svg>','Недавние'],
-    ['slon',rxHtml('c:w'),'SLON'],['popular',rxHtml('❤️'),'Популярные'],...RX_CATS.map(c=>[c[0],rxHtml(c[2]),c[1]])];
+    ['slon',rxHtml('c:w'),'SLON'],['elephants',rxHtml('e:smile'),'Слоники'],['popular',rxHtml('❤️'),'Популярные'],...RX_CATS.map(c=>[c[0],rxHtml(c[2]),c[1]])];
   const sec=(id,title,list)=>`<div class="rx-sec" data-s="${id}"><div class="rx-sec-h">${title}</div><div class="rx-grid">${list.map(e=>`<button class="rx-i" data-e="${esc(e)}">${rxHtml(e)}</button>`).join('')}</div></div>`;
   let h='';
   if(_rxCtx?.mode==='status'&&_esGet())h+=`<button class="rx-clear">Убрать эмодзи-статус</button>`;
   if(rec.length)h+=sec('recent','Недавние',rec);
-  h+=sec('slon','SLON',Object.keys(RX_CUSTOM));
+  h+=sec('slon','SLON',Object.keys(RX_CUSTOM).filter(k=>k.startsWith('c:')));
+  h+=sec('elephants','Слоники',RX_ELS);
   h+=sec('popular','Популярные',_rxSeg(RX_POPULAR));
   for(const c of RX_CATS)h+=sec(c[0],c[1],_rxSeg(c[3]));
   const filt=[['сердце','❤️'],['лайк','👍'],['дизлайк','👎'],['праздник','🎉'],['смех','😂']];
@@ -308,9 +330,10 @@ function _rxWireFull(b){
     if(!q){res.hidden=true;secs.hidden=false;return;}
     const out=[];
     const add=s=>{for(const e of _rxSplit(s))if(!out.includes(e))out.push(e);};
-    for(const [k,v] of RX_KW)if(k.split(' ').some(w=>w.startsWith(q)||q.startsWith(w)&&w.length>=3))add(v);
+    const onlyOur=_rxCtx?.mode==='status';
+    if(!onlyOur)for(const [k,v] of RX_KW)if(k.split(' ').some(w=>w.startsWith(q)||q.startsWith(w)&&w.length>=3))add(v);
     for(const [k,c] of Object.entries(RX_CUSTOM))if(c.kw.split(' ').some(w=>w.startsWith(q)))add(k);
-    for(const e of _rxSeg(q))if(!/[a-zа-я0-9\s]/i.test(e)&&!out.includes(e))out.push(e);
+    if(!onlyOur)for(const e of _rxSeg(q))if(!/[a-zа-я0-9\s]/i.test(e)&&!out.includes(e))out.push(e);
     res.innerHTML=out.length?`<div class="rx-sec"><div class="rx-sec-h">Результаты</div><div class="rx-grid">${out.map(e=>`<button class="rx-i" data-e="${esc(e)}">${rxHtml(e)}</button>`).join('')}</div></div>`
       :'<div class="rx-empty">Ничего не нашлось</div>';
     res.hidden=false;secs.hidden=true;
@@ -413,15 +436,16 @@ document.addEventListener('dblclick',e=>{
 // ════════ ЭМОДЗИ-СТАТУС (справа от ника) ════════
 let myEmojiStatus='',_esUser=null;
 let peerEmojiStatus={},_esPeerUser=null;
+const _esOk=v=>typeof v==='string'&&!!RX_CUSTOM[v];
 function _esGet(){
-  if(_esUser!==myUsername){_esUser=myUsername;const v=LS.get('sl_u_'+myUsername+'_estatus','');myEmojiStatus=_rxValid(v)?v:'';}
+  if(_esUser!==myUsername){_esUser=myUsername;const v=LS.get('sl_u_'+myUsername+'_estatus','');myEmojiStatus=_esOk(v)?v:'';}
   return myEmojiStatus;
 }
 function _esPeers(){
   if(_esPeerUser!==myUsername){_esPeerUser=myUsername;peerEmojiStatus=LS.get('sl_u_'+myUsername+'_peerES',{})||{};}
   return peerEmojiStatus;
 }
-function _esSetLocal(v){_esGet();myEmojiStatus=_rxValid(v)?v:'';LS.set('sl_u_'+myUsername+'_estatus',myEmojiStatus);}
+function _esSetLocal(v){_esGet();myEmojiStatus=_esOk(v)?v:'';LS.set('sl_u_'+myUsername+'_estatus',myEmojiStatus);}
 function _esSet(v){
   _esSetLocal(v);
   if(typeof _spRender==='function'&&$('spPanel')?.classList.contains('open'))_spRender(true);
@@ -430,7 +454,7 @@ function _esSet(v){
   toast(v?'Эмодзи-статус установлен':'Эмодзи-статус убран');
 }
 function _esHtml(e,click){
-  if(!e||!_rxValid(e))return '';
+  if(!e||!_esOk(e))return '';
   return `<span class="es-ico"${click?` onclick="event.stopPropagation();_rxOpenPicker(this,'status')" title="Сменить эмодзи-статус"`:''}>${rxHtml(e)}</span>`;
 }
 function _esPaint(pid){
@@ -449,7 +473,7 @@ if(typeof _applyExtraProfile==='function'){
   _applyExtraProfile=function(pid,d){
     const r=f.apply(this,arguments);
     if(d&&'estatus' in d){
-      const v=_rxValid(d.estatus)?d.estatus:'',all=_esPeers();
+      const v=_esOk(d.estatus)?d.estatus:'',all=_esPeers();
       if((all[pid]||'')!==v){if(v)all[pid]=v;else delete all[pid];LS.set('sl_u_'+myUsername+'_peerES',all);}
       setTimeout(()=>_esPaint(pid),0);
     }
@@ -487,5 +511,5 @@ if(typeof _spRender==='function'){
 // ── Кастомные реакции — ещё и узоры на фон профиля (без белой подложки) ──
 for(const [k,c] of Object.entries(RX_CUSTOM)){
   const id='pat_'+k.replace(':','_');
-  if(!PREMIUM_BG_PATTERNS.some(p=>p.id===id))PREMIUM_BG_PATTERNS.push({id,emoji:rxHtml(k),label:c.label,txt:c.txt});
+  if(!PREMIUM_BG_PATTERNS.some(p=>p.id===id))PREMIUM_BG_PATTERNS.push({id,emoji:rxHtml(k),label:c.el?'Слоник: '+c.label:c.label,txt:c.txt,el:c.el});
 }

@@ -337,7 +337,11 @@ function showMsgMenu(e,msg,isOut){
   const menu=$('chatCtxMenu');
   menu.innerHTML=acts.map((x,i)=>(x.ico==='del'&&acts[i-1]?.ico!=='del'?'<div class="ctx-sep"></div>':'')+
     `<div class="ctx-item${x.danger?' danger':''}" data-i="${i}"><svg viewBox="0 0 24 24"><path d="${_MI[x.ico]}"/></svg><span>${x.label}</span></div>`).join('');
-  menu.querySelectorAll('.ctx-item').forEach(el=>el.onclick=ev=>{ev.stopPropagation();closeMsgMenu();acts[+el.dataset.i].fn();});
+  menu.querySelectorAll('.ctx-item').forEach(el=>el.onclick=ev=>{
+    ev.stopPropagation();el.classList.add('picked');closeMsgMenu();
+    // «Ответить» трогает поле ввода (клавиатура на телефоне) — ждём, пока меню плавно исчезнет
+    const fn=acts[+el.dataset.i].fn;if(acts[+el.dataset.i].ico==='reply')setTimeout(fn,170);else fn();
+  });
   [...menu.children].forEach((el,i)=>{el.style.animationDelay=(i*0.02)+'s';});
   // у курсора (или у кнопки ⋮ / точки долгого нажатия)
   let x=e.clientX,y=e.clientY;
