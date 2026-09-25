@@ -674,6 +674,12 @@
       </div>
 
       <div class="inp-wrap" id="inpWrap">
+        <!-- Ответ на сообщение: плавно выезжает над полем ввода -->
+        <div class="reply-bar" id="replyBar">
+          <svg class="rb-ico" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
+          <div class="rb-body"><b id="rbName"></b><span id="rbText"></span></div>
+          <button class="rb-x" onclick="cancelReply()" title="Отменить ответ"><svg viewBox="0 0 24 24"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg></button>
+        </div>
         <div class="inp-row">
           <button class="inp-icon-btn" onclick="$('fileIn').click()">
             <svg><use href="#i-attach"/></svg>

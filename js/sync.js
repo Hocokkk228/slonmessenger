@@ -254,7 +254,7 @@ async function _mlMaterialize(key,r0){
   if(r.edited)base.edited=true;
   if(e2e){base._e2e=true;base._ev=r.ev||0;}
   const k=r.k||'text';
-  if(k==='text')return {...base,text:r.text||''};
+  if(k==='text')return {...base,text:r.text||'',...(r.reply&&r.reply.id?{reply:{id:String(r.reply.id),name:String(r.reply.name||''),text:String(r.reply.text||'').slice(0,120)}}:{})};
   const data=r.mk?await _e2eFetchMedia(r.m,r.mk,r.mime):r.m?await _srvDownload(r.m):await _msDownload(r.id);
   if(k==='photo'){
     const photoId=storePhoto(data);const thumb=await makeThumb(data);

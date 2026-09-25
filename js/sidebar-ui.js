@@ -325,8 +325,8 @@ function addSbGroup(gid){
 }
 
 function setSbStatus(pid,ok){
+  // «в сети» — только зелёная точка (как в Telegram): превью и порядок чатов не трогаем
   const dot=$('dot-'+pid);if(dot)dot.classList.toggle('on',ok);
-  if(ok)updatePreview(pid,'В сети');
   if(activeChat===pid){updateChatHeader();updateReconBanner();}
 }
 
@@ -359,13 +359,14 @@ function updatePreview(id,txt,ts){
         :(d.getDate()+'.'+(d.getMonth()+1).toString().padStart(2,'0'));
     }
   }
-  // Sort sidebar item to top
+  // Новое сообщение поднимает чат наверх — но под закреплённые (они всегда сверху)
   const item=$('si-'+id);
-  if(item&&id!=='ai'){
+  if(item&&id!=='ai'&&!pinnedChats[id]&&item.parentNode===$('sbList')){
     const list=$('sbList');
-    const ai=$('si-ai');
-    // Insert after ai
-    if(ai&&ai.nextSibling!==item)list.insertBefore(item,ai.nextSibling||null);
+    let anchor=$('si-ai');
+    for(const el of list.children){if(el.id&&pinnedChats[el.id.slice(3)])anchor=el;}
+    const next=anchor?anchor.nextSibling:list.firstChild;
+    if(next!==item)list.insertBefore(item,next);
   }
 }
 

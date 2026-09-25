@@ -1,8 +1,8 @@
 {
   "android": {
-    "version": "1.4.0",
-    "size": "6,2 МБ",
+    "version": "1.4.1",
+    "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Уведомления как в Telegram — даже при закрытом приложении"
+    "notes": "Текст сообщений в уведомлениях (зашифрованно), ответы на сообщения"
   }
 }

@@ -110,7 +110,9 @@ function sendMsg(){
   if(activeChat.startsWith('g_')){sendGrpMsg(activeChat,txt);return;}
   const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ts=Date.now();
+  const reply=_replyTo?{..._replyTo}:null;cancelReply();
   const msg={id:mid,sender:'me',text:txt,ts,time:fmtTime(ts),status:'sent'};
+  if(reply)msg.reply=reply;
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: '+txt.slice(0,28));saveAll();
@@ -127,21 +129,21 @@ function sendMsg(){
     },delay);
   }else if(activeChat==='saved'){
     // Избранное — личный блокнот: только на свои устройства
-    if(typeof _mlPost==='function')_mlPost('saved',{id:mid,k:'text',text:txt,ts});
+    if(typeof _mlPost==='function')_mlPost('saved',{id:mid,k:'text',text:txt,ts,reply:reply||undefined});
   }else{
     const c=conns[activeChat];
     if(_fbMode||c?.open){
       // при шифровании открытый текст не шлём: сообщение идёт зашифрованным в журнале
       if(!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp))
-        sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
+        sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null,reply:reply||undefined});
       // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
-      if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts});
+      if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts,reply:reply||undefined});
     }
     else toast('Нет интернета — сообщение не отправлено');
   }
 }
 
-function recvMsg(pid,text,nick,avatar,mid,ts){
+function recvMsg(pid,text,nick,avatar,mid,ts,reply){
   if(!chatHist[pid])chatHist[pid]=[];
   if(nick&&nick!=='')peerNames[pid]=nick;
   if(avatar!==undefined){peerAvatars[pid]=avatar;updateSbAvatar(pid);}
@@ -151,6 +153,7 @@ function recvMsg(pid,text,nick,avatar,mid,ts){
   // Время сообщения — оригинальный ts отправителя, иначе текущее
   const msgTs=ts||Date.now();
   const msg={id:msgId,sender:'inc',senderId:pid,name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,ts:msgTs,time:fmtTime(msgTs)};
+  if(reply&&reply.id)msg.reply={id:String(reply.id),name:String(reply.name||''),text:String(reply.text||'').slice(0,120)};
   chatHist[pid].push(msg);
   // Отправляем read receipt если чат открыт
   if(activeChat===pid)setTimeout(()=>_sendRead(pid),50);
@@ -260,7 +263,7 @@ function appendMsg(msg,container){
   }else{
     const bub=document.createElement('div');bub.className='msg-bub';
     // Линки: кликабельные, текст эскейпим внутри linkify
-    bub.innerHTML=linkify(msg.text||'');
+    bub.innerHTML=_replyHtml(msg.reply)+linkify(msg.text||'');
     if(msg.edited){
       const ed=document.createElement('span');ed.style.cssText='font-size:10px;opacity:.5;margin-left:4px';ed.textContent='ред.';
       bub.appendChild(ed);
@@ -296,55 +299,107 @@ function sysMsg(id,text){
   }
 }
 
+// ── Меню сообщения: то же, что у чатов в сайдбаре (иконки, появляется у курсора) ──
+const _MI={
+  reply:'M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z',
+  copy:'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
+  save:'M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z',
+  edit:'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  pin:'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z',
+  dl:'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+  del:'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+};
+let _msgMenuTarget=null;
 function showMsgMenu(e,msg,isOut){
+  e.preventDefault?.();e.stopPropagation?.();
   closeMsgMenu();
-  const div=document.createElement('div');
-  div.className='msg-menu-popup';
-  const items=[];
-  // Скачать — для фото и файлов
-  if(msg.photoId){
-    items.push(['⬇️ Скачать фото',()=>_downloadPhoto(msg)]);
-  } else if(msg.fileInfo&&msg.fileDataId){
-    items.push(['⬇️ Скачать файл',()=>dlFile(msg.fileDataId,msg.fileInfo.name)]);
-  } else if(msg.voiceData){
-    items.push(['⬇️ Скачать аудио',()=>_downloadVoice(msg)]);
-  } else if(msg.slonData){
-    items.push(['⬇️ Скачать слонкружок',()=>_downloadSlon(msg)]);
-  }
-  if(msg.text){
-    items.push(['📋 Копировать',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');}]);
-  }
-  // Сохранить в Избранное — для всех сообщений кроме тех, что уже там
-  if(activeChat!=='saved'){
-    items.push(['⭐ Сохранить',()=>_saveMsgToSaved(msg)]);
-  }
-  // Для SLON-канала: admins могут удалять и редактировать посты
+  _msgMenuTarget={msg,isOut};
+  const acts=[];
+  const add=(ico,label,fn,danger)=>acts.push({ico,label,fn,danger});
+  const isChannel=_isChannelId?.(activeChat)||activeChat===SLON_CHANNEL_ID;
+  if(!isChannel&&activeChat!=='ai')add('reply','Ответить',()=>startReply(msg));
+  if(msg.text)add('copy','Копировать',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');});
+  if(msg.photoId)add('dl','Скачать фото',()=>_downloadPhoto(msg));
+  else if(msg.fileInfo&&msg.fileDataId)add('dl','Скачать файл',()=>dlFile(msg.fileDataId,msg.fileInfo.name));
+  else if(msg.voiceData)add('dl','Скачать аудио',()=>_downloadVoice(msg));
+  else if(msg.slonData)add('dl','Скачать кружок',()=>_downloadSlon(msg));
+  if(activeChat!=='saved')add('save','В Избранное',()=>_saveMsgToSaved(msg));
   if(activeChat===SLON_CHANNEL_ID&&CHANNEL_ADMINS.has(myUsername)){
-    if(msg.text)items.push(['✏️ Редактировать пост',()=>adminEditChannelPost(msg)]);
-    items.push(['🗑 Удалить пост у всех',()=>adminDeleteChannelPost(msg),'danger']);
-    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
-  } else {
-    if(isOut&&msg.text)items.push(['✏️ Редактировать',()=>startEditMsg(msg)]);
-    items.push(['📌 '+(msg.pinned?'Открепить':'Закрепить'),()=>togglePinMsg(msg)]);
-    items.push(['🗑 Удалить у себя',()=>deleteMsg(msg,false)]);
-    if(isOut){
-      items.push(['🗑 Удалить у всех',()=>deleteMsg(msg,true),'danger']);
-    }
+    if(msg.text)add('edit','Редактировать пост',()=>adminEditChannelPost(msg));
+    add('del','Удалить у себя',()=>deleteMsg(msg,false));
+    add('del','Удалить пост у всех',()=>adminDeleteChannelPost(msg),true);
+  }else{
+    if(isOut&&msg.text)add('edit','Изменить',()=>startEditMsg(msg));
+    add('pin',msg.pinned?'Открепить':'Закрепить',()=>togglePinMsg(msg));
+    add('del','Удалить у себя',()=>deleteMsg(msg,false),!isOut);
+    if(isOut)add('del','Удалить у всех',()=>deleteMsg(msg,true),true);
   }
-  items.forEach(([label,fn,cls])=>{
-    const btn=document.createElement('button');
-    btn.innerHTML=_menuLabelHtml(label);if(cls)btn.className=cls; // значок вместо эмодзи
-    btn.onclick=()=>{fn();closeMsgMenu();};
-    div.appendChild(btn);
+  const menu=$('chatCtxMenu');
+  menu.innerHTML=acts.map((x,i)=>(x.ico==='del'&&acts[i-1]?.ico!=='del'?'<div class="ctx-sep"></div>':'')+
+    `<div class="ctx-item${x.danger?' danger':''}" data-i="${i}"><svg viewBox="0 0 24 24"><path d="${_MI[x.ico]}"/></svg><span>${x.label}</span></div>`).join('');
+  menu.querySelectorAll('.ctx-item').forEach(el=>el.onclick=ev=>{ev.stopPropagation();closeMsgMenu();acts[+el.dataset.i].fn();});
+  [...menu.children].forEach((el,i)=>{el.style.animationDelay=(i*0.02)+'s';});
+  // у курсора (или у кнопки ⋮ / точки долгого нажатия)
+  let x=e.clientX,y=e.clientY;
+  if(x==null||(x===0&&y===0)){const r=e.target?.getBoundingClientRect?.();if(r){x=r.left;y=r.bottom;}}
+  menu.classList.add('show');
+  const w=menu.offsetWidth||206,h=menu.offsetHeight||acts.length*42;
+  menu.style.left=Math.max(8,Math.min(x,window.innerWidth-w-8))+'px';
+  menu.style.top=Math.max(8,Math.min(y,window.innerHeight-h-8))+'px';
+}
+function closeMsgMenu(){$('chatCtxMenu')?.classList.remove('show');_msgMenuTarget=null;}
+
+// ПКМ по сообщению и долгое нажатие на телефоне — открыть меню
+(function(){
+  const find=el=>{
+    const w=el.closest?.('.msg[data-msg-id]');if(!w)return null;
+    const f=_getMsgFromHist(w.dataset.msgId);if(!f)return null;
+    return {m:f.m,isOut:w.classList.contains('out')};
+  };
+  const box=()=>$('msgs');
+  document.addEventListener('contextmenu',e=>{
+    if(!box()?.contains(e.target))return;
+    if(e.target.closest('a,input,textarea,video'))return;
+    const f=find(e.target);if(!f)return;
+    showMsgMenu(e,f.m,f.isOut);
   });
-  document.body.appendChild(div);
-  _msgMenuEl=div;
-  const r=e.target.getBoundingClientRect();
-  let top=r.bottom+4,left=r.left-160;
-  if(left<8)left=8;
-  if(top+div.offsetHeight>window.innerHeight)top=r.top-div.offsetHeight-4;
-  div.style.cssText='top:'+top+'px;left:'+left+'px;';
-  setTimeout(()=>document.addEventListener('click',closeMsgMenu,{once:true}),10);
+  let lp=null;
+  document.addEventListener('touchstart',e=>{
+    if(!box()?.contains(e.target)||e.touches.length>1)return;
+    const f=find(e.target);if(!f)return;
+    const t=e.touches[0];
+    lp=setTimeout(()=>{lp=null;navigator.vibrate?.(15);showMsgMenu({clientX:t.clientX,clientY:t.clientY,target:e.target},f.m,f.isOut);},450);
+  },{passive:true});
+  const cancel=()=>{if(lp){clearTimeout(lp);lp=null;}};
+  document.addEventListener('touchmove',cancel,{passive:true});
+  document.addEventListener('touchend',cancel,{passive:true});
+})();
+
+// ── Ответ на сообщение (как в Telegram): над полем ввода плавно выезжает цитата ──
+let _replyTo=null;
+function _replySnippet(m){
+  return m.text||(m.photoId?'📷 Фото':m.voiceData?'🎙️ Голосовое':m.slonData?'🐘 Кружок':m.fileInfo?('📎 '+m.fileInfo.name):'Сообщение');
+}
+function _replyName(m){return m.sender==='me'?(myNick||'Вы'):(m.name||peerNames[m.senderId]||peerNames[activeChat]||'');}
+function startReply(m){
+  _replyTo={id:m.id,name:_replyName(m),text:String(_replySnippet(m)).slice(0,120)};
+  $('rbName').textContent=_replyTo.name;
+  $('rbText').textContent=_replyTo.text;
+  $('inpWrap').classList.add('replying');
+  if(typeof cancelEdit==='function'&&$('msgInp').dataset.editId)cancelEdit();
+  $('msgInp').focus();
+}
+function cancelReply(){_replyTo=null;$('inpWrap').classList.remove('replying');}
+// нажали на цитату — прокрутить к исходному сообщению и подсветить
+function jumpToMsg(id){
+  const el=document.querySelector('[data-msg-id="'+id+'"]');
+  if(!el){toast('Сообщение не найдено');return;}
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.remove('msg-flash');void el.offsetWidth;el.classList.add('msg-flash');
+}
+function _replyHtml(r){
+  if(!r)return '';
+  return `<div class="msg-reply" onclick="event.stopPropagation();jumpToMsg('${String(r.id).replace(/[^\w-]/g,'')}')"><b>${esc(r.name||'')}</b><span>${esc(r.text||'')}</span></div>`;
 }
 
 async function _downloadPhoto(msg){

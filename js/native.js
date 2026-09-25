@@ -171,7 +171,7 @@ if(IS_NATIVE){
   setInterval(()=>{
     if(_nativeBgOn||!myUsername||typeof _apiToken!=='function'||!_apiToken()||!_NP.SlonSystem)return;
     _NP.SlonSystem.startBackground({token:_apiToken(),api:API_URL,dev:_myDeviceId||''})
-      .then(()=>{_nativeBgOn=true;}).catch(()=>{});
+      .then(()=>{_nativeBgOn=true;if(typeof _e2eNotifSync==='function')_e2eNotifSync();}).catch(()=>{});
   },4000);
   // Приложение открыли кнопкой в уведомлении: «Ответить» на звонок / переход в чат
   const _onLaunch=l=>{

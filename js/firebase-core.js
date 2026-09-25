@@ -538,7 +538,7 @@ function onData(pid,data){
       saveAll();
       break;
     case 'msg':
-      recvMsg(pid,data.text,data.nick,data.avatar,data.id,data.ts);
+      recvMsg(pid,data.text,data.nick,data.avatar,data.id,data.ts,data.reply);
       break;
     case 'read':{
       // Собеседник прочитал наши сообщения: по списку id и «всё до момента upto»

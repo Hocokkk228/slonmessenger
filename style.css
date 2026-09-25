@@ -2401,3 +2401,24 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .nd-btn{flex-shrink:0;border:none;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-left:8px;}
 .nd-ok,.nd-bad{display:inline-flex;align-items:center;gap:5px;}
 .nd-ic{width:16px;height:16px;flex-shrink:0;fill:currentColor;}
+
+/* ── Ответ на сообщение (как в Telegram) ── */
+.reply-bar{display:flex;align-items:center;gap:10px;max-height:0;opacity:0;overflow:hidden;padding:0 10px;background:var(--bg2);border-radius:18px 18px 0 0;transition:max-height .22s cubic-bezier(.2,.8,.2,1),opacity .18s,padding .22s;box-shadow:0 1px 2px rgba(16,35,47,.15);}
+.inp-wrap.replying .reply-bar{max-height:64px;opacity:1;padding:8px 10px 4px;}
+.inp-wrap.replying .inp-row{border-top-left-radius:0;border-top-right-radius:0;}
+.rb-ico{width:22px;height:22px;fill:var(--accent);flex-shrink:0;}
+.rb-body{flex:1;min-width:0;display:flex;flex-direction:column;border-left:2px solid var(--accent);padding:1px 0 1px 8px;border-radius:2px;background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.rb-body b{font-size:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rb-body span{font-size:13px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rb-x{flex-shrink:0;width:32px;height:32px;border:none;border-radius:50%;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.rb-x:hover{background:var(--hover);}
+.rb-x svg{width:20px;height:20px;fill:var(--accent);}
+/* цитата внутри пузыря */
+.msg-reply{display:flex;flex-direction:column;margin:0 0 4px;padding:3px 8px;border-left:3px solid var(--accent);border-radius:4px;background:color-mix(in srgb,var(--accent) 10%,transparent);cursor:pointer;max-width:100%;}
+.msg.out .msg-reply{border-left-color:var(--msg-out-time,currentColor);background:color-mix(in srgb,var(--msg-out-time,#4fae4e) 14%,transparent);}
+.msg-reply b{font-size:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msg.out .msg-reply b{color:var(--msg-out-time,inherit);}
+.msg-reply span{font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* подсветка сообщения при переходе по цитате */
+.msg.msg-flash .msg-body{animation:msgFlash 1.2s ease;}
+@keyframes msgFlash{0%,40%{filter:brightness(.85) drop-shadow(0 0 0 var(--accent));background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:14px;}100%{background:transparent;}}

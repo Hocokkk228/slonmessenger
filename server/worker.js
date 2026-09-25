@@ -275,14 +275,21 @@ const routes={
     const reg=await env.DB.prepare('SELECT 1 AS x FROM e2e_devices WHERE username=? AND device_id=?').bind(u,dev).first();
     return json({ok:true,count:r?.n||0,registered:!!reg});
   },
+  // Ключ уведомлений устройства (подписан его identity-ключом; проверяет отправитель)
+  async 'POST /e2e/nk'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    if(!d.nk||!d.sig||String(d.nk).length>64||String(d.sig).length>128)return err('bad_request','Неверный ключ');
+    await env.DB.prepare('UPDATE e2e_devices SET nk=?,nks=? WHERE username=? AND device_id=?').bind(String(d.nk),String(d.sig),u,+d.deviceId).run();
+    return json({ok:true});
+  },
   // Устройства пользователей (для рассылки копий сообщения каждому устройству)
   async 'GET /e2e/devices'(req,env){
     const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
     const us=String(new URL(req.url).searchParams.get('u')||'').toLowerCase().split(',').filter(validUser).slice(0,20);
     if(!us.length)return json({ok:true,devices:{}});
-    const rows=(await env.DB.prepare('SELECT username,device_id,ik FROM e2e_devices WHERE username IN ('+us.map(()=>'?').join(',')+')').bind(...us).all()).results||[];
+    const rows=(await env.DB.prepare('SELECT username,device_id,ik,nk,nks FROM e2e_devices WHERE username IN ('+us.map(()=>'?').join(',')+')').bind(...us).all()).results||[];
     const out={};for(const x of us)out[x]=[];
-    for(const r of rows)out[r.username].push({d:r.device_id,ik:r.ik});
+    for(const r of rows)out[r.username].push(r.nk?{d:r.device_id,ik:r.ik,nk:r.nk,nks:r.nks}:{d:r.device_id,ik:r.ik});
     return json({ok:true,devices:out});
   },
   // Пакет ключей устройства для первого сообщения: одноразовый предключ выдаётся ОДИН раз

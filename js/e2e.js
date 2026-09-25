@@ -72,6 +72,7 @@ async function _e2eInit(){
     _e2eVk=await _idb.get(_e2eK('vk'));
     _e2eOn=true;                                   // шифруем сразу; ключ бэкапа — только для сейфа истории
     setTimeout(_e2eRepairPlaceholders,500);
+    _e2eNotifSync();
     if(!_e2eVk)_e2eAskVkFromDevices();             // пароля не знаем — ключ пришлёт другое моё устройство
     if(_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp)_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});
   }catch(e){console.warn('[e2e] init:',e);}
@@ -135,6 +136,58 @@ async function _e2eOnPasswordChange(newPassword){
   try{if(_e2eVk)await api('/e2e/vaultkey',{wrapped:await _e2eWrapWith(newPassword),replace:true});}catch(e){}
 }
 // ── Устройства собеседника и мои ──
+// ── Ключ уведомлений (приложение Android) ──
+// Отдельная пара X25519 устройства: собеседник шифрует под неё короткий текст для шторки.
+// Приватная половина отдаётся фоновой части приложения (Java) — она показывает текст,
+// даже когда приложение закрыто. Сервер и Google видят только шифр.
+// Публичная половина подписана identity-ключом устройства — подменить её сервер не может.
+const _NK_INFO=new TextEncoder().encode('SLON_Notif_v1');
+async function _e2eNotifSync(){
+  if(typeof IS_NATIVE==='undefined'||!IS_NATIVE||!_e2eMe||typeof _NP==='undefined'||!_NP.SlonSystem?.setNotifKey)return;
+  try{
+    const S=crypto.subtle;
+    if(!_e2eMe.nk){
+      const k=await S.generateKey({name:'X25519'},true,['deriveBits']);
+      const pub=new Uint8Array(await S.exportKey('raw',k.publicKey));
+      const sk=await S.importKey('jwk',_e2eMe.identity.sign.priv,{name:'Ed25519'},false,['sign']);
+      const sig=new Uint8Array(await S.sign({name:'Ed25519'},sk,pub));
+      _e2eMe.nk={pub:E2E.b64(pub),sig:E2E.b64(sig),priv:(await S.exportKey('jwk',k.privateKey)).d};
+      await _e2eSave();
+    }
+    const flag=_e2eK('nkreg');
+    if(localStorage.getItem(flag)!==_e2eMe.nk.pub){
+      await api('/e2e/nk',{deviceId:_e2eMe.deviceId,nk:_e2eMe.nk.pub,sig:_e2eMe.nk.sig});
+      localStorage.setItem(flag,_e2eMe.nk.pub);
+    }
+    await _NP.SlonSystem.setNotifKey({addr:_e2eAddr(myUsername,_e2eMe.deviceId),priv:_e2eMe.nk.priv});
+  }catch(e){console.warn('[e2e] nk',e);}
+}
+const _nkOk={};                    // проверенные подписи ключей уведомлений
+async function _e2eSealNotif(x,text){
+  if(!x.nk||!x.nks)return null;
+  const S=crypto.subtle,u=E2E.unb64,id=x.ik+x.nk;
+  if(_nkOk[id]===undefined){
+    try{const vk=await S.importKey('raw',u(x.ik),{name:'Ed25519'},false,['verify']);
+      _nkOk[id]=await S.verify({name:'Ed25519'},vk,u(x.nks),u(x.nk));}catch(e){_nkOk[id]=false;}
+  }
+  if(!_nkOk[id])return null;
+  const eph=await S.generateKey({name:'X25519'},true,['deriveBits']);
+  const pub=await S.importKey('raw',u(x.nk),{name:'X25519'},false,[]);
+  const shared=new Uint8Array(await S.deriveBits({name:'X25519',public:pub},eph.privateKey,256));
+  const hk=await S.importKey('raw',shared,'HKDF',false,['deriveBits']);
+  const key=await S.importKey('raw',await S.deriveBits({name:'HKDF',hash:'SHA-256',salt:new Uint8Array(32),info:_NK_INFO},hk,256),'AES-GCM',false,['encrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await S.encrypt({name:'AES-GCM',iv},key,E2E.te.encode(String(text).slice(0,150))));
+  const ep=new Uint8Array(await S.exportKey('raw',eph.publicKey));
+  const out=new Uint8Array(32+12+ct.length);out.set(ep);out.set(iv,32);out.set(ct,44);
+  return E2E.b64(out);
+}
+function _e2ePreviewOf(p){
+  const k=p.k||'text';
+  if(k==='text')return p.text||'';
+  return {photo:'📷 Фото',voice:'🎙️ Голосовое сообщение',slon:'🐘 Слонкружок',file:'📎 '+(p.name||'Файл')}[k]||'Новое сообщение';
+}
+
 async function _e2eDevices(users){
   const need=users.filter(u=>!_e2eDevCache[u]||Date.now()-_e2eDevCache[u].ts>60000);
   if(need.length){
@@ -168,14 +221,17 @@ async function _e2eSeal(chat,payload){
     const devs=await _e2eDevices(users);
     if(chat!=='saved'&&!devs[chat].length)return null;       // у собеседника старая версия
     const bytes=_e2eEnc(payload),from={u:myUsername,d:_e2eMe.deviceId};
-    const peer={},self={};
-    if(chat!=='saved')for(const x of devs[chat]){try{peer[_e2eAddr(chat,x.d)]=await _e2eEncryptTo(chat,x.d,x.ik,bytes);}catch(e){console.warn('[e2e] to',chat,x.d,e);}}
+    const peer={},self={},n={},prev=_e2ePreviewOf(payload);
+    if(chat!=='saved')for(const x of devs[chat]){
+      try{peer[_e2eAddr(chat,x.d)]=await _e2eEncryptTo(chat,x.d,x.ik,bytes);}catch(e){console.warn('[e2e] to',chat,x.d,e);continue;}
+      try{const s=await _e2eSealNotif(x,prev);if(s)n[_e2eAddr(chat,x.d)]=s;}catch(e){}
+    }
     for(const x of devs[myUsername]){
       if(x.d===_e2eMe.deviceId)continue;
       try{self[_e2eAddr(myUsername,x.d)]=await _e2eEncryptTo(myUsername,x.d,x.ik,bytes);}catch(e){console.warn('[e2e] self',x.d,e);}
     }
     if(chat!=='saved'&&!Object.keys(peer).length)return null;
-    return {self:{from,c:self},peer:{from,c:peer}};
+    return {self:{from,c:self},peer:{from,c:peer},n};
   });
 }
 
@@ -286,16 +342,18 @@ async function _e2eOpen(key,rec){
 // payload — всё содержимое сообщения; снаружи остаются только id/время/тип «e2e»
 async function _e2ePost(chat,key,rec){
   const payload={};
-  for(const f of ['k','text','name','mime','size','dur','wave','m','mk'])if(rec[f]!=null)payload[f]=rec[f];
+  for(const f of ['k','text','name','mime','size','dur','wave','m','mk','reply'])if(rec[f]!=null)payload[f]=rec[f];
   const sealed=await _e2eSeal(chat,payload).catch(e=>{console.warn('[e2e] seal',e);return null;});
   if(!sealed)return false;
   await _idb.put(_e2eK('p:'+key+':0'),payload);
   _e2eVaultPut(key,0,payload);
   const base={id:rec.id,ts:rec.ts,k:'e2e'};
-  const ok=_hubSend({t:'ml_post',chat,key,rec:{...base,e:sealed.self},recPeer:{...base,e:sealed.peer}});
+  const recPeer={...base,e:sealed.peer};if(Object.keys(sealed.n||{}).length)recPeer.n=sealed.n;
+  const ok=_hubSend({t:'ml_post',chat,key,rec:{...base,e:sealed.self},recPeer});
   if(!ok)return false;
-  // пуш — без текста: сервер и почтальоны пушей не должны видеть переписку
-  if(chat!=='saved'&&typeof _pushMsg==='function')_pushMsg(chat,'🔒 Новое сообщение');
+  // веб-пуш — без текста: сервер и почтальоны пушей не должны видеть переписку
+  // (в приложении Android текст приходит зашифрованным под ключ уведомлений — см. выше)
+  if(chat!=='saved'&&typeof _pushMsg==='function')_pushMsg(chat,'Новое сообщение');
   const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);if(m){m._e2e=true;m._mk=key;}
   return true;
 }

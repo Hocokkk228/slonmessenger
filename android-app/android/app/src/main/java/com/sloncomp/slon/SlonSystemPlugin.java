@@ -83,6 +83,15 @@ public class SlonSystemPlugin extends Plugin {
         SlonFcmService.register(getContext());      // FCM-токен — на наш сервер
         call.resolve();
     }
+    // Ключ уведомлений этого устройства (приватный X25519) — чтобы показывать текст зашифрованных сообщений
+    @PluginMethod
+    public void setNotifKey(PluginCall call) {
+        String addr = call.getString("addr", ""), priv = call.getString("priv", "");
+        if (addr.isEmpty() || priv.isEmpty()) { call.reject("no key"); return; }
+        getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit()
+                .putString("nk_addr", addr).putString("nk_priv", priv).apply();
+        call.resolve();
+    }
     @PluginMethod
     public void stopBackground(PluginCall call) {
         getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit().clear().apply();

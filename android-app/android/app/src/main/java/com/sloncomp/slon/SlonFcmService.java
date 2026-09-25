@@ -21,8 +21,8 @@ import okhttp3.RequestBody;
 /**
  * Пуши как в Telegram (там — GcmPushListenerService): Google Play Services будит
  * SLON, даже если приложение убито/смахнуто, и мы сразу показываем уведомление.
- * FCM только будит — сами сообщения по-прежнему идут с сервера SLON,
- * а текст зашифрованных чатов в пуш не кладётся.
+ * FCM только будит — сами сообщения по-прежнему идут с сервера SLON.
+ * Текст зашифрованных чатов приходит только шифром под ключ этого устройства.
  */
 public class SlonFcmService extends FirebaseMessagingService {
 
@@ -34,7 +34,10 @@ public class SlonFcmService extends FirebaseMessagingService {
         switch (type) {
             case "msg":
                 if (!SlonBgService.appVisible)
-                    SlonNotify.message(c, str(d, "chat"), str(d, "title"), str(d, "body"));
+                {
+                    String s = SlonNotifKey.open(c, d.get("n"));   // зашифрованный текст для шторки
+                    SlonNotify.message(c, str(d, "chat"), str(d, "title"), s != null ? s : str(d, "body"));
+                }
                 break;
             case "call":
                 if (!SlonBgService.appVisible)

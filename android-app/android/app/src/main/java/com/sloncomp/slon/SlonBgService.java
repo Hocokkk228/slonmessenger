@@ -177,7 +177,11 @@ public class SlonBgService extends Service {
                     case "voice": body = "🎙️ Голосовое"; break;
                     case "slon": body = "🐘 Слонкружок"; break;
                     case "file": body = "📎 " + rec.optString("name", "Файл"); break;
-                    case "e2e": body = "🔒 Новое сообщение"; break;   // содержимое зашифровано — сервер его не знает
+                    case "e2e": {   // содержимое зашифровано; текст для шторки — под ключ уведомлений этого устройства
+                        String s = SlonNotifKey.open(this, rec.optJSONObject("n"));
+                        body = s != null ? s : "Новое сообщение";
+                        break;
+                    }
                     default: body = rec.optString("text", "Новое сообщение");
                 }
                 String nick = rec.optString("nick", "");

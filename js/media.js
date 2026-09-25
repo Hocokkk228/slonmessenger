@@ -80,8 +80,6 @@ function _rcSetMode(m){
 }
 function _rcToggleMode(){
   _rcSetMode(_rcMode==='voice'?'slon':'voice');
-  // Как в Telegram: тап только переключает режим — подсказываем, как записывать
-  toast(_rcMode==='slon'?'📹 Кружок — удерживай кнопку для записи':'🎙️ Голосовое — удерживай кнопку для записи');
   const b=$('voiceRecBtn');
   if(b){b.classList.remove('rc-flip');void b.offsetWidth;b.classList.add('rc-flip');}
 }
@@ -171,7 +169,7 @@ async function _rcBegin(locked){
   // Пока спрашивали разрешение, запись отменили или палец уже отпустили
   if(_rec!==me||me.releasedEarly){
     stream.getTracks().forEach(t=>t.stop());
-    if(_rec===me){_rec=null;_rcShowBar(false);toast('Удерживай кнопку, чтобы записать');}
+    if(_rec===me){_rec=null;_rcShowBar(false);}
     return;
   }
   me.stream=stream;
@@ -299,7 +297,7 @@ function _rcStop(send){
   if(!me.mr){_rcCleanup(me);return;}
   if(ms<500){ // случайный тычок — такое не отправляем
     me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}
-    _rcCleanup(me);toast('Удерживай кнопку, чтобы записать');return;
+    _rcCleanup(me);return;
   }
   if(activeChat!==me.chat){me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}_rcCleanup(me);toast('Запись отменена — чат сменился');return;}
   const dur=Math.max(1,Math.round(ms/1000));
@@ -898,7 +896,7 @@ appendMsg=function(msg,container){
     const c=container||$('msgs');
     if(msg.sender==='system'){_origAppendMsg(msg,c);return;}
     const isOut=msg.sender==='me';
-    const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
+    const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');wrap.dataset.msgId=msg.id;
     const av=document.createElement('div');av.className='msg-av';
     if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
     else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}
@@ -921,7 +919,7 @@ appendMsg=function(msg,container){
     const c=container||$('msgs');
     if(msg.sender==='system'){_origAppendMsg(msg,c);return;}
     const isOut=msg.sender==='me';
-    const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');
+    const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');wrap.dataset.msgId=msg.id;
     const av=document.createElement('div');av.className='msg-av';
     if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
     else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}

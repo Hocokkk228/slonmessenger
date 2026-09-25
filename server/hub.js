@@ -138,9 +138,12 @@ export class UserHub extends DurableObject{
     this.sql.exec('INSERT OR REPLACE INTO ml(key,rec,upd) VALUES(?,?,?)',key,JSON.stringify(rec),now);
     this.broadcast({t:'ml',key,rec,upd:now},except);
     if(!old&&!rec.out&&rec.chat!=='saved'&&!this.appSockets().length){
-      const lbl={photo:'📷 Фото',voice:'🎙️ Голосовое',slon:'🐘 Слонкружок',file:'📎 Файл',e2e:'🔒 Новое сообщение'};
+      const lbl={photo:'📷 Фото',voice:'🎙️ Голосовое',slon:'🐘 Слонкружок',file:'📎 Файл',e2e:'Новое сообщение'};
       const body=lbl[rec.k]||(rec.text?String(rec.text).slice(0,200):'Новое сообщение');
-      this.ctx.waitUntil(sendFcm(this.env,this.me,{type:'msg',chat:rec.chat,title:rec.nick||('@'+rec.chat),body}).catch(()=>{}));
+      const data={type:'msg',chat:rec.chat,title:rec.nick||('@'+rec.chat),body};
+      // текст для шторки, зашифрованный под ключи уведомлений устройств (сервер его не читает)
+      if(rec.n){const n=JSON.stringify(rec.n);if(n.length<3500)data.n=n;}
+      this.ctx.waitUntil(sendFcm(this.env,this.me,data).catch(()=>{}));
     }
   }
   mlPatch(key,patch,except){

@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS e2e_devices (
   spk_pub   TEXT NOT NULL,
   spk_sig   TEXT NOT NULL,
   updated   INTEGER NOT NULL,
+  nk        TEXT,              -- X25519 ключ уведомлений (приложение Android)
+  nks       TEXT,              -- его подпись identity-ключом
   PRIMARY KEY(username,device_id)
 );
 -- Одноразовые предключи (каждый выдаётся один раз)
