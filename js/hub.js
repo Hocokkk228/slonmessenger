@@ -35,6 +35,8 @@ function _hubConnect(){
     if(_hubWs!==ws)return;
     _hubUp=false;clearInterval(_hubPing);
     if(ev.code===1008||ev.code===4401)return;          // токен отозван — переподключаться бессмысленно
+    // три неудачи подряд — возможно, сессию отозвали (смена пароля/выход): проверяем
+    if(_hubRetry===3&&typeof _apiCheckSession==='function')_apiCheckSession();
     const wait=Math.min(30000,1000*Math.pow(2,_hubRetry++));
     clearTimeout(_hubTimer);_hubTimer=setTimeout(_hubConnect,wait);
   };
