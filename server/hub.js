@@ -29,6 +29,8 @@ export class UserHub extends DurableObject{
   }
   get me(){return this._me||(this._me=[...this.sql.exec("SELECT v FROM kv WHERE k='user'")][0]?.v||'');}
   sockets(except){return this.ctx.getWebSockets().filter(w=>w!==except);}
+  isBg(w){try{return !!w.deserializeAttachment()?.bg;}catch(e){return false;}}
+  appSockets(except){return this.sockets(except).filter(w=>!this.isBg(w));}
   send(ws,o){try{ws.send(JSON.stringify(o));}catch(e){}}
   broadcast(o,except){const s=JSON.stringify(o);for(const w of this.sockets(except)){try{w.send(s);}catch(e){}}}
   hub(u){return this.env.HUB.get(this.env.HUB.idFromName(u));}
@@ -37,11 +39,15 @@ export class UserHub extends DurableObject{
   async fetch(req){
     const url=new URL(req.url);
     const user=url.searchParams.get('u'),dev=url.searchParams.get('dev')||'';
+    // bg=1 — фоновая служба Android-приложения: только показывает уведомления,
+    // не делает «в сети» и не забирает очередь (её получит само приложение)
+    const bg=url.searchParams.get('bg')==='1';
     if(!this.me){this.sql.exec("INSERT OR REPLACE INTO kv(k,v) VALUES('user',?)",user);this._me=user;}
     const pair=new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1],[dev||'dev']);
-    pair[1].serializeAttachment({dev,at:Date.now()});
+    pair[1].serializeAttachment({dev,bg,at:Date.now()});
     this.sql.exec("INSERT OR REPLACE INTO kv(k,v) VALUES('ls',?)",url.searchParams.get('ls')==='0'?'0':'1');
+    if(bg)return new Response(null,{status:101,webSocket:pair[0]});
     await this.setPresence(true);
     // очередь, накопившаяся пока все устройства были офлайн
     const q=[...this.sql.exec('SELECT id,msg,ts FROM queue ORDER BY id')];
@@ -85,13 +91,15 @@ export class UserHub extends DurableObject{
   }
   async webSocketClose(ws){try{ws.close();}catch(e){}await this.afterLeave(ws);}
   async webSocketError(ws){await this.afterLeave(ws);}
-  async afterLeave(ws){if(!this.sockets(ws).length)await this.setPresence(false);}
+  async afterLeave(ws){if(!this.isBg(ws)&&!this.appSockets(ws).length)await this.setPresence(false);}
 
   // ── RPC от хабов других пользователей ──
   async deliver(from,payload,bridge){
     const item={t:'data',from,payload};
     const socks=this.sockets();
-    if(socks.length){this.broadcast(item);return true;}
+    if(socks.length)this.broadcast(item);
+    // само приложение подключено — всё доставлено; иначе копим (даже если слушает фоновая служба)
+    if(this.appSockets().length)return true;
     if(QUEUE_TYPES.has(payload.type))this.sql.exec('INSERT INTO queue(msg,ts) VALUES(?,?)',JSON.stringify(item),Date.now());
     // Переходный мост: у адресата старая версия (APK 1.0.x) — кладём и в старый inbox Firebase
     if(bridge&&this.me)await fetch(FB+'/inbox/'+this.me+'.json',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -100,7 +108,7 @@ export class UserHub extends DurableObject{
   }
   // Синк своего профиля: разослать всем своим устройствам
   pushSelf(payload){this.broadcast({t:'self',payload});}
-  online(){return this.sockets().length>0;}
+  online(){return this.appSockets().length>0;}
 
   mlPut(key,rec,except){
     const now=Date.now();

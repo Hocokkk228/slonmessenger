@@ -7,6 +7,9 @@
 const IS_NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 const _NP=IS_NATIVE?window.Capacitor.Plugins:{};
 const APP_SITE='https://hocokkk228.github.io/slonmessenger/';
+let _nativeBgOn=false;
+// Выход из аккаунта: фоновая служба отключается и забывает токен
+function _nativeBgStop(){try{if(IS_NATIVE)_NP.SlonSystem?.stopBackground();}catch(e){}_nativeBgOn=false;}
 
 // Медиа сообщения → Blob (фото/голосовое/кружок/файл, в т.ч. из IndexedDB)
 async function _mediaBlob(msg,kind){
@@ -99,6 +102,8 @@ if(IS_NATIVE){
   });
 
   showDesktopNotif=function(title,body,iconUrl,tag,extra){
+    // Фоновая служба сама показывает уведомления (и при закрытом приложении) — не дублируем
+    if(_nativeBgOn)return;
     if(myNotif.web===false&&tag!=='call')return;
     // Приложение на экране — оно само всё показывает
     if(document.visibilityState==='visible'&&(extra?.kind!=='call'))return;
@@ -160,6 +165,25 @@ if(IS_NATIVE){
   }
   setTimeout(_bgAsk,6000);
   window._bgSetup=()=>{try{localStorage.removeItem('sl_bg_asked');}catch(e){}_bgAsk();};
+
+  // ── Фоновая связь с сервером: уведомления, даже когда приложение закрыто ──
+  // (своя служба Android держит соединение с хабом аккаунта — без Firebase/Google)
+  setInterval(()=>{
+    if(_nativeBgOn||!myUsername||typeof _apiToken!=='function'||!_apiToken()||!_NP.SlonSystem)return;
+    _NP.SlonSystem.startBackground({token:_apiToken(),api:API_URL,dev:_myDeviceId||''})
+      .then(()=>{_nativeBgOn=true;}).catch(()=>{});
+  },4000);
+  // Приложение открыли кнопкой в уведомлении: «Ответить» на звонок / переход в чат
+  const _onLaunch=l=>{
+    if(!l||!l.action)return;
+    if(l.action==='answer')_onNotifAction({type:'notif_action',kind:'call',action:'answer',peerId:l.chat||'',callId:l.callId||''});
+    else if(l.action==='open'&&l.chat){
+      const go=()=>{if(typeof openChat==='function'&&(peerNames[l.chat]||l.chat==='saved')){openChat(l.chat);if(window.innerWidth<=640)closeSidebar?.();}else setTimeout(go,500);};
+      go();
+    }
+  };
+  _NP.SlonSystem?.getLaunch().then(_onLaunch).catch(()=>{});
+  _NP.SlonSystem?.addListener('launch',_onLaunch);
 
   // ── Статус-бар в цвет темы ──
   const _paintBar=()=>{

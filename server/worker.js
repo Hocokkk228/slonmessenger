@@ -288,6 +288,7 @@ export default {
       fwd.searchParams.set('u',s.username);
       fwd.searchParams.set('dev',(url.searchParams.get('dev')||'').slice(0,40));
       fwd.searchParams.set('ls',url.searchParams.get('ls')==='0'?'0':'1');
+      if(url.searchParams.get('bg')==='1')fwd.searchParams.set('bg','1');
       return env.HUB.get(env.HUB.idFromName(s.username)).fetch(new Request(fwd,req));
     }
     if(url.pathname==='/media'&&req.method==='POST')return mediaUpload(req,env).catch(e=>{console.error(e);return err('server','Не удалось сохранить файл',500);});

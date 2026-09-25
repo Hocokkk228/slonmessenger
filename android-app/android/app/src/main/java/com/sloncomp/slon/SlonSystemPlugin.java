@@ -22,6 +22,45 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  */
 @CapacitorPlugin(name = "SlonSystem")
 public class SlonSystemPlugin extends Plugin {
+    static SlonSystemPlugin instance;
+    /** Нажатие на уведомление, которое открыло/подняло приложение */
+    static JSObject pendingLaunch;
+
+    @Override public void load() { instance = this; }
+
+    // ── Фоновая связь с сервером (уведомления при закрытом приложении) ──
+    @PluginMethod
+    public void startBackground(PluginCall call) {
+        String token = call.getString("token", ""), api = call.getString("api", ""), dev = call.getString("dev", "");
+        if (token.isEmpty() || api.isEmpty()) { call.reject("no token"); return; }
+        getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit()
+                .putString("token", token).putString("api", api).putString("dev", dev).apply();
+        SlonBgService.start(getContext());
+        call.resolve();
+    }
+    @PluginMethod
+    public void stopBackground(PluginCall call) {
+        getContext().getSharedPreferences(SlonBgService.PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+        getContext().stopService(new Intent(getContext(), SlonBgService.class));
+        call.resolve();
+    }
+    // Что открыло приложение (нажатие «Ответить» / уведомление о сообщении)
+    @PluginMethod
+    public void getLaunch(PluginCall call) {
+        JSObject r = pendingLaunch != null ? pendingLaunch : new JSObject();
+        pendingLaunch = null;
+        call.resolve(r);
+    }
+    static void onLaunchIntent(Intent i) {
+        if (i == null || i.getStringExtra("slon_action") == null) return;
+        JSObject o = new JSObject();
+        o.put("action", i.getStringExtra("slon_action"));
+        o.put("chat", i.getStringExtra("slon_chat"));
+        o.put("callId", i.getStringExtra("slon_call"));
+        i.removeExtra("slon_action");
+        pendingLaunch = o;
+        if (instance != null) instance.notifyListeners("launch", o, true);
+    }
 
     @PluginMethod
     public void backgroundStatus(PluginCall call) {

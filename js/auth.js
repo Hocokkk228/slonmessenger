@@ -235,8 +235,12 @@ function logout(){
   `);
 }
 
-function doLogout(){
+async function doLogout(){
   closeModal();
+  // Отписываем ЭТО устройство от пушей аккаунта — иначе разлогиненный браузер
+  // продолжает получать уведомления чужого/старого аккаунта
+  try{if(typeof _pushUnsubscribe==='function')await Promise.race([_pushUnsubscribe(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
+  try{if(typeof _nativeBgStop==='function')_nativeBgStop();}catch(e){}
   // отзываем токен на сервере (не ждём ответа)
   try{const t=_apiToken();if(t)fetch(API_URL+'/auth/logout',{method:'POST',headers:{Authorization:'Bearer '+t},keepalive:true}).catch(()=>{});}catch(e){}
   _apiSetToken(myUsername,'');

@@ -27,10 +27,28 @@ async function _pushSubscribe(){
     }
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_pushKeyBytes(PUSH_VAPID)});
     const j=sub.toJSON();
+    // одно устройство = один аккаунт: чистим эту подписку у прошлого владельца
+    try{const prev=localStorage.getItem('sl_push_owner');
+      if(prev&&prev!==myUsername)await window._fbRemove(window._fbRef(window._fbDb,'push_subs/'+prev+'/'+_pushId(j.endpoint)));}catch(e){}
+    try{localStorage.setItem('sl_push_owner',myUsername);}catch(e){}
     await window._fbSet(window._fbRef(window._fbDb,'push_subs/'+myUsername+'/'+_pushId(j.endpoint)),
       {endpoint:j.endpoint,keys:j.keys,dev:_myDeviceId,ua:navigator.userAgent.slice(0,120),ts:Date.now()});
     _pushSubUser=myUsername;
   }catch(e){console.warn('[push] subscribe:',e);}
+}
+
+// Выход из аккаунта: убираем подписку этого устройства (и в базе, и в браузере)
+async function _pushUnsubscribe(){
+  if(!('serviceWorker' in navigator)||!myUsername)return;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager?.getSubscription();
+    if(!sub)return;
+    const id=_pushId(sub.toJSON().endpoint);
+    if(window._fbDb)await window._fbRemove(window._fbRef(window._fbDb,'push_subs/'+myUsername+'/'+id)).catch(()=>{});
+    await sub.unsubscribe().catch(()=>{});
+    _pushSubUser=null;
+  }catch(e){console.warn('[push] unsubscribe:',e);}
 }
 
 // Разбудить устройства получателя (fire-and-forget)
