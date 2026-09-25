@@ -24,145 +24,331 @@ async function _loadMediaFromIdb(msgId,kind){
   }catch(e){return null;}
 }
 
-function startVoiceRec(){
-  if(activeChat==='ai'){toast('Голосовые недоступны с ИИ');return;}
-  if(mediaRecorder){cancelRec();return;}
-  navigator.mediaDevices.getUserMedia({audio:true})
-    .then(stream=>beginRec(stream,'voice'))
-    .catch(()=>toast('Нет доступа к микрофону'));
+// ════════════════════════════════════════
+// ── ЗАПИСЬ ГОЛОСОВЫХ И СЛОНКРУЖКОВ (как в Telegram) ──
+// Одна круглая кнопка: короткий тап — переключает режим микрофон ↔ камера,
+// удержание — запись. Во время записи поле ввода плавно превращается в бар:
+// корзина · [● волна 0:18,19] · пауза · отправить. Свайп вверх — фиксация
+// (можно отпустить палец), свайп влево — отмена, отпустить — отправить.
+// ════════════════════════════════════════
+const RC_MAX={voice:600,slon:60};   // лимиты длительности, сек
+const RC_HOLD_MS=220;                // дольше — это удержание, короче — тап
+const RC_LOCK_DY=70,RC_CANCEL_DX=110;
+let _rcMode=(()=>{try{return localStorage.getItem('sl_recMode')==='slon'?'slon':'voice';}catch(e){return 'voice';}})();
+let _rec=null;        // текущая запись (см. _rcBegin)
+let _rcPress=null;    // текущее нажатие на кнопку
+
+function _rcFmt(ms,cs){
+  const s=Math.floor(ms/1000);
+  const base=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  return cs?base+','+String(Math.floor(ms%1000/10)).padStart(2,'0'):base;
+}
+function _rcElapsed(){
+  if(!_rec)return 0;
+  return _rec.acc+(_rec.paused||!_rec.t0?0:performance.now()-_rec.t0);
 }
 
-function startSlonRec(){
-  if(activeChat==='ai'){toast('Слонкружки недоступны с ИИ');return;}
-  if(mediaRecorder){cancelRec();return;}
-  navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:'user',width:{ideal:320},height:{ideal:320}}})
-    .then(stream=>beginRec(stream,'slon'))
-    .catch(()=>navigator.mediaDevices.getUserMedia({audio:true,video:true})
-      .then(stream=>beginRec(stream,'slon'))
-      .catch(()=>toast('Нет доступа к камере')));
+// Режим кнопки: микрофон ↔ камера (иконка плавно перетекает)
+function _rcSetMode(m){
+  _rcMode=m==='slon'?'slon':'voice';
+  try{localStorage.setItem('sl_recMode',_rcMode);}catch(e){}
+  const b=$('voiceRecBtn');if(!b)return;
+  b.classList.toggle('mode-slon',_rcMode==='slon');
+  b.title=_rcMode==='slon'?'Слонкружок — удерживай для записи':'Голосовое — удерживай для записи';
+}
+function _rcToggleMode(){
+  _rcSetMode(_rcMode==='voice'?'slon':'voice');
+  const b=$('voiceRecBtn');
+  if(b){b.classList.remove('rc-flip');void b.offsetWidth;b.classList.add('rc-flip');}
 }
 
-function beginRec(stream,mode){
-  recMode=mode;recChunks=[];recSecs=0;
-  $('recModalTitle').textContent=mode==='slon'?'Запись слонкружка 🐘':'Запись голосового 🎙️';
-  $('recAnim').textContent=mode==='slon'?'🐘':'🎙️';
-  const sp=$('slonPreview');
-  if(sp){sp.style.display=mode==='slon'?'block':'none';}
-  $('recTimerEl').textContent='0:00';
-  $('recModal').classList.add('show');
+// Старые точки входа — оставлены для совместимости (горячие клавиши и т.п.)
+function startVoiceRec(){_rcSetMode('voice');_rcBegin(true);}
+function startSlonRec(){_rcSetMode('slon');_rcBegin(true);}
 
-  // Определяем поддерживаемый mimeType
-  const mimeTypes=mode==='slon'
+function _rcInit(){
+  const b=$('voiceRecBtn');if(!b||b._rcInit)return;
+  b._rcInit=true;
+  _rcSetMode(_rcMode);
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+  b.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;
+    e.preventDefault();
+    try{b.setPointerCapture(e.pointerId);}catch(_){}
+    // Запись зафиксирована — кнопка работает как «отправить»
+    if(_rec&&_rec.locked){_rcPress={x:e.clientX,y:e.clientY,send:true};return;}
+    if(_rec)return;
+    _rcPress={x:e.clientX,y:e.clientY,timer:setTimeout(()=>{
+      if(!_rcPress)return;
+      _rcPress.timer=null;_rcPress.holding=true;
+      _rcBegin(false);
+    },RC_HOLD_MS)};
+  });
+  b.addEventListener('pointermove',e=>{
+    if(!_rcPress||!_rcPress.holding||!_rec||_rec.locked)return;
+    const dy=Math.max(0,_rcPress.y-e.clientY),dx=Math.max(0,_rcPress.x-e.clientX);
+    _rcDrag(dy,dx);
+    if(dy>=RC_LOCK_DY)_rcLock();
+    else if(dx>=RC_CANCEL_DX){_rcPress=null;_rcCancel();}
+  });
+  const up=()=>{
+    const p=_rcPress;_rcPress=null;
+    if(!p)return;
+    if(p.send){_rcStop(true);return;}
+    if(p.timer){clearTimeout(p.timer);_rcToggleMode();return;} // короткий тап
+    if(!_rec)return;
+    if(_rec.locked)return;                  // зафиксировали свайпом — палец можно убрать
+    if(!_rec.mr){_rec.releasedEarly=true;return;} // ещё ждём доступ к микрофону
+    _rcStop(true);
+  };
+  b.addEventListener('pointerup',up);
+  // Браузер забрал жест (скролл и т.п.) — не теряем запись, а фиксируем её
+  b.addEventListener('pointercancel',()=>{
+    const p=_rcPress;_rcPress=null;
+    if(p&&p.timer){clearTimeout(p.timer);return;}
+    if(_rec&&!_rec.locked)_rcLock();
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&_rec){e.preventDefault();_rcCancel();}});
+}
+
+// Подъём значка при свайпе вверх и сдвиг при свайпе влево
+function _rcDrag(dy,dx){
+  const w=$('inpWrap');if(!w)return;
+  const k=Math.min(1,dy/RC_LOCK_DY);
+  w.style.setProperty('--rc-lift',(-Math.min(dy,RC_LOCK_DY))+'px');
+  w.style.setProperty('--rc-lock-k',k.toFixed(3));
+  w.style.setProperty('--rc-shift',(-Math.min(dx,RC_CANCEL_DX)*.5)+'px');
+}
+
+async function _rcBegin(locked){
+  if(_rec)return;
+  if(activeChat==='ai'){toast(_rcMode==='slon'?'Слонкружки недоступны с ИИ':'Голосовые недоступны с ИИ');return;}
+  if(!activeChat){return;}
+  const mode=_rcMode;
+  _rec={mode,chat:activeChat,locked:!!locked,paused:false,acc:0,t0:0,levels:[],mr:null,stream:null};
+  const me=_rec;
+  _rcShowBar(true);
+  let stream=null;
+  try{
+    stream=mode==='slon'
+      ?await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:'user',width:{ideal:480},height:{ideal:480}}})
+        .catch(()=>navigator.mediaDevices.getUserMedia({audio:true,video:true}))
+      :await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    if(_rec===me){_rec=null;_rcShowBar(false);}
+    toast(mode==='slon'?'Нет доступа к камере':'Нет доступа к микрофону');
+    return;
+  }
+  // Пока спрашивали разрешение, запись отменили или палец уже отпустили
+  if(_rec!==me||me.releasedEarly){
+    stream.getTracks().forEach(t=>t.stop());
+    if(_rec===me){_rec=null;_rcShowBar(false);toast('Удерживай кнопку, чтобы записать');}
+    return;
+  }
+  me.stream=stream;
+  const types=mode==='slon'
     ?['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=h264,aac','video/mp4']
     :['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'];
   let mime='';
-  for(const m of mimeTypes){
-    try{if(MediaRecorder.isTypeSupported(m)){mime=m;break;}}catch(e){}
-  }
-  // Запоминаем итоговый mime чтобы использовать его при сборке blob
-  const _recMime=mime||( mode==='slon'?'video/webm':'audio/webm');
+  for(const m of types){try{if(MediaRecorder.isTypeSupported(m)){mime=m;break;}}catch(e){}}
+  me.mime=mime||(mode==='slon'?'video/webm':'audio/webm');
+  let mr;
+  try{mr=new MediaRecorder(stream,mime?{mimeType:mime}:{});}
+  catch(e){try{mr=new MediaRecorder(stream);}catch(e2){stream.getTracks().forEach(t=>t.stop());_rec=null;_rcShowBar(false);toast('Запись не поддерживается');return;}}
+  me.chunks=[];
+  mr.ondataavailable=e=>{if(e.data&&e.data.size>0)me.chunks.push(e.data);};
+  mr.start(200);
+  me.mr=mr;mediaRecorder=mr;recMode=mode;
+  me.t0=performance.now();
+  _rcStartMeter(me);
+  if(mode==='slon')_rcShowCircle(stream);
+  $('inpWrap')?.classList.add('rc-live');
+}
 
+// Уровень голоса: AnalyserNode (в динамики ничего не идёт — только анализ)
+function _rcStartMeter(me){
   try{
-    mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
-  }catch(e){
-    // Fallback без mimeType
-    try{mediaRecorder=new MediaRecorder(stream);}
-    catch(e2){toast('Запись не поддерживается');return;}
-  }
-
-  mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recChunks.push(e.data);};
-  mediaRecorder._recMime=_recMime; // сохраняем для сборки
-  mediaRecorder.start(200); // 200ms чанки — достаточно, без лишних вызовов
-
-  recTimer=setInterval(()=>{
-    recSecs++;
-    $('recTimerEl').textContent=Math.floor(recSecs/60)+':'+String(recSecs%60).padStart(2,'0');
-    if(recSecs>=120)stopAndSendRec();
-  },1000);
-
-  const btn=$('voiceRecBtn');if(btn)btn.classList.add('rec-active');
-
-  // Живой превью и кнопка поворота камеры
-  if(mode==='slon'){
-    _slonFacing='user';
-    _slonStream=stream;
-    const preview=$('slonPreview');
-    if(preview){
-      preview.srcObject=stream;
-      preview.play().catch(()=>{});
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    me.ctx=new Ctx();
+    const src=me.ctx.createMediaStreamSource(me.stream);
+    me.an=me.ctx.createAnalyser();me.an.fftSize=1024;me.an.smoothingTimeConstant=.3;
+    src.connect(me.an);
+    me.buf=new Float32Array(me.an.fftSize);
+  }catch(e){me.an=null;}
+  const cv=$('rcWave');
+  const acc=getComputedStyle($('inpWrap')||document.body).getPropertyValue('--accent').trim()||'#3390ec';
+  // setInterval, а не rAF: в фоновой вкладке rAF замирает, а запись и лимит должны идти
+  let lastPush=0;
+  const tick=()=>{
+    if(_rec!==me){clearInterval(me.iv);return;}
+    const now=performance.now();
+    const el=_rcElapsed();
+    const t=$('rcTime');if(t)t.textContent=_rcFmt(el,true);
+    if(me.mode==='slon'){const r=$('rcCircleRing');if(r)r.style.strokeDashoffset=String(1-Math.min(1,el/1000/RC_MAX.slon));}
+    if(!me.paused&&now-lastPush>=70){
+      lastPush=now;
+      let lvl=0;
+      if(me.an){
+        me.an.getFloatTimeDomainData(me.buf);
+        let s=0;for(let i=0;i<me.buf.length;i++)s+=me.buf[i]*me.buf[i];
+        lvl=Math.min(1,Math.sqrt(Math.sqrt(s/me.buf.length))*1.6);
+      }
+      me.levels.push(lvl);
+      $('inpWrap')?.style.setProperty('--rc-lvl',lvl.toFixed(3));
     }
-    const flipBtn=$('slonFlipBtn');
-    if(flipBtn){
-      const isMob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      flipBtn.style.display=isMob?'flex':'none';
-    }
+    if(cv)_rcDrawWave(cv,me.levels,acc);
+    if(el/1000>=RC_MAX[me.mode]){_rcStop(true);return;}
+  };
+  me.iv=setInterval(tick,33);
+}
+// «Бегущая дорожка»: столбики заполняют плашку слева направо, дальше едут влево
+function _rcDrawWave(cv,levels,color){
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  const g=cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  g.fillStyle=color;
+  const bw=2,gap=2,step=bw+gap,max=Math.floor(w/step);
+  const from=Math.max(0,levels.length-max);
+  for(let i=from;i<levels.length;i++){
+    const bh=Math.max(2,Math.round(levels[i]*h));
+    const x=(i-from)*step,y=(h-bh)/2;
+    if(g.roundRect){g.beginPath();g.roundRect(x,y,bw,bh,1);g.fill();}
+    else g.fillRect(x,y,bw,bh);
   }
 }
 
-function cancelRec(){
-  _stopRec();
+function _rcLock(){
+  if(!_rec||_rec.locked)return;
+  _rec.locked=true;
+  const w=$('inpWrap');if(!w)return;
+  w.classList.add('rc-locked');
+  _rcDrag(0,0);
+}
+
+function _rcTogglePause(){
+  const me=_rec;if(!me||!me.mr)return;
+  if(me.paused){
+    try{me.mr.resume();}catch(e){}
+    me.paused=false;me.t0=performance.now();
+  }else{
+    try{me.mr.pause();}catch(e){}
+    me.acc+=performance.now()-me.t0;me.paused=true;
+    $('inpWrap')?.style.setProperty('--rc-lvl','0');
+  }
+  if(me.paused)_rcLock();
+  $('inpWrap')?.classList.toggle('rc-paused',me.paused);
+}
+
+function _rcCleanup(me){
+  if(!me)return;
+  clearInterval(me.iv);
+  try{me.stream?.getTracks().forEach(t=>t.stop());}catch(e){}
+  try{me.ctx?.close();}catch(e){}
+  if(mediaRecorder===me.mr)mediaRecorder=null;
+  _rcHideCircle();
   _slonStream=null;
-  const preview=$('slonPreview');if(preview){preview.srcObject=null;preview.style.display='none';}
-  const flipBtn=$('slonFlipBtn');if(flipBtn)flipBtn.style.display='none';
-  $('recModal').classList.remove('show');
-  const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
 }
 
-function _stopRec(){
-  if(recTimer){clearInterval(recTimer);recTimer=null;}
-  if(mediaRecorder){
-    const mr=mediaRecorder;
-    mediaRecorder=null;
-    try{mr.stream?.getTracks().forEach(t=>t.stop());}catch(e){}
-    try{mr.stop();}catch(e){}
+function _rcCancel(){
+  const me=_rec;if(!me)return;
+  _rec=null;
+  if(me.mr){me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}}
+  _rcCleanup(me);
+  _rcShowBar(false,true);
+}
+function cancelRec(){_rcCancel();}
+
+function _rcStop(send){
+  const me=_rec;if(!me)return;
+  if(!send){_rcCancel();return;}
+  const ms=_rcElapsed();
+  _rec=null;
+  _rcShowBar(false);
+  if(!me.mr){_rcCleanup(me);return;}
+  if(ms<700){ // случайный тычок — такое не отправляем
+    me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}
+    _rcCleanup(me);toast('Удерживай кнопку, чтобы записать');return;
   }
-}
-
-function stopAndSendRec(){
-  if(!mediaRecorder)return;
-  $('recModal').classList.remove('show');
-  const btn=$('voiceRecBtn');if(btn)btn.classList.remove('rec-active');
-  if(recTimer){clearInterval(recTimer);recTimer=null;}
-
-  const _stream=mediaRecorder.stream;
-  const _mode=recMode;
-  const _recMime=mediaRecorder._recMime||(_mode==='slon'?'video/webm':'audio/webm');
-  const _mr=mediaRecorder;
-  mediaRecorder=null; // сбрасываем до stop() чтобы не было двойного вызова
-
-  _mr.onstop=()=>{
-    const preview=$('slonPreview');
-    if(preview){preview.srcObject=null;preview.style.display='none';}
-    const flipBtn=$('slonFlipBtn');if(flipBtn)flipBtn.style.display='none';
-    _slonStream=null;
-
-    if(!recChunks.length){toast('Запись пустая');return;}
-    // Берём тип из первого непустого чанка, fallback на _recMime
-    const blobMime=recChunks[0].type||_recMime;
-    const blob=new Blob(recChunks,{type:blobMime});
-    recChunks=[];
-    const dur=recSecs;
-
-    // Для слонкружков конвертируем в Blob URL сразу (не data URL)
-    // чтобы избежать проблем с чёрным экраном
-    if(_mode==='slon'){
-      const blobUrl=URL.createObjectURL(blob);
-      sendSlonMsg(blobUrl,dur,blobMime,true); // true = isUrl (не data:)
+  if(activeChat!==me.chat){me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}_rcCleanup(me);toast('Запись отменена — чат сменился');return;}
+  const dur=Math.max(1,Math.round(ms/1000));
+  const wave=_rcWaveOf(me.levels,48);
+  me.mr.onstop=()=>{
+    if(!me.chunks.length){toast('Запись пустая');return;}
+    const type=me.chunks[0].type||me.mime;
+    const blob=new Blob(me.chunks,{type});
+    if(me.mode==='slon'){
+      sendSlonMsg(URL.createObjectURL(blob),dur,type,true);
     }else{
-      const reader=new FileReader();
-      reader.onload=e=>sendVoiceMsg(e.target.result,dur,blobMime);
-      reader.readAsDataURL(blob);
+      const fr=new FileReader();
+      fr.onload=e=>sendVoiceMsg(e.target.result,dur,type,wave);
+      fr.readAsDataURL(blob);
     }
   };
+  try{if(me.paused)me.mr.resume();}catch(e){}
+  try{me.mr.stop();}catch(e){}
+  _rcCleanup(me);
+}
+function stopAndSendRec(){_rcStop(true);}
 
-  try{_mr.stop();}catch(e){console.warn('MediaRecorder stop error:',e);}
+// Уровни записи → N столбиков 0..31 (как waveform в Telegram)
+function _rcWaveOf(levels,n){
+  if(!levels.length)return null;
+  const out=[];
+  for(let i=0;i<n;i++){
+    const a=Math.floor(i*levels.length/n),b=Math.max(a+1,Math.floor((i+1)*levels.length/n));
+    // среднее по отрезку — у пиков по максимуму волна выходит «забитой»
+    let m=0,k=0;for(let j=a;j<b&&j<levels.length;j++){m+=levels[j];k++;}
+    out.push(k?m/k:0);
+  }
+  const top=Math.max(...out)||1;
+  return out.map(v=>Math.round(v/top*31));
 }
 
-function sendVoiceMsg(dataUrl,dur,mimeType){
+// Плавный переход «Сообщение…» → бар записи и обратно
+function _rcShowBar(on,cancelled){
+  const w=$('inpWrap');if(!w)return;
+  if(on){
+    const cv=$('rcWave');if(cv){const g=cv.getContext('2d');g&&g.clearRect(0,0,cv.width,cv.height);}
+    const t=$('rcTime');if(t)t.textContent='0:00,00';
+    w.classList.remove('rc-out','rc-cancel','rc-locked','rc-paused','rc-live');
+    w.classList.toggle('rc-slon',_rcMode==='slon');
+    w.classList.add('recording');
+    _rcDrag(0,0);
+  }else{
+    if(!w.classList.contains('recording'))return;
+    w.classList.remove('recording','rc-live','rc-locked','rc-paused');
+    w.classList.add('rc-out');
+    if(cancelled)w.classList.add('rc-cancel');
+    _rcDrag(0,0);
+    w.style.setProperty('--rc-lvl','0');
+    clearTimeout(w._rcOutT);
+    w._rcOutT=setTimeout(()=>w.classList.remove('rc-out','rc-cancel'),420);
+  }
+}
+
+// Кружок-превью с кольцом прогресса по центру чата
+function _rcShowCircle(stream){
+  _slonFacing='user';_slonStream=stream;
+  const c=$('rcCircle'),v=$('rcCircleVid');if(!c||!v)return;
+  v.srcObject=stream;v.play().catch(()=>{});
+  const flip=$('slonFlipBtn');
+  if(flip)flip.style.display=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?'flex':'none';
+  c.classList.add('show');
+}
+function _rcHideCircle(){
+  const c=$('rcCircle'),v=$('rcCircleVid');
+  if(c)c.classList.remove('show');
+  if(v)setTimeout(()=>{if(!c?.classList.contains('show'))v.srcObject=null;},300);
+}
+
+function sendVoiceMsg(dataUrl,dur,mimeType,wave){
   const mid='vm'+Date.now();
   const ts=Date.now();
   _saveMediaToIdb(mid,'voice',dataUrl).catch(()=>{});
   const msg={id:mid,sender:'me',ts,time:fmtTime(ts),voiceData:'idb:'+mid+':voice',voiceDur:dur};
+  if(wave)msg.voiceWave=wave;
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: 🎙️ Голосовое');
@@ -269,50 +455,143 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
   sendData(conn,{type:'media_end',id});
 }
 
+// ── Пузырь голосового (как в Telegram): кнопка play, волна, длительность
+// с точкой «не прослушано», кнопка расшифровки →A ──
+const VB_PLAY='<svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4a1 1 0 0 0 0-1.8l-10-6.4c-.7-.4-1.6.1-1.6.9z"/></svg>';
+const VB_PAUSE='<svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.3"/><rect x="13.5" y="5" width="4" height="14" rx="1.3"/></svg>';
+const VB_TR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12h7M6.8 8.6 10 12l-3.2 3.4"/><path d="M13 18.5 17 6.5l4 12M14.4 14.4h5.2"/></svg>';
+const VB_TR_UP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+let _vbAudio=null,_vbSaveT=null;
+function _vbSaveSoon(){clearTimeout(_vbSaveT);_vbSaveT=setTimeout(()=>{try{saveAll();}catch(e){}},800);}
+
+// Детерминированная «волна» по id — пока настоящая не посчитана
+function _vbFakeWave(id,n){
+  let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))|0;
+  const out=[];
+  for(let i=0;i<n;i++){h=(h*1103515245+12345)|0;const r=((h>>>16)&0x7fff)/0x7fff;out.push(Math.round(6+r*20+Math.sin(i*.55)*4));}
+  return out;
+}
+// Настоящая волна из аудио (для входящих и старых сообщений) — считаем один раз
+let _vbDecodeQ=Promise.resolve(),_vbDecCtx=null;
+function _vbComputeWave(src,n){
+  _vbDecodeQ=_vbDecodeQ.then(async()=>{
+    const ab=await (await fetch(src)).arrayBuffer();
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!_vbDecCtx)_vbDecCtx=new Ctx();
+    const buf=await new Promise((res,rej)=>{const p=_vbDecCtx.decodeAudioData(ab,res,rej);if(p&&p.catch)p.catch(rej);});
+    const d=buf.getChannelData(0),out=[],step=Math.floor(d.length/n)||1;
+    for(let i=0;i<n;i++){let m=0;for(let j=i*step;j<(i+1)*step&&j<d.length;j++){const v=Math.abs(d[j]);if(v>m)m=v;}out.push(m);}
+    const top=Math.max(...out)||1;
+    return {wave:out.map(v=>Math.round(Math.sqrt(v/top)*31)),dur:buf.duration};
+  }).catch(()=>null);
+  return _vbDecodeQ;
+}
+
 function renderVoiceBub(msg,isOut){
-  const dur=msg.voiceDur||0;
-  const barsCount=24;
-  let bars='';
-  for(let i=0;i<barsCount;i++){
-    const h=18+Math.floor(Math.random()*10+Math.sin(i*0.7)*5);
-    bars+=`<div class="vb-bar" style="height:${h}px" data-i="${i}"></div>`;
-  }
+  const N=48;
   const div=document.createElement('div');
-  div.className='voice-bub';
+  div.className='voice-bub'+(msg.voicePlayed?'':' vb-unplayed');
+  const durOf=()=>Math.round(msg.voiceDur||0);
   div.innerHTML=`
-    <button class="vb-play" title="Воспроизвести"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-    <div class="vb-bars">${bars}</div>
-    <div class="vb-dur">${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}</div>`;
-  const playBtn=div.querySelector('.vb-play');
-  let audio=null,playing=false;
+    <button class="vb-play" title="Воспроизвести">${VB_PLAY}</button>
+    <div class="vb-main">
+      <div class="vb-wave"></div>
+      <div class="vb-meta"><span class="vb-dur">${_rcFmt(durOf()*1000)}</span><i class="vb-dot"></i></div>
+    </div>
+    <button class="vb-tr" title="Расшифровать">${VB_TR}</button>
+    <div class="vb-text"></div>`;
+  const waveEl=div.querySelector('.vb-wave'),durEl=div.querySelector('.vb-dur');
+  const playBtn=div.querySelector('.vb-play'),trBtn=div.querySelector('.vb-tr'),txtEl=div.querySelector('.vb-text');
+  const drawWave=w=>{
+    waveEl.innerHTML=w.map(v=>`<i style="height:${Math.max(2,Math.round(v/31*20))}px"></i>`).join('');
+  };
+  drawWave(msg.voiceWave&&msg.voiceWave.length?msg.voiceWave:_vbFakeWave(msg.id,N));
+  if(msg.voiceText){txtEl.textContent=msg.voiceText;div.classList.add('vb-tr-open');trBtn.innerHTML=VB_TR_UP;}
 
   async function _getAudioSrc(){
     const src=msg.voiceData;
-    if(!src) return null;
-    if(src.startsWith('idb:')){
-      const parts=src.split(':'); // idb:msgId:kind
-      return await _loadMediaFromIdb(parts[1],parts[2]||'voice');
-    }
-    if(src.startsWith('blob:')||src.startsWith('data:')||src.startsWith('http')) return src;
+    if(!src)return null;
+    if(src.startsWith('idb:')){const p=src.split(':');return await _loadMediaFromIdb(p[1],p[2]||'voice');}
     return src;
   }
+  // Нет настоящей волны или длительности — досчитываем из самого аудио
+  if(!(msg.voiceWave&&msg.voiceWave.length)||!msg.voiceDur){
+    _getAudioSrc().then(src=>src&&_vbComputeWave(src,N)).then(r=>{
+      if(!r)return;
+      msg.voiceWave=r.wave;drawWave(r.wave);
+      if(!msg.voiceDur&&isFinite(r.dur)){msg.voiceDur=Math.round(r.dur);durEl.textContent=_rcFmt(durOf()*1000);}
+      _vbSaveSoon();
+    });
+  }
 
-  playBtn.onclick=async()=>{
-    if(!audio){
-      const src=await _getAudioSrc();
-      if(!src){toast('Аудио недоступно');return;}
-      audio=new Audio(src);
-      audio.onended=()=>{playing=false;playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M8 5v14l11-7z"/></svg>';div.querySelectorAll('.vb-bar').forEach(b=>b.classList.remove('played'));};
-      audio.ontimeupdate=()=>{
-        const pct=audio.duration?audio.currentTime/audio.duration:0;
-        const n=Math.floor(pct*barsCount);
-        div.querySelectorAll('.vb-bar').forEach((b,i)=>b.classList.toggle('played',i<n));
-      };
-    }
-    if(playing){audio.pause();playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M8 5v14l11-7z"/></svg>';playing=false;}
-    else{audio.play().catch(e=>{toast('Ошибка воспроизведения: '+e.message);});playBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M6 6h12v12H6z"/></svg>';playing=true;}
+  let audio=null;
+  const setProg=p=>{
+    const bars=waveEl.children,n=Math.floor(p*bars.length);
+    for(let i=0;i<bars.length;i++)bars[i].classList.toggle('on',i<n);
   };
+  const setPlaying=on=>{playBtn.innerHTML=on?VB_PAUSE:VB_PLAY;div.classList.toggle('vb-playing',on);};
+  async function ensureAudio(){
+    if(audio)return audio;
+    const src=await _getAudioSrc();
+    if(!src){toast('Аудио недоступно');return null;}
+    audio=new Audio(src);
+    audio.onended=()=>{setPlaying(false);setProg(0);durEl.textContent=_rcFmt(durOf()*1000);};
+    audio.onpause=()=>setPlaying(false);
+    audio.onplay=()=>setPlaying(true);
+    audio.ontimeupdate=()=>{
+      const d=isFinite(audio.duration)?audio.duration:durOf();
+      setProg(d?audio.currentTime/d:0);
+      durEl.textContent=_rcFmt(audio.currentTime*1000);
+    };
+    return audio;
+  }
+  playBtn.onclick=async()=>{
+    const a=await ensureAudio();if(!a)return;
+    if(!a.paused){a.pause();return;}
+    // Одновременно играет только одно голосовое
+    if(_vbAudio&&_vbAudio!==a)_vbAudio.pause();
+    _vbAudio=a;
+    a.play().catch(e=>toast('Ошибка воспроизведения: '+e.message));
+    if(!msg.voicePlayed){msg.voicePlayed=true;div.classList.remove('vb-unplayed');_vbSaveSoon();}
+  };
+  // Перемотка кликом по волне
+  waveEl.onclick=async e=>{
+    const a=await ensureAudio();if(!a)return;
+    const r=waveEl.getBoundingClientRect(),p=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
+    const seek=()=>{const d=isFinite(a.duration)?a.duration:durOf();a.currentTime=p*d;setProg(p);};
+    if(a.readyState>=1)seek();else a.addEventListener('loadedmetadata',seek,{once:true});
+    if(a.paused)playBtn.onclick();
+  };
+  trBtn.onclick=()=>_vbTranscribe(msg,div,trBtn,txtEl,_getAudioSrc);
   return div;
+}
+
+// Расшифровка голосового (→A): Whisper через Hugging Face, результат кешируется в сообщении
+async function _vbTranscribe(msg,div,btn,txtEl,getSrc){
+  if(div.classList.contains('vb-tr-open')){
+    div.classList.remove('vb-tr-open');btn.innerHTML=VB_TR;return;
+  }
+  if(msg.voiceText){txtEl.textContent=msg.voiceText;div.classList.add('vb-tr-open');btn.innerHTML=VB_TR_UP;return;}
+  if(div.classList.contains('vb-tr-busy'))return;
+  div.classList.add('vb-tr-busy','vb-tr-open');txtEl.textContent='';
+  try{
+    const src=await getSrc();if(!src)throw new Error('нет аудио');
+    const blob=await (await fetch(src)).blob();
+    const r=await fetch('https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+HF_API_TOKEN,'Content-Type':blob.type||'audio/webm'},
+      body:blob,
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const text=String(j.text||'').trim();
+    msg.voiceText=text||'(тишина)';
+    txtEl.textContent=msg.voiceText;btn.innerHTML=VB_TR_UP;
+    _vbSaveSoon();
+  }catch(e){
+    div.classList.remove('vb-tr-open');
+    toast('Не удалось расшифровать: '+e.message);
+  }finally{div.classList.remove('vb-tr-busy');}
 }
 
 function renderSlonBub(msg){
@@ -402,7 +681,7 @@ function renderSlonBub(msg){
 }
 
 async function flipSlonCamera(){
-  if(!_slonStream||!mediaRecorder)return;
+  if(!_slonStream||!_rec||_rec.mode!=='slon')return;
   const newFacing=_slonFacing==='user'?'environment':'user';
   let newStream=null;
 
@@ -441,7 +720,7 @@ async function flipSlonCamera(){
   _slonFacing=newFacing;
 
   // Обновляем превью
-  const preview=$('slonPreview');
+  const preview=$('rcCircleVid');
   if(preview){
     preview.srcObject=_slonStream||newStream;
     preview.play().catch(()=>{});
@@ -504,3 +783,6 @@ appendMsg=function(msg,container){
   }
   _origAppendMsg(msg,container);
 };
+
+// Кнопка записи в поле ввода — вешаем обработчики удержания/свайпа
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_rcInit);else _rcInit();

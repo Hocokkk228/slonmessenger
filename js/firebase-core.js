@@ -809,7 +809,7 @@ function onData(pid,data){
           const fullData=parts.join('');
           window._fbRemove(window._fbRef(window._fbDb,base)).catch(()=>{});
           if(data.kind==='voice'){
-            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',slonDur:data.dur};
+            const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',voiceDur:data.dur};
             _saveMediaToIdb(data.id,'voice',fullData);
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
