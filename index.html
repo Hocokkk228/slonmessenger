@@ -3,7 +3,11 @@
 <head>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3390ec">
-<link rel="apple-touch-icon" href="launchericon-192x192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SLON">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
@@ -185,7 +189,7 @@
     <div class="tb-logo">🐘 SLON</div>
     <div class="tb-id" onclick="showMyId()">
       <div class="status-dot connecting" id="onlineDot"></div>
-      <span class="tb-id-txt" id="myIdLabel">Подключение…</span>
+      <span class="tb-id-txt" id="myIdLabel">Загрузка…</span>
     </div>
     <button class="tb-icon-btn" onclick="showDevPanel()" title="Устройства">
       <svg><use href="#i-settings"/></svg>
@@ -592,7 +596,7 @@
       </div>
       <div class="net-bar">
         <div class="status-dot connecting" id="netDot"></div>
-        <div class="net-txt" id="netTxt">Подключение…</div>
+        <div class="net-txt" id="netTxt">Загрузка…</div>
       </div>
 
       <!-- Contacts panel — slides in from the left, covers the sidebar -->

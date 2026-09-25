@@ -2,7 +2,7 @@
 // Показывает уведомления по команде страницы (NOTIFY) и из Web Push (push),
 // обрабатывает «Ответить» / «Отклонить» даже когда вкладка в фоне.
 const DB_URL='https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app';
-const ICON='launchericon-192x192.png';
+const ICON='icons/icon-192.png';
 
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));

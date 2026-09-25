@@ -135,7 +135,7 @@ function sendMsg(){
       // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
       if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts});
     }
-    else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
+    else toast('Нет интернета — сообщение не отправлено');
   }
 }
 
@@ -161,12 +161,14 @@ function recvMsg(pid,text,nick,avatar,mid,ts){
       showDesktopNotif(peerNames[pid]||('@'+pid),_notifText('private',text).slice(0,60),peerAvatars[pid]||null,'msg:'+pid,{kind:'msg',chat:pid});
     }
   }
-  else{addUnread(pid);if(!mutedChats[pid]&&_notifOn('private')){playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),_notifText('private',text).slice(0,60),peerAvatars[pid]||null,'msg:'+pid,{kind:'msg',chat:pid});toast((peerNames[pid]||('@'+pid))+': '+_notifText('private',text).slice(0,50));}}
+  else{addUnread(pid);if(!mutedChats[pid]&&_notifOn('private')){playNotifSound();showDesktopNotif(peerNames[pid]||('@'+pid),_notifText('private',text).slice(0,60),peerAvatars[pid]||null,'msg:'+pid,{kind:'msg',chat:pid});}}
   saveAll();
 }
 
 function appendMsg(msg,container){
   const c=container||$('msgs');
+  // старые служебные «Подключение к @… через Firebase…» больше не показываем
+  if(msg.sender==='system'&&/^(Подключение|Соединение установлено|Собеседник отключился)/.test(msg.text||''))return;
   if(msg.sender==='system'){const d=document.createElement('div');d.className='sys';d.textContent=msg.text;c.appendChild(d);return;}
   // Date separator: вставляем разделитель если это сообщение нового дня
   if(msg.ts){
@@ -731,7 +733,7 @@ async function finishFile(fid,pid){
   if(!chatHist[pid])chatHist[pid]=[];
   chatHist[pid].push(msg);
   if(activeChat===pid){appendMsg(msg);scrollDown();}
-  else{addUnread(pid);toast((isImg?'📷 ':'📎 ')+(peerNames[pid]||('@'+pid))+': '+f.name.slice(0,30));}
+  else addUnread(pid);
   saveAll();
 }
 

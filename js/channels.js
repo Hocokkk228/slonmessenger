@@ -56,7 +56,7 @@ async function _doCreateChannelWizard(username,name,desc,avatar){
   const owned=Object.keys(myChannels).length;
   const maxOwned=myPremium?10:3;
   if(owned>=maxOwned)return toast(myPremium?'Максимум 10 каналов':'Максимум 3 канала — с ⭐ Premium можно больше');
-  if(!_fbReady()||!window._fbDb)return toast('Нет соединения');
+  if(!_fbReady()||!window._fbDb)return toast('Нет интернета');
   toast('Проверяем юзернейм…');
   try{
     const snap=await _fbOnce('user_channels/'+username+'/meta');
@@ -108,7 +108,7 @@ function _toggleChannelMute(){
   saveAll();
   _renderChannelMuteBtn(id);
   _updateSbMuteIcon(id);
-  toast(mutedChats[id]?'🔕 Уведомления выключены':'🔔 Уведомления включены');
+
 }
 
 function showChannelPublish(){
@@ -128,7 +128,7 @@ async function publishChannelPost(){
   const text=($('chPostTa')?.value||'').trim();
   if(!text){toast('Введи текст поста');return;}
   closeModal();
-  if(!_fbReady()||!window._fbDb){toast('Нет подключения к Firebase');return;}
+  if(!_fbReady()||!window._fbDb){toast('Нет интернета');return;}
   const postId='post_'+Date.now();
   const ts=Date.now();
   try{
@@ -170,7 +170,7 @@ async function doCreateChannel(){
   if(!username)return toast('Введи юзернейм канала');
   if(username.length<3)return toast('Юзернейм минимум 3 символа');
   if(!name)return toast('Введи название канала');
-  if(!_fbReady()||!window._fbDb)return toast('Нет соединения');
+  if(!_fbReady()||!window._fbDb)return toast('Нет интернета');
 
   // Проверяем уникальность
   closeModal();
@@ -305,7 +305,7 @@ async function publishUserChannelPost(channelId){
   const text=($('userChPostTa')?.value||'').trim();
   if(!text)return toast('Введи текст поста');
   closeModal();
-  if(!window._fbDb)return toast('Нет соединения');
+  if(!window._fbDb)return toast('Нет интернета');
   const postId='post_'+Date.now();const ts=Date.now();
   try{
     // Пишем в Firebase — onChildAdded сам добавит в UI (нет локального дублирования)
@@ -382,7 +382,7 @@ function _listenUserChannel(channelId,username){
     const msg={id:d.id,sender:'inc',name:(meta.name||username),avatar:chAvatar,ts,time:fmtTime(ts),text:d.text};
     chatHist[channelId].push(msg);
     if(activeChat===channelId){renderChat(channelId);scrollDown();}
-    else{addUnread(channelId);if(!mutedChats[channelId]&&_notifOn('channels'))toast('📢 Новый пост в @'+username+(myNotif.channelsPreview!==false?': '+String(d.text).slice(0,40):'!'),3000);}
+    else{addUnread(channelId);if(!mutedChats[channelId]&&_notifOn('channels')&&document.visibilityState!=='visible')showDesktopNotif('@'+username,myNotif.channelsPreview!==false?String(d.text).slice(0,60):'Новый пост','','msg:'+channelId,{kind:'msg',chat:channelId});}
     saveAll();
   });
   _myChannelListeners[channelId]=unsub;

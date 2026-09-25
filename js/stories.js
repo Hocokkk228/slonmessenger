@@ -287,7 +287,7 @@ function _stRenderCanvas(){
 async function _stPublish(){
   if(!_stEd||_stEd.busy)return;
   if(_stEd.editing)_stTextDone();
-  if(!window._fbDb||!myUsername){toast('Нет подключения');return;}
+  if(!window._fbDb||!myUsername){toast('Нет интернета');return;}
   _stEd.busy=true;const btn=$('stSend');btn.classList.add('busy');
   try{
     const cv=_stRenderCanvas();

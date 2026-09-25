@@ -337,7 +337,7 @@ async function _fetchAndApplyMyProfile(){
         else bnAv.innerHTML=_avHtml(myUsername,myNick||myUsername);
       }
       saveAll();
-      toast('Профиль синхронизирован 🔄');
+
     }
   }catch(e){console.warn('fetchMyProfile:',e);}
 }
@@ -406,7 +406,7 @@ function saveUsername(){
   }
 
   // Firebase ещё не загрузился — polling
-  setNet(false,'Подключение…');
+  setNet(false,'Загрузка…');
   let _fbPoll=setInterval(()=>{
     if(_fbReady()){clearInterval(_fbPoll);if(myUsername&&!_fbMode)initFirebaseMode();}
   },100);

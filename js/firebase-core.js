@@ -13,7 +13,7 @@ function initPeer(){
   if(_fbReady()){
     initFirebaseMode();
   } else {
-    setNet(false,'Подключение…');
+    setNet(false,'Загрузка…');
     // Polling — ждём Firebase каждые 100мс (надёжнее чем событие)
     let attempts=0;
     const poll=setInterval(()=>{
@@ -23,7 +23,7 @@ function initPeer(){
         if(!_fbMode)initFirebaseMode();
       }else if(attempts>80){ // 8 секунд
         clearInterval(poll);
-        setNet(false,'⚠ Firebase не загрузился — проверь интернет');
+        setNet(false,'⚠ Нет интернета');
       }
     },100);
   }
@@ -106,7 +106,7 @@ function _initSlonChannel(){
       const ts=d.ts||Date.now();
       chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text,channelPostId:snap.key});
       if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
-      else{addUnread(SLON_CHANNEL_ID);toast('📢 Новое в SLON-канале!',4000);}
+      else addUnread(SLON_CHANNEL_ID);
       saveAll();
     });
     // Слушаем удаления постов
@@ -142,7 +142,7 @@ function _initSlonChannel(){
       const ts=d.ts||Date.now();
       chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text});
       if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
-      else{addUnread(SLON_CHANNEL_ID);toast('📢 Новое в SLON-канале!',4000);}
+      else addUnread(SLON_CHANNEL_ID);
       saveAll();
     },{onlyOnce:false});
   }catch(e){console.warn('_initSlonChannel:',e);}
@@ -253,7 +253,7 @@ function _checkFirebaseRules(){
     .then(()=>{window._fbRemove(testRef).catch(()=>{});})
     .catch(e=>{
       console.error('Firebase RTDB rules error:',e);
-      setTimeout(()=>{
+      if(false)setTimeout(()=>{
         toast('⚠ Firebase: нет прав на запись. Открой консоль Firebase → Realtime Database → Rules и установи: {"rules":{".read":true,".write":true}}',8000);
       },1000);
     });
@@ -404,7 +404,7 @@ function setupConn(conn,silent=false){
     if(conns[pid]!==conn)return;
     setSbStatus(pid,true);
     sendData(conn,_myHelloFor(pid));
-    if(!silent)sysMsg(pid,'Соединение установлено');
+
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
     saveAll();
   };
@@ -423,7 +423,7 @@ function setupConn(conn,silent=false){
     if(conns[pid]!==conn)return;
     delete conns[pid];
     setSbStatus(pid,false);
-    if(!silent)sysMsg(pid,'Собеседник отключился');
+
     if(activeChat===pid){updateChatHeader();updateReconBanner();}
   });
 
@@ -447,7 +447,7 @@ function connectTo(pid,nick){
   // Firebase режим
   if(_fbMode){
     _fbSilentConnect(pid);
-    sysMsg(pid,'Подключение к @'+pid+' через Firebase…');
+
     return;
   }
 
@@ -456,7 +456,7 @@ function connectTo(pid,nick){
   try{
     const c=peer.connect(pid,{reliable:true,serialization:'json'});
     setupConn(c,false);
-    sysMsg(pid,'Подключение к @'+pid+'…');
+
   }catch(e){toast('Ошибка подключения: '+e.message);}
 }
 
@@ -787,13 +787,13 @@ function onData(pid,data){
         const mv={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:data.url,voiceDur:data.dur,isUrl:true};
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(mv);
         if(activeChat===spid2){appendMsg(mv);scrollDown();}
-        else{addUnread(spid2);toast('🎙️ '+(peerNames[spid2]||('@'+spid2))+': голосовое');}
+        else addUnread(spid2);
         updatePreview(spid2,'🎙️ Голосовое');
       }else if(data.kind==='slon'){
         const ms={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:data.url,slonDur:data.dur,isUrl:true};
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(ms);
         if(activeChat===spid2){appendMsg(ms);scrollDown();}
-        else{addUnread(spid2);toast('🐘 '+(peerNames[spid2]||('@'+spid2))+': слонкружок');}
+        else addUnread(spid2);
         updatePreview(spid2,'🐘 Слонкружок');
       }
       saveAll();break;}
@@ -822,14 +822,14 @@ function onData(pid,data){
             await _saveMediaToIdb(data.id,'voice',fullData); // сначала в IDB, потом рендер — иначе «видео недоступно»
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
-            else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
+            else addUnread(spid);
             updatePreview(spid,'🎙️ Голосовое');
           }else if(data.kind==='slon'){
             const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:data.dur};
             await _saveMediaToIdb(data.id,'slon',fullData); // сначала в IDB, потом рендер — иначе «видео недоступно»
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
-            else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
+            else addUnread(spid);
             updatePreview(spid,'🐘 Слонкружок');
           }
           saveAll();
@@ -848,14 +848,14 @@ function onData(pid,data){
         const msg2={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',voiceDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg2);
         if(activeChat===spid){appendMsg(msg2);scrollDown();}
-        else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
+        else addUnread(spid);
         updatePreview(spid,'🎙️ Голосовое');
       }else if(buf.kind==='slon'){
         _saveMediaToIdb(data.id,'slon',fullData);
         const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg3);
         if(activeChat===spid){appendMsg(msg3);scrollDown();}
-        else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
+        else addUnread(spid);
         updatePreview(spid,'🐘 Слонкружок');
       }
       saveAll();break;}
@@ -926,7 +926,7 @@ function mergeByUsername(canonPid, username){
     if(activeChat===dupPid){activeChat=canonPid;renderChat(canonPid);}
   });
 
-  if(merged)toast('Объединили дублирующийся чат с @'+username);
+
   saveAll();
 }
 

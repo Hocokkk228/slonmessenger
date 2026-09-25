@@ -1043,7 +1043,7 @@ function _ppToggleMute(pid){
   $('ppMuteSw')?.classList.toggle('on',!mutedChats[pid]);
   const btns=document.querySelectorAll('#peerProfActions .pp-act');
   const b=btns[3];if(b)b.outerHTML=`<button class="pp-act" onclick="_ppToggleMute('${pid}')"><div class="pp-act-ico">${_spSvg(mutedChats[pid]?'speaker':'bell')}</div><span>${mutedChats[pid]?'Вкл. звук':'Без звука'}</span></button>`;
-  toast(mutedChats[pid]?'🔕 Уведомления выключены':'🔔 Уведомления включены');
+
 }
 
 // ════════════════════════════════════════

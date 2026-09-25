@@ -24,7 +24,7 @@ function startGroupCall(gid,isVideo){
   if(_gc)return _gcShowScreen();
   const g=groups[gid];if(!g)return;
   if(!(g.members||[]).some(m=>m!==myUsername))return toast('В группе нет других участников');
-  if(!window._fbDb)return toast('Нет подключения к Firebase');
+  if(!window._fbDb)return toast('Нет интернета');
   // Если звонок в группе уже идёт — присоединяемся к нему, а не создаём второй
   _fbOnce(`group_calls/${gid}/active`).then(s=>{
     const a=s?.val();

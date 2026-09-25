@@ -243,7 +243,7 @@ async function doCreateVoiceRoom(){
   const name = ($('vrNameInp')?.value||'').trim();
   if(!name) return toast('Введи название');
   closeModal();
-  if(!window._fbDb) return toast('Нет соединения');
+  if(!window._fbDb) return toast('Нет интернета');
   const roomId = 'vr_'+Date.now().toString(36);
   try{
     await window._fbSet(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId),

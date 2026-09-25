@@ -90,7 +90,7 @@ function _installAskOnce(){
   try{if(localStorage.getItem('sl_install_asked'))return;}catch(e){}
   const el=document.createElement('div');
   el.id='installAsk';el.className='notif-ask';
-  el.innerHTML=`<div class="na-ico"><img src="launchericon-96x96.png" alt=""></div>
+  el.innerHTML=`<div class="na-ico"><img src="icons/icon-96.png" alt=""></div>
     <div class="na-txt"><b>Установи SLON как приложение</b><span>Иконка на рабочем столе, отдельное окно и надёжные уведомления о звонках</span></div>
     <div class="na-btns"><button class="na-no">Не сейчас</button><button class="na-yes">Установить</button></div>`;
   const done=()=>{try{localStorage.setItem('sl_install_asked','1');}catch(e){}el.classList.remove('show');setTimeout(()=>el.remove(),300);};

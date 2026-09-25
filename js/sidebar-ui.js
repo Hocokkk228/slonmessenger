@@ -50,8 +50,11 @@ function rebuildSidebar(){
     if(meta.username&&window._fbDb)setTimeout(()=>_listenUserChannel(cid,meta.username),1000);
   });
   // Превью последних сообщений
-  for(const[id,hist]of Object.entries(chatHist)){
-    if(id==='ai'||!hist?.length)continue;
+  for(const[id,hist0]of Object.entries(chatHist)){
+    if(id==='ai'||!hist0?.length)continue;
+    // Старые служебные «Подключение к @… через Firebase…» — выкидываем из истории
+    const hist=chatHist[id]=hist0.filter(m=>!(m&&m.sender==='system'&&/^(Подключение|Соединение установлено|Собеседник отключился)/.test(m.text||'')));
+    if(!hist.length)continue;
     const last=hist[hist.length-1];
     if(last)updatePreview(id,last.sender==='me'?'Вы: '+(last.text||'📎').slice(0,28):(last.text||'📎').slice(0,28));
   }
@@ -275,7 +278,6 @@ function reconnectCurrent(){
   if(activeChat!=='ai'&&activeChat!=='saved'&&!activeChat.startsWith('g_')){
     $('reconBanner').classList.remove('show');
     silentConnect(activeChat);
-    sysMsg(activeChat,'Подключение…');
   }
 }
 

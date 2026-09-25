@@ -73,7 +73,7 @@ async function _psStart(){
     const d=snap.val();
     if(!d||d.dev===_myDeviceId||(d.ts||0)<=_psTs)return;
     _psApply(d);
-    toast('🔄 Профиль обновлён с другого устройства');
+
   });
 }
 
