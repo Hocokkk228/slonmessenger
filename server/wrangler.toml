@@ -13,6 +13,15 @@ database_id = "0e31fbcb-1135-4123-a354-8f39c03f2ef9"
 name = "MEDIA"
 class_name = "MediaStore"
 
+# Хаб аккаунта: WebSocket всех устройств, журнал сообщений, очередь офлайн-сигналов
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "UserHub"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["MediaStore"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["UserHub"]

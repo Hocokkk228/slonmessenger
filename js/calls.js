@@ -306,6 +306,7 @@ function _syncCallToSelf(action,callId,peerId){
   try{
     const ref=window._fbRef(window._fbDb,'call_sync/'+myUsername+'/'+_callKey(callId));
     window._fbSet(ref,{action,peerId,dev:_myDeviceId,ts:Date.now()});
+    if(typeof _hubSend==='function')_hubSend({t:'self',payload:{type:'call_sync',key:_callKey(callId),action,peerId,dev:_myDeviceId,ts:Date.now()}});
     setTimeout(()=>window._fbRemove(ref).catch(()=>{}),120000); // подчищаем
   }catch(e){}
 }
@@ -316,10 +317,14 @@ function _listenCallSync(){
   if(_callSyncOn||!window._fbDb||!myUsername)return;
   _callSyncOn=true;
   const ref=window._fbRef(window._fbDb,'call_sync/'+myUsername);
-  const onRec=snap=>{
-    const d=snap.val();if(!d||d.dev===_myDeviceId)return;
+  const onRec=snap=>_callSyncApply(snap.key,snap.val());
+  window._fbOnChildAdded(ref,onRec);
+  window._fbOnChildChanged?.(ref,onRec);
+}
+// Звонок взяли/отклонили на другом нашем устройстве (из Firebase или хаба)
+function _callSyncApply(key,d){
+    if(!d||d.dev===_myDeviceId)return;
     if(Date.now()-(d.ts||0)>120000)return;
-    const key=snap.key;
     const same=id=>id&&_callKey(id)===key;
     _cancelledCallIds?.add(key);
     // Звонок ещё звонит здесь — молча убираем (без «пропущенного»)
@@ -330,9 +335,6 @@ function _listenCallSync(){
       if(typeof _closeCallNotif==='function')_closeCallNotif();
       toast(d.action==='answered'?'📱 Звонок принят на другом устройстве':'Звонок отклонён на другом устройстве');
     }
-  };
-  window._fbOnChildAdded(ref,onRec);
-  window._fbOnChildChanged?.(ref,onRec);
 }
 
 function setupCallUI(peerId,isVideo){

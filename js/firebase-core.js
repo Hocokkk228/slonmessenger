@@ -193,7 +193,15 @@ function _fbListen(username){
     if(!data)return;
     // Удаляем сообщение из inbox после прочтения
     window._fbRemove(snap.ref).catch(()=>{});
-    const pid=data.from;
+    // Копия, которую наш сервер положил для старых версий, — мы её уже получили через хаб
+    if(data.payload?._hub&&typeof _hubUp!=='undefined'&&_hubUp)return;
+    _handleIncoming(data.from,data.payload);
+  });
+}
+
+// Входящее от другого пользователя — через хаб нашего сервера или старый inbox Firebase
+function _handleIncoming(pid,payload){
+    const data={from:pid,payload};
     if(!pid)return;
     if(pid===myUsername){
       if(data.payload?.type==='call_self_sync'){
@@ -225,7 +233,6 @@ function _fbListen(username){
     if(data.payload&&typeof data.payload==='object'){
       onData(pid,data.payload);
     }
-  });
 }
 
 function _watchPresence(pid){
@@ -233,16 +240,23 @@ function _watchPresence(pid){
   const r=window._fbRef(window._fbDb,'presence/'+pid);
   const unsub=window._fbOnValue(r,snap=>{
     const data=snap.val();
-    const rawOnline=!!(data&&data.online&&(Date.now()-data.ts)<60000);
-    // Если пользователь забанен — не показываем онлайн
-    const isBanned=bannedUsers[pid]&&bannedUsers[pid].until>Date.now();
-    const online=rawOnline&&!isBanned;
-    peerLastSeen[pid]=data&&data.ls?data.ls:0;
-    _fbConns[pid]=online;
-    setSbStatus(pid,online);
-    if(activeChat===pid){updateChatHeader();updateReconBanner();}
+    _fbPres[pid]=data||null;
+    _presApply(pid);
   });
   _presenceWatchers[pid]=unsub;
+}
+// «В сети» = в сети по нашему серверу ИЛИ по старому Firebase (старые версии приложения)
+const _fbPres={};
+function _presApply(pid){
+  const f=_fbPres[pid],h=(typeof _hubPres!=='undefined')?_hubPres[pid]:null;
+  const fbOnline=!!(f&&f.online&&(Date.now()-f.ts)<60000);
+  const isBanned=bannedUsers[pid]&&bannedUsers[pid].until>Date.now();
+  const online=(fbOnline||!!h?.online)&&!isBanned;
+  peerLastSeen[pid]=Math.max(f&&f.ls?f.ls:0,h&&h.ls?h.ls:0);
+  const was=_fbConns[pid];
+  _fbConns[pid]=online;
+  if(was!==online)setSbStatus(pid,online);
+  if(activeChat===pid){updateChatHeader();updateReconBanner();}
 }
 
 function _checkFirebaseRules(){
@@ -303,6 +317,7 @@ async function _publishMyProfile(oldUsername){
 
     const data=_myPublicProfile({nick,avatar,bio,profileBg});
     window._fbSet(window._fbRef(window._fbDb,'profiles/'+myUsername),data);
+    if(typeof _apiToken==='function'&&_apiToken())api('/profile',{data}).catch(()=>{});
 
     if(oldUsername&&oldUsername!==myUsername){
       window._fbSet(window._fbRef(window._fbDb,'profiles/'+oldUsername),
@@ -361,6 +376,14 @@ function _fetchProfile(pid){
 }
 
 function _fbSend(pid,data){
+  // Живое соединение с нашим сервером — основной путь; Firebase — запасной
+  if(typeof _hubSend==='function'&&_hubSend({t:'send',to:pid,payload:data})){
+    if(data.type==='msg'&&data.id){
+      const m=(chatHist[pid]||[]).find(x=>x.id===data.id);
+      if(m&&m.status==='sent'){m.status='delivered';_updateMsgStatus(data.id,'delivered');}
+    }
+    return true;
+  }
   if(!_fbReady()||!window._fbDb)return false;
   try{
     const db=window._fbDb;

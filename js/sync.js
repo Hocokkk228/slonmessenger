@@ -55,6 +55,7 @@ function _psPush(){
   if(sig===_psSig)return;
   _psSig=sig;_psTs=Math.max(Date.now(),_psTs+1); // строго новее прошлой правки (часы устройств могут расходиться)
   try{localStorage.setItem(_psKey(),String(_psTs));}catch(e){}
+  if(typeof _apiToken==='function'&&_apiToken())api('/me/sync',{data:cur,ts:_psTs,dev:_myDeviceId}).catch(e=>console.warn('profile sync api:',e));
   window._fbSet(_psRef(),{...cur,ts:_psTs,dev:_myDeviceId}).catch(e=>console.warn('profile sync push:',e));
 }
 async function _psStart(){
@@ -63,6 +64,13 @@ async function _psStart(){
   _psTs=+(localStorage.getItem(_psKey())||0);
   let remote=null;
   try{remote=(await _fbOnce('user_sync/'+myUsername+'/profile',8000))?.val()||null;}catch(e){}
+  // С нашего сервера — берём, если новее
+  try{
+    if(typeof _apiToken==='function'&&_apiToken()){
+      const d=await api('/me/sync');
+      if(d.data&&(d.ts||0)>(remote?.ts||0))remote={...d.data,ts:d.ts};
+    }
+  }catch(e){}
   if(_psUser!==myUsername)return;
   if(remote&&(remote.ts||0)>_psTs)_psApply(remote);
   else _psSig='';               // локальное новее или облака ещё нет — отправим своё
@@ -75,6 +83,12 @@ async function _psStart(){
     _psApply(d);
 
   });
+}
+
+// Синк профиля пришёл через хаб с другого нашего устройства
+function _psRemote(p){
+  if(!p||!p.data||p.dev===_myDeviceId||(p.ts||0)<=_psTs)return;
+  _psApply({...p.data,ts:p.ts});
 }
 
 // ── 3. Хранилище медиа ──
@@ -150,6 +164,11 @@ function _mlPost(chat,rec){
   if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId?.(chat))return null;
   const key=_mlKey(rec.ts,rec.id);
   const clean={};for(const k in rec)if(rec[k]!==undefined&&rec[k]!==null)clean[k]=rec[k];
+  // Наш сервер: журнал у себя и у собеседника, доставка на все устройства (галочки — по ml_ack)
+  if(typeof _hubSend==='function'&&_hubSend({t:'ml_post',chat,key,rec:clean})){
+    if(chat!=='saved'&&typeof _pushMsg==='function')_pushMsg(chat,(rec.k||'text')==='text'?rec.text:(ML_PREVIEW[rec.k]||'Медиа'));
+    return Promise.resolve();
+  }
   window._fbSet(_mlRef(myUsername,key),{...clean,chat,out:true,from:myUsername,dev:_myDeviceId}).catch(e=>console.warn('ml self:',e));
   let p=Promise.resolve();
   if(chat!=='saved'){
@@ -169,12 +188,14 @@ function _mlFindKey(chat,id){
 function _mlEdit(chat,id,patch){
   if(!_mlOn())return;
   const key=_mlFindKey(chat,id);if(!key)return;
+  if(typeof _hubSend==='function'&&_hubSend({t:'ml_patch',chat,key,patch}))return;
   window._fbRef(window._fbDb,'ml/'+myUsername+'/'+key).update(patch).catch(()=>{});
   if(chat!=='saved')window._fbRef(window._fbDb,'ml/'+chat+'/'+key).update(patch).catch(()=>{});
 }
 function _mlDelete(chat,msg,forAll){
   if(!_mlOn()||!msg)return;
   const key=msg._mk||_mlKey(msg.ts,msg.id);
+  if(typeof _hubSend==='function'&&_hubSend({t:'ml_patch',chat,key,patch:forAll&&chat!=='saved'?{del:true}:{gone:true}}))return;
   if(forAll&&chat!=='saved'){
     window._fbRef(window._fbDb,'ml/'+myUsername+'/'+key).update({del:true}).catch(()=>{});
     window._fbRef(window._fbDb,'ml/'+chat+'/'+key).update({del:true}).catch(()=>{});

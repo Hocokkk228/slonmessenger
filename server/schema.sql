@@ -39,3 +39,23 @@ CREATE TABLE IF NOT EXISTS login_fails (
 CREATE TABLE IF NOT EXISTS admins (
   username TEXT PRIMARY KEY
 );
+
+-- Статусы «в сети» (ведёт хаб аккаунта)
+CREATE TABLE IF NOT EXISTS presence (
+  username TEXT PRIMARY KEY,
+  online   INTEGER NOT NULL,
+  ts       INTEGER NOT NULL,
+  ls       INTEGER NOT NULL      -- «был(а) в …»; 0 = скрыто настройками приватности
+);
+-- Публичные профили
+CREATE TABLE IF NOT EXISTS profiles (
+  username TEXT PRIMARY KEY,
+  data     TEXT NOT NULL,
+  ts       INTEGER NOT NULL
+);
+-- Синк своего профиля между своими устройствами
+CREATE TABLE IF NOT EXISTS user_sync (
+  username TEXT PRIMARY KEY,
+  data     TEXT NOT NULL,
+  ts       INTEGER NOT NULL
+);

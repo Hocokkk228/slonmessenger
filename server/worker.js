@@ -13,6 +13,8 @@ const MEDIA_SHARDS=8,MEDIA_CHUNK=1024*1024,MEDIA_MAX=100*1024*1024;
 // ── Хранилище медиа: Durable Object с SQLite. Файл режется на куски по 1 МБ
 // (лимит строки 2 МБ). Шардируем по id, чтобы нагрузка делилась на 8 объектов.
 import {DurableObject} from 'cloudflare:workers';
+import {UserHub} from './hub.js';
+export {UserHub};
 export class MediaStore extends DurableObject{
   constructor(ctx,env){
     super(ctx,env);
@@ -194,6 +196,49 @@ const routes={
     return json({ok:true,iceServers:d.iceServers||[],ttl:86400});
   },
 
+  // ── Статусы «в сети» / «был(а)» — пачкой по списку контактов ──
+  async 'GET /presence'(req,env){
+    const us=String(new URL(req.url).searchParams.get('u')||'').toLowerCase().split(',').filter(validUser).slice(0,200);
+    if(!us.length)return json({ok:true,presence:{}});
+    const rows=(await env.DB.prepare('SELECT username,online,ts,ls FROM presence WHERE username IN ('+us.map(()=>'?').join(',')+')').bind(...us).all()).results||[];
+    const out={};for(const r of rows)out[r.username]={online:!!r.online,ts:r.ts,ls:r.ls};
+    return json({ok:true,presence:out});
+  },
+
+  // ── Публичные профили (то, что видят все; скрытое по приватности сюда не кладётся) ──
+  async 'POST /profile'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const data=JSON.stringify(d.data||{});
+    if(data.length>900000)return err('too_large','Профиль слишком большой (аватарка?)',413);
+    await env.DB.prepare('INSERT INTO profiles(username,data,ts) VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET data=excluded.data,ts=excluded.ts')
+      .bind(u,data,Date.now()).run();
+    return json({ok:true});
+  },
+  async 'GET /profiles'(req,env){
+    const us=String(new URL(req.url).searchParams.get('u')||'').toLowerCase().split(',').filter(validUser).slice(0,100);
+    if(!us.length)return json({ok:true,profiles:{}});
+    const rows=(await env.DB.prepare('SELECT username,data,ts FROM profiles WHERE username IN ('+us.map(()=>'?').join(',')+')').bind(...us).all()).results||[];
+    const out={};for(const r of rows){try{out[r.username]={...JSON.parse(r.data),ts:r.ts};}catch(e){}}
+    return json({ok:true,profiles:out});
+  },
+
+  // ── Синк своего профиля/кастомизации между своими устройствами ──
+  async 'GET /me/sync'(req,env){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const r=await env.DB.prepare('SELECT data,ts FROM user_sync WHERE username=?').bind(u).first();
+    return json({ok:true,data:r?JSON.parse(r.data):null,ts:r?.ts||0});
+  },
+  async 'POST /me/sync'(req,env,d){
+    const u=await authed(req,env);if(!u)return err('unauthorized','Войди заново',401);
+    const data=JSON.stringify(d.data||{});
+    if(data.length>900000)return err('too_large','Слишком большой профиль',413);
+    const ts=+d.ts||Date.now();
+    await env.DB.prepare('INSERT INTO user_sync(username,data,ts) VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET data=excluded.data,ts=excluded.ts WHERE excluded.ts>user_sync.ts')
+      .bind(u,data,ts).run();
+    await env.HUB.get(env.HUB.idFromName(u)).pushSelf({type:'profile_sync',data:d.data,ts,dev:d.dev||''});
+    return json({ok:true});
+  },
+
   // Сброс пароля — только админ
   async 'POST /admin/reset-password'(req,env,d){
     const a=await authed(req,env);if(!a||!(await isAdmin(env,a)))return err('forbidden','Только для админов',403);
@@ -233,6 +278,18 @@ export default {
     if(req.method==='OPTIONS')return new Response(null,{headers:{...CORS,'Access-Control-Allow-Headers':'Content-Type, Authorization, X-Mime, X-Name'}});
     const url=new URL(req.url);
     if(url.pathname==='/')return json({ok:true,service:'slon-api',version:2});
+    // Живое соединение устройства с хабом аккаунта (токен в адресе — у WebSocket нет заголовков)
+    if(url.pathname==='/ws'){
+      if(req.headers.get('Upgrade')!=='websocket')return err('bad_request','Нужен WebSocket',426);
+      const tok=url.searchParams.get('token')||'';
+      const s=tok?await env.DB.prepare('SELECT username FROM sessions WHERE token_hash=?').bind(await sha(tok)).first():null;
+      if(!s)return new Response('unauthorized',{status:401,headers:CORS});
+      const fwd=new URL('https://hub/ws');
+      fwd.searchParams.set('u',s.username);
+      fwd.searchParams.set('dev',(url.searchParams.get('dev')||'').slice(0,40));
+      fwd.searchParams.set('ls',url.searchParams.get('ls')==='0'?'0':'1');
+      return env.HUB.get(env.HUB.idFromName(s.username)).fetch(new Request(fwd,req));
+    }
     if(url.pathname==='/media'&&req.method==='POST')return mediaUpload(req,env).catch(e=>{console.error(e);return err('server','Не удалось сохранить файл',500);});
     if(url.pathname.startsWith('/media/')&&req.method==='GET')return mediaGet(url.pathname.slice(7),env).catch(e=>{console.error(e);return err('server','Ошибка',500);});
     const h=routes[req.method+' '+url.pathname];
