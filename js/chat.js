@@ -153,9 +153,7 @@ function recvMsg(pid,text,nick,avatar,mid,ts){
   const msg={id:msgId,sender:'inc',senderId:pid,name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,ts:msgTs,time:fmtTime(msgTs)};
   chatHist[pid].push(msg);
   // Отправляем read receipt если чат открыт
-  if(activeChat===pid&&document.visibilityState==='visible'){
-    sendData(conns[pid]||pid,{type:'read',ids:[msgId]});
-  }
+  if(activeChat===pid)setTimeout(()=>_sendRead(pid),50);
   if(activeChat===pid){
     appendMsg(msg);scrollDown();
     if(document.visibilityState!=='visible'&&_notifOn('private')){
@@ -548,15 +546,26 @@ function renderChat(id){
   if(hist?.length)hist.forEach(m=>appendMsg(m,c));
   scrollDown();
   _updatePinnedBar();
-  // Send read receipts for unread incoming messages
-  if(id!=='ai'&&id!=='saved'&&!id.startsWith('g_')){
-    const unreadIds=(chatHist[id]||[]).filter(m=>m.sender==='inc'&&!m.readSent).map(m=>m.id);
-    if(unreadIds.length){
-      sendData(conns[id]||id,{type:'read',ids:unreadIds});
-      (chatHist[id]||[]).forEach(m=>{if(m.sender==='inc')m.readSent=true;});
-    }
-  }
+  _sendRead(id);
 }
+
+// «Прочитано» собеседнику: чат открыт и виден на экране. Шлём «всё до последнего
+// входящего» (upto) — надёжно, даже если какое-то отдельное подтверждение потерялось.
+function _sendRead(id){
+  if(!id||id==='ai'||id==='saved'||id.startsWith('g_')||(typeof _isChannelId==='function'&&_isChannelId(id)))return;
+  if(document.visibilityState!=='visible'||activeChat!==id)return;
+  if(window.innerWidth<=640&&$('sidebar')?.classList.contains('open'))return;   // на телефоне открыт список, а не чат
+  const hist=chatHist[id]||[];
+  const unread=hist.filter(m=>m.sender==='inc'&&!m.readSent);
+  if(!unread.length)return;
+  const upto=Math.max(...unread.map(m=>m.ts||0));
+  sendData(conns[id]||id,{type:'read',ids:unread.map(m=>m.id).slice(-50),upto});
+  unread.forEach(m=>m.readSent=true);
+  saveAll();
+}
+// Вернулись в приложение / закрыли список на телефоне — дочитываем открытый чат
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>_sendRead(activeChat),300);});
+window.addEventListener('focus',()=>setTimeout(()=>_sendRead(activeChat),300));
 
 function clearChat(){
   if(activeChat.startsWith('g_'))grpHist[activeChat]=[];else chatHist[activeChat]=[];

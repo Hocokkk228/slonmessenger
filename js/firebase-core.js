@@ -540,18 +540,17 @@ function onData(pid,data){
     case 'msg':
       recvMsg(pid,data.text,data.nick,data.avatar,data.id,data.ts);
       break;
-    case 'read':
-      // Собеседник прочитал наши сообщения
-      if(Array.isArray(data.ids)){
-        data.ids.forEach(mid=>{
-          const hist=chatHist[pid];
-          if(!hist)return;
-          const m=hist.find(x=>x.id===mid&&x.sender==='me');
-          if(m&&m.status!=='read'){m.status='read';_updateMsgStatus(mid,'read');}
-        });
-        saveAll();
+    case 'read':{
+      // Собеседник прочитал наши сообщения: по списку id и «всё до момента upto»
+      const hist=chatHist[pid];if(!hist)break;
+      let upto=+data.upto||0;
+      if(Array.isArray(data.ids))for(const mid of data.ids){const m=hist.find(x=>x.id===mid);if(m&&m.ts>upto)upto=m.ts;}
+      let changed=false;
+      for(const m of hist){
+        if(m.sender==='me'&&m.status!=='read'&&(m.ts||0)<=upto){m.status='read';_updateMsgStatus(m.id,'read');changed=true;}
       }
-      break;
+      if(changed)saveAll();
+      break;}
     case 'msg_delete':
       _handleMsgDelete(pid,data);
       break;

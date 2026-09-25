@@ -244,7 +244,7 @@ async function _mlMaterialize(key,r0){
     const p=await _e2eOpen(key,r0);
     const out0=!!r0.out,chat0=r0.chat;
     if(!p)return {id:r0.id,sender:out0?'me':'inc',senderId:out0?undefined:chat0,name:out0?undefined:(peerNames[chat0]||('@'+chat0)),
-      ts:r0.ts,time:fmtTime(r0.ts),_mk:key,_e2e:true,text:'🔒 Зашифрованное сообщение — откроется, когда на устройство придёт ключ'};
+      ts:r0.ts,time:fmtTime(r0.ts),_mk:key,_e2e:true,_e2eWait:true,text:'🔒 Зашифрованное сообщение — откроется, когда на устройство придёт ключ'};
     r={...r0,...p,k:p.k||'text'};e2e=true;
   }
   const out=!!r.out,chat=r.chat;
@@ -289,7 +289,13 @@ async function _mlOnAdd(key,r){
   if(!out&&chat!=='saved'&&typeof _privacyGate==='function'&&!_privacyGate(chat,{type:r.k==='text'||!r.k?'msg':'file_start'}))return;
   const hist=chatHist[chat]||(chatHist[chat]=[]);
   const have=hist.find(m=>m.id===r.id);
-  if(have){have._mk=key;return;}
+  if(have){
+    have._mk=key;
+    const isStub=have._e2eWait||(typeof have.text==='string'&&have.text.startsWith('🔒 Зашифрованное сообщение'));
+    if(!isStub||!r.e)return;
+    const i=hist.indexOf(have);if(i>=0)hist.splice(i,1);
+    document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();
+  }
   if(_mlPending.has(r.id))return;
   _mlPending.add(r.id);
   try{
@@ -309,7 +315,7 @@ async function _mlOnAdd(key,r){
     if(!isLast)hist.sort((a,b)=>(a.ts||0)-(b.ts||0));
     if(activeChat===chat){
       if(isLast){appendMsg(msg);scrollDown();}else renderChat(chat);
-      if(!out&&document.visibilityState==='visible')sendData(conns[chat]||chat,{type:'read',ids:[r.id]});
+      if(!out)setTimeout(()=>_sendRead(chat),50);
     }
     const k=msg.text!=null?'text':msg.photoId?'photo':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
     r={...r,text:msg.text};

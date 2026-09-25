@@ -71,6 +71,7 @@ async function _e2eInit(){
     }
     _e2eVk=await _idb.get(_e2eK('vk'));
     _e2eOn=true;                                   // шифруем сразу; ключ бэкапа — только для сейфа истории
+    setTimeout(_e2eRepairPlaceholders,500);
     if(!_e2eVk)_e2eAskVkFromDevices();             // пароля не знаем — ключ пришлёт другое моё устройство
     if(_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp)_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});
   }catch(e){console.warn('[e2e] init:',e);}
@@ -224,6 +225,21 @@ async function _e2eOnVault(items){
   }
   try{localStorage.setItem(_e2eK('vsince'),String(max));}catch(e){}
 }
+// Починка: сообщения-заглушки «Зашифрованное сообщение…» перерасшифровываем.
+// Их шифр на сервере цел — просто когда-то расшифровка не успела начаться.
+let _e2eRepairing=false;
+function _e2eRepairPlaceholders(){
+  if(_e2eRepairing)return;
+  for(const k of Object.keys(_e2eWaiting))_e2eRetry(k);
+  let has=false;
+  for(const hist of Object.values(chatHist))for(const m of hist||[])if(m&&(m._e2eWait||(typeof m.text==='string'&&m.text.startsWith('🔒 Зашифрованное сообщение'))))has=true;
+  if(!has||typeof _hubUp==='undefined'||!_hubUp)return;
+  _e2eRepairing=true;
+  // заново забираем журнал — заглушки заменятся настоящими сообщениями (см. _mlOnAdd)
+  _hubSend({t:'ml_sync',since:0});
+  setTimeout(()=>{_e2eRepairing=false;},15000);
+}
+
 // Сообщение было «недоступно» — ключ появился, перерисовываем
 function _e2eRetry(key){
   const rec=_e2eWaiting[key];delete _e2eWaiting[key];
@@ -234,8 +250,17 @@ function _e2eRetry(key){
 }
 
 // Открыть запись журнала → расшифрованное содержимое (или null)
+// Ключи устройства ещё грузятся — ждём (до ~15 с), иначе сообщение ошибочно станет «недоступным»
+async function _e2eWaitReady(){
+  for(let i=0;i<75&&!(_e2eMe&&_e2eUser===myUsername);i++){
+    if(!_e2eIniting&&!_e2eMe)_e2eInit();
+    await new Promise(r=>setTimeout(r,200));
+  }
+  return !!_e2eMe;
+}
 async function _e2eOpen(key,rec){
   const ev=rec.ev||0;
+  await _e2eWaitReady();
   const cached=await _idb.get(_e2eK('p:'+key+':'+ev));
   if(cached)return cached;
   return _e2eQ(async()=>{

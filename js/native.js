@@ -236,7 +236,10 @@ function downloadAndroidApp(){
 async function _spNotifDiag(){
   const S=_NP.SlonSystem;if(!S)return;
   let d={};try{d=await S.diag();}catch(e){}
-  const ok=(v,good,bad)=>v?`<span class="nd-ok">✅ ${good}</span>`:`<span class="nd-bad">❌ ${bad}</span>`;
+  const IC_OK='<svg class="nd-ic" viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+  const IC_BAD='<svg class="nd-ic" viewBox="0 0 24 24"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>';
+  const IC_WAIT='<svg class="nd-ic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z"/></svg>';
+  const ok=(v,good,bad)=>v?`<span class="nd-ok">${IC_OK}${good}</span>`:`<span class="nd-bad">${IC_BAD}${bad}</span>`;
   const row=(title,state,btn,fn)=>`<div class="sp-row nd-row"><div class="sp-row-txt"><div class="sp-row-title">${title}</div><div class="sp-row-sub">${state}</div></div>${btn?`<button class="nd-btn" onclick="${fn}">${btn}</button>`:''}</div>`;
   const m=String(d.manufacturer||'').toLowerCase();
   const oem=/xiaomi|redmi|poco|oppo|realme|oneplus|huawei|honor|vivo/.test(m);
@@ -244,7 +247,7 @@ async function _spNotifDiag(){
       row('Разрешение на уведомления',ok(d.notifEnabled,'Разрешены','Запрещены — SLON не может показывать уведомления'),d.notifEnabled?'':'Разрешить','_NP.SlonSystem.requestNotifPermission().then(()=>setTimeout(_spNotifDiagRefresh,1500))')
      +row('Уведомления о сообщениях',ok(d.msgChannel!==0,'Включены','Канал «Сообщения» выключен в настройках'),d.msgChannel===0?'Включить':'','_NP.SlonSystem.openNotifSettings()')
      +row('Уведомления о звонках',ok(d.callChannel!==0,'Включены','Канал «Звонки» выключен в настройках'),d.callChannel===0?'Включить':'','_NP.SlonSystem.openNotifSettings()')
-     +row('Фоновая связь с сервером',d.serviceRunning?(d.connected?'<span class="nd-ok">✅ Подключена</span>':'<span class="nd-bad">⏳ Служба работает, но нет соединения — проверь интернет</span>'):'<span class="nd-bad">❌ Не запущена</span>',d.serviceRunning?'':'Запустить','_nativeBgOn=false;setTimeout(_spNotifDiagRefresh,2500)')
+     +row('Фоновая связь с сервером',d.serviceRunning?(d.connected?`<span class="nd-ok">${IC_OK}Подключена</span>`:`<span class="nd-bad">${IC_WAIT}Служба работает, но нет соединения — проверь интернет</span>`):`<span class="nd-bad">${IC_BAD}Не запущена</span>`,d.serviceRunning?'':'Запустить','_nativeBgOn=false;setTimeout(_spNotifDiagRefresh,2500)')
      +row('Работа в фоне без ограничений',ok(d.unrestricted,'Разрешена','Батарея усыпляет SLON — уведомления будут опаздывать'),d.unrestricted?'':'Разрешить','_NP.SlonSystem.requestUnrestricted().then(()=>setTimeout(_spNotifDiagRefresh,1500))')
      +(oem?row('Автозапуск ('+esc(d.manufacturer)+')','На этом телефоне без автозапуска система убивает SLON в фоне','Открыть','_NP.SlonSystem.openAutostart()'):'')
     )

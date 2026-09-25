@@ -501,7 +501,7 @@ async function _globalSearchSubscribe(username){
 
 function toggleSidebar(){$('sidebar').classList.toggle('open');$('sbOverlay').classList.toggle('show');}
 
-function closeSidebar(){$('sidebar').classList.remove('open');$('sbOverlay').classList.remove('show');}
+function closeSidebar(){$('sidebar').classList.remove('open');$('sbOverlay').classList.remove('show');setTimeout(()=>{if(typeof _sendRead==='function')_sendRead(activeChat);},300);}
 
 function backToList(){if(window.innerWidth<=640)toggleSidebar();}
 
