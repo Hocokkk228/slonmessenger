@@ -34,6 +34,7 @@ async function _loadMediaFromIdb(msgId,kind){
 const RC_MAX={voice:600,slon:60};   // лимиты длительности, сек
 const RC_HOLD_MS=220;                // дольше — это удержание, короче — тап
 const RC_LOCK_DY=70,RC_CANCEL_DX=110;
+const RC_AUDIO={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
 let _rcMode=(()=>{try{return localStorage.getItem('sl_recMode')==='slon'?'slon':'voice';}catch(e){return 'voice';}})();
 let _rec=null;        // текущая запись (см. _rcBegin)
 let _rcPress=null;    // текущее нажатие на кнопку
@@ -58,6 +59,8 @@ function _rcSetMode(m){
 }
 function _rcToggleMode(){
   _rcSetMode(_rcMode==='voice'?'slon':'voice');
+  // Как в Telegram: тап только переключает режим — подсказываем, как записывать
+  toast(_rcMode==='slon'?'📹 Кружок — удерживай кнопку для записи':'🎙️ Голосовое — удерживай кнопку для записи');
   const b=$('voiceRecBtn');
   if(b){b.classList.remove('rc-flip');void b.offsetWidth;b.classList.add('rc-flip');}
 }
@@ -71,6 +74,8 @@ function _rcInit(){
   b._rcInit=true;
   _rcSetMode(_rcMode);
   b.addEventListener('contextmenu',e=>e.preventDefault());
+  // На телефоне долгое нажатие иначе вызывает выделение/лупу/меню и обрывает жест
+  b.addEventListener('touchstart',e=>{if(e.cancelable)e.preventDefault();},{passive:false});
   b.addEventListener('pointerdown',e=>{
     if(e.button!==0)return;
     e.preventDefault();
@@ -131,14 +136,20 @@ async function _rcBegin(locked){
   let stream=null;
   try{
     stream=mode==='slon'
-      ?await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:'user',width:{ideal:480},height:{ideal:480}}})
+      ?await navigator.mediaDevices.getUserMedia({audio:RC_AUDIO,video:{facingMode:'user',width:{ideal:480},height:{ideal:480}}})
         .catch(()=>navigator.mediaDevices.getUserMedia({audio:true,video:true}))
-      :await navigator.mediaDevices.getUserMedia({audio:true});
+      :await navigator.mediaDevices.getUserMedia({audio:RC_AUDIO}).catch(()=>navigator.mediaDevices.getUserMedia({audio:true}));
   }catch(e){
     if(_rec===me){_rec=null;_rcShowBar(false);}
-    toast(mode==='slon'?'Нет доступа к камере':'Нет доступа к микрофону');
+    console.warn('rec getUserMedia:',e);
+    const why=e&&e.name==='NotAllowedError'?'доступ запрещён — разреши в настройках сайта'
+      :e&&e.name==='NotFoundError'?'устройство не найдено'
+      :e&&e.name==='NotReadableError'?'устройство занято другой программой'
+      :(e&&e.message)||'ошибка';
+    toast((mode==='slon'?'Камера: ':'Микрофон: ')+why);
     return;
   }
+  if(!stream.getAudioTracks().length){stream.getTracks().forEach(t=>t.stop());if(_rec===me){_rec=null;_rcShowBar(false);}toast('Микрофон не найден');return;}
   // Пока спрашивали разрешение, запись отменили или палец уже отпустили
   if(_rec!==me||me.releasedEarly){
     stream.getTracks().forEach(t=>t.stop());
@@ -154,7 +165,8 @@ async function _rcBegin(locked){
   me.mime=mime||(mode==='slon'?'video/webm':'audio/webm');
   let mr;
   try{mr=new MediaRecorder(stream,mime?{mimeType:mime}:{});}
-  catch(e){try{mr=new MediaRecorder(stream);}catch(e2){stream.getTracks().forEach(t=>t.stop());_rec=null;_rcShowBar(false);toast('Запись не поддерживается');return;}}
+  catch(e){try{mr=new MediaRecorder(stream);}catch(e2){console.warn('MediaRecorder:',e2);stream.getTracks().forEach(t=>t.stop());_rec=null;_rcShowBar(false);toast('Запись не поддерживается браузером');return;}}
+  mr.onerror=ev=>{console.warn('MediaRecorder error:',ev.error||ev);toast('Ошибка записи: '+(ev.error?.name||'сбой устройства'));if(_rec===me)_rcCancel();};
   me.chunks=[];
   mr.ondataavailable=e=>{if(e.data&&e.data.size>0)me.chunks.push(e.data);};
   mr.start(200);
@@ -267,7 +279,7 @@ function _rcStop(send){
   _rec=null;
   _rcShowBar(false);
   if(!me.mr){_rcCleanup(me);return;}
-  if(ms<700){ // случайный тычок — такое не отправляем
+  if(ms<500){ // случайный тычок — такое не отправляем
     me.mr.ondataavailable=null;try{me.mr.stop();}catch(e){}
     _rcCleanup(me);toast('Удерживай кнопку, чтобы записать');return;
   }
@@ -275,7 +287,7 @@ function _rcStop(send){
   const dur=Math.max(1,Math.round(ms/1000));
   const wave=_rcWaveOf(me.levels,48);
   me.mr.onstop=()=>{
-    if(!me.chunks.length){toast('Запись пустая');return;}
+    if(!me.chunks.length){toast('Запись пустая — микрофон не отдал звук');return;}
     const type=me.chunks[0].type||me.mime;
     const blob=new Blob(me.chunks,{type});
     if(me.mode==='slon'){
@@ -459,8 +471,8 @@ async function sendMediaChunked(conn,kind,id,dataUrl,dur,mimeType){
 // с точкой «не прослушано», кнопка расшифровки →A ──
 const VB_PLAY='<svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4a1 1 0 0 0 0-1.8l-10-6.4c-.7-.4-1.6.1-1.6.9z"/></svg>';
 const VB_PAUSE='<svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.3"/><rect x="13.5" y="5" width="4" height="14" rx="1.3"/></svg>';
-const VB_TR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12h7M6.8 8.6 10 12l-3.2 3.4"/><path d="M13 18.5 17 6.5l4 12M14.4 14.4h5.2"/></svg>';
-const VB_TR_UP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+const VB_TR='<svg class="vb-tr-ic" viewBox="0 0 24 24"><path d="M2 12h7.6M6.4 8.3 10 12l-3.6 3.7"/><path d="M12.6 19 17 5.2 21.4 19M14.2 14.3h5.6"/></svg>';
+const VB_TR_UP='<svg class="vb-tr-ic" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>';
 let _vbAudio=null,_vbSaveT=null;
 function _vbSaveSoon(){clearTimeout(_vbSaveT);_vbSaveT=setTimeout(()=>{try{saveAll();}catch(e){}},800);}
 
@@ -566,7 +578,89 @@ function renderVoiceBub(msg,isOut){
   return div;
 }
 
-// Расшифровка голосового (→A): Whisper через Hugging Face, результат кешируется в сообщении
+// ════════════════════════════════════════
+// ── РАСШИФРОВКА ГОЛОСОВЫХ И КРУЖКОВ (→A) ──
+// Whisper прямо в браузере (transformers.js), без токенов и серверов:
+// модель ~80 МБ качается один раз и дальше лежит в кэше браузера.
+// Считаем в Web Worker, чтобы интерфейс не подвисал.
+// ════════════════════════════════════════
+const ASR_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0';
+const ASR_MODEL='onnx-community/whisper-base';
+let _asrWorker=null,_asrSeq=0;
+const _asrJobs={};
+let _asrLoadPct=null;   // null — модель готова/не грузится; число — прогресс первой загрузки
+function _asrGetWorker(){
+  if(_asrWorker)return _asrWorker;
+  const code=`
+    let asr=null,loading=null;const files={};
+    async function load(){
+      if(asr)return asr;
+      if(!loading)loading=(async()=>{
+        const {pipeline}=await import('${ASR_LIB}');
+        asr=await pipeline('automatic-speech-recognition','${ASR_MODEL}',{progress_callback:p=>{
+          if(p.file&&p.total){files[p.file]=[p.loaded||0,p.total];
+            let l=0,t=0;for(const k in files){l+=files[k][0];t+=files[k][1];}
+            postMessage({type:'progress',pct:Math.round(l/t*100)});}
+        }});
+        postMessage({type:'ready'});
+        return asr;
+      })();
+      return loading;
+    }
+    onmessage=async e=>{
+      const {id,audio,language}=e.data;
+      try{
+        const a=await load();
+        const r=await a(audio,{language,task:'transcribe',chunk_length_s:30,stride_length_s:5});
+        postMessage({type:'done',id,text:String(r.text||'')});
+      }catch(err){loading=null;postMessage({type:'error',id,error:String(err&&err.message||err)});}
+    };`;
+  _asrWorker=new Worker(URL.createObjectURL(new Blob([code],{type:'text/javascript'})),{type:'module'});
+  _asrWorker.onmessage=e=>{
+    const d=e.data;
+    if(d.type==='progress'){_asrLoadPct=d.pct;Object.values(_asrJobs).forEach(j=>j.onProg&&j.onProg(d.pct));return;}
+    if(d.type==='ready'){_asrLoadPct=null;return;}
+    const j=_asrJobs[d.id];if(!j)return;
+    delete _asrJobs[d.id];
+    d.type==='done'?j.res(d.text):j.rej(new Error(d.error));
+  };
+  _asrWorker.onerror=e=>{
+    Object.values(_asrJobs).forEach(j=>j.rej(new Error(e.message||'worker')));
+    for(const k in _asrJobs)delete _asrJobs[k];
+    _asrWorker=null;
+  };
+  return _asrWorker;
+}
+// Аудио (в т.ч. дорожка из видео кружка) → моно 16 кГц, как нужно Whisper
+async function _asrDecode(blob){
+  const Ctx=window.AudioContext||window.webkitAudioContext;
+  const ctx=new Ctx({sampleRate:16000});
+  try{
+    const ab=await blob.arrayBuffer();
+    const buf=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.catch)p.catch(rej);});
+    const n=buf.numberOfChannels,out=new Float32Array(buf.length);
+    for(let c=0;c<n;c++){const d=buf.getChannelData(c);for(let i=0;i<d.length;i++)out[i]+=d[i]/n;}
+    return out;
+  }finally{try{ctx.close();}catch(e){}}
+}
+// Whisper на тишине «слышит» титры с YouTube — вычищаем такие галлюцинации
+// (в живой речи таких маркеров не бывает — если есть, выбрасываем весь результат)
+const ASR_JUNK=/субтитр|корректор|синецк|егоров|dimatorzok|amara\.org|продолжение следует|спасибо за просмотр/i;
+async function _asrTranscribe(blob,onProg){
+  const audio=await _asrDecode(blob);
+  let peak=0;for(let i=0;i<audio.length;i++){const v=Math.abs(audio[i]);if(v>peak)peak=v;}
+  if(peak<0.02)return '';                      // тишина — нечего расшифровывать
+  const id=++_asrSeq;
+  const lang=(typeof SLON_LANG!=='undefined'&&SLON_LANG==='en')?'english':'russian';
+  const p=new Promise((res,rej)=>{_asrJobs[id]={res,rej,onProg};});
+  if(_asrLoadPct!=null&&onProg)onProg(_asrLoadPct);
+  _asrGetWorker().postMessage({id,audio,language:lang},[audio.buffer]);
+  const text=await p;
+  const t=text.replace(/\s{2,}/g,' ').trim();
+  return ASR_JUNK.test(t)?'':t;
+}
+
+// Кнопка →A у голосового и кружка: раскрыть/свернуть текст, результат кешируется в сообщении
 async function _vbTranscribe(msg,div,btn,txtEl,getSrc){
   if(div.classList.contains('vb-tr-open')){
     div.classList.remove('vb-tr-open');btn.innerHTML=VB_TR;return;
@@ -575,108 +669,141 @@ async function _vbTranscribe(msg,div,btn,txtEl,getSrc){
   if(div.classList.contains('vb-tr-busy'))return;
   div.classList.add('vb-tr-busy','vb-tr-open');txtEl.textContent='';
   try{
-    const src=await getSrc();if(!src)throw new Error('нет аудио');
+    const src=await getSrc();if(!src)throw new Error('нет записи');
     const blob=await (await fetch(src)).blob();
-    const r=await fetch('https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+HF_API_TOKEN,'Content-Type':blob.type||'audio/webm'},
-      body:blob,
+    const text=await _asrTranscribe(blob,pct=>{
+      if(div.classList.contains('vb-tr-busy'))txtEl.dataset.load='Загружаю распознавание речи… '+pct+'%';
     });
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    const text=String(j.text||'').trim();
-    msg.voiceText=text||'(тишина)';
+    delete txtEl.dataset.load;
+    msg.voiceText=text||'Речь не распознана';
     txtEl.textContent=msg.voiceText;btn.innerHTML=VB_TR_UP;
     _vbSaveSoon();
   }catch(e){
+    delete txtEl.dataset.load;
     div.classList.remove('vb-tr-open');
+    console.warn('transcribe:',e);
     toast('Не удалось расшифровать: '+e.message);
   }finally{div.classList.remove('vb-tr-busy');}
 }
 
-function renderSlonBub(msg){
+// ── Слонкружок в переписке (как кружок в Telegram) + уши и хобот ──
+// Всё рисуется в одной коробке 146×127 «единиц», где сам круг — 100 единиц:
+// уши и хобот целиком помещаются внутрь, ничего не обрезается.
+const SC_DECO=`<svg class="sc-deco" viewBox="0 0 146 127" aria-hidden="true">
+  <defs>
+    <linearGradient id="scSkin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9c5d3"/><stop offset="1" stop-color="#8e9cae"/></linearGradient>
+    <radialGradient id="scInner" cx=".45" cy=".45" r=".7"><stop offset="0" stop-color="#ffd1dc"/><stop offset="1" stop-color="#ee9fb4"/></radialGradient>
+  </defs>
+  <g class="sc-ear sc-ear-l">
+    <path d="M45 15C31 1 7 3 2.5 23.5-.5 42 4.5 62 14.5 74.5 22.5 84 33 88.5 39 84Z" fill="url(#scSkin)" stroke="#66748a" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M39 22C29 11 13 13 9.5 28 7 42 11.5 58 19.5 68 25 74.5 31.5 76.5 35 72Z" fill="url(#scInner)"/>
+    <path d="M12 36c2-6 6-10 12-11" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <g class="sc-ear sc-ear-r"><g transform="translate(146 0) scale(-1 1)">
+    <path d="M45 15C31 1 7 3 2.5 23.5-.5 42 4.5 62 14.5 74.5 22.5 84 33 88.5 39 84Z" fill="url(#scSkin)" stroke="#66748a" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M39 22C29 11 13 13 9.5 28 7 42 11.5 58 19.5 68 25 74.5 31.5 76.5 35 72Z" fill="url(#scInner)"/>
+    <path d="M12 36c2-6 6-10 12-11" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round"/>
+  </g></g>
+  <g class="sc-trunk">
+    <path d="M73 92C72.5 106 74 115.5 81 118.5 86.5 120.5 90.5 116 88.5 111.5" fill="none" stroke="#66748a" stroke-width="13" stroke-linecap="round"/>
+    <path d="M73 92C72.5 106 74 115.5 81 118.5 86.5 120.5 90.5 116 88.5 111.5" fill="none" stroke="url(#scSkin)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M69.5 104.5h7M70.5 110.5l6.5-1.2M75 116l5-3.4" fill="none" stroke="#66748a" stroke-width="1" stroke-linecap="round"/>
+    <ellipse cx="88.6" cy="111.2" rx="2.1" ry="1.4" fill="#4d5869" transform="rotate(-30 88.6 111.2)"/>
+  </g>
+</svg>`;
+const SC_PLAY='<svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8c0 .8.9 1.3 1.6.9l10-6.4a1 1 0 0 0 0-1.8l-10-6.4c-.7-.4-1.6.1-1.6.9z"/></svg>';
+function _scFmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+let _scPlaying=null;   // кружок, который сейчас играет со звуком
+const _scIO=('IntersectionObserver' in window)?new IntersectionObserver(es=>es.forEach(e=>{
+  const v=e.target;if(v._scLoud)return;
+  if(e.isIntersecting){v.muted=true;v.play().catch(()=>{});}else v.pause();
+}),{threshold:.35}):null;
+
+function renderSlonBub(msg,isOut){
+  if(isOut===undefined)isOut=msg.sender==='me';
   const dur=msg.slonDur||0;
-  const durStr=Math.floor(dur/60)+':'+String(dur%60).padStart(2,'0');
-  const wrap=document.createElement('div');wrap.className='slon-circle-bub';
-  const isOut=msg.sender==='me';
-
+  const wrap=document.createElement('div');
+  wrap.className='sc-bub'+(isOut?' sc-out':' sc-inc')+(msg.slonPlayed?'':' vb-unplayed');
+  const time=(msg.time||'')+(isOut?' <span class="sc-ticks">✓✓</span>':'');
   wrap.innerHTML=`
-    <div class="slon-circle-wrap" id="sw-${msg.id}">
-      <svg class="slon-circle-svg" viewBox="0 0 180 185" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="16" cy="72" rx="22" ry="34" fill="rgba(88,166,255,0.55)" stroke="rgba(88,166,255,0.85)" stroke-width="2.5"/>
-        <ellipse cx="164" cy="72" rx="22" ry="34" fill="rgba(88,166,255,0.55)" stroke="rgba(88,166,255,0.85)" stroke-width="2.5"/>
-        <circle cx="90" cy="82" r="72" fill="none" stroke="rgba(88,166,255,0.7)" stroke-width="3"/>
-        <path d="M 76 152 Q 68 165 64 174 Q 62 182 70 184 Q 82 186 88 178 Q 92 170 88 160 Q 84 152 82 152 Z" fill="rgba(88,166,255,0.72)" stroke="rgba(88,166,255,0.9)" stroke-width="1.5"/>
-      </svg>
-      <video class="slon-circle-vid" id="sv-${msg.id}" playsinline muted loop></video>
-      <div class="slon-circle-play-overlay" id="so-${msg.id}">
-        <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg>
+    <div class="sc-box">
+      ${SC_DECO}
+      <div class="sc-face">
+        <video playsinline muted loop preload="metadata"></video>
+        <svg class="sc-prog" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48.6" pathLength="1"/></svg>
+        <div class="sc-state">${SC_PLAY}</div>
       </div>
+      <button class="sc-tr vb-tr" title="Расшифровать">${VB_TR}</button>
+      <span class="sc-pill sc-dur"><span class="sc-dur-t">${_scFmt(dur)}</span><i class="vb-dot"></i></span>
+      <span class="sc-pill sc-time">${time}</span>
     </div>
-    <div class="slon-circle-dur">🐘 ${durStr}</div>`;
+    <div class="sc-text vb-text"></div>`;
+  const vid=wrap.querySelector('video'),face=wrap.querySelector('.sc-face');
+  const ring=wrap.querySelector('.sc-prog circle'),durT=wrap.querySelector('.sc-dur-t');
+  const trBtn=wrap.querySelector('.sc-tr'),txtEl=wrap.querySelector('.sc-text');
+  if(msg.voiceText){txtEl.textContent=msg.voiceText;wrap.classList.add('vb-tr-open');trBtn.innerHTML=VB_TR_UP;}
 
-  const vid=wrap.querySelector('#sv-'+msg.id);
-  const overlay=wrap.querySelector('#so-'+msg.id);
-  const playSvg='<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M8 5v14l11-7z"/></svg>';
-  const pauseSvg='<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#fff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-
-  // Загружаем видео — обрабатываем все форматы
+  let srcUrl=null;
   async function _loadSrc(){
     const src=msg.slonData;
-    if(!src||src==='null'){
-      // Нет данных — показываем заглушку
-      if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Видео недоступно</span>';
-      return;
-    }
+    if(!src||src==='null'){wrap.classList.add('sc-missing');return null;}
     try{
       if(src.startsWith('idb:')){
-        // Загружаем из IndexedDB
-        const parts=src.split(':'); // idb:msgId:kind
-        const blobUrl=await _loadMediaFromIdb(parts[1],parts[2]||'slon');
-        if(blobUrl){vid.src=blobUrl;}
-        else if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Видео недоступно</span>';
+        const p=src.split(':');
+        srcUrl=await _loadMediaFromIdb(p[1],p[2]||'slon');
       }else if(src.startsWith('blob:')){
-        // Живой Blob URL — используем напрямую, и сохраняем в IDB на всякий случай
-        vid.src=src;
-        _saveMediaToIdb(msg.id,'slon',src).catch(()=>{});
+        srcUrl=src;_saveMediaToIdb(msg.id,'slon',src).catch(()=>{});
       }else if(src.startsWith('data:')){
-        // data URL → Blob URL
         const parts=src.split(',');
         const mime=parts[0].match(/:(.*?);/)?.[1]||'video/webm';
-        const bytes=atob(parts[1]);
-        const buf=new Uint8Array(bytes.length);
+        const bytes=atob(parts[1]),buf=new Uint8Array(bytes.length);
         for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
         const blob=new Blob([buf],{type:mime});
-        vid.src=URL.createObjectURL(blob);
-        // Сохраняем в IDB для будущих перезагрузок
+        srcUrl=URL.createObjectURL(blob);
         _idb.put(msg.id+':slon',blob).catch(()=>{});
-      }else{
-        vid.src=src; // HTTP URL или что-то другое
-      }
-    }catch(e){
-      console.warn('renderSlonBub load error:',e);
-      if(overlay)overlay.innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">Ошибка загрузки</span>';
-    }
+      }else srcUrl=src;
+    }catch(e){console.warn('renderSlonBub load error:',e);}
+    if(!srcUrl){wrap.classList.add('sc-missing');return null;}
+    vid.src=srcUrl;
+    // Беззвучный повтор, пока кружок на экране — как в Telegram
+    if(_scIO)_scIO.observe(vid);else{vid.play().catch(()=>{});}
+    return srcUrl;
   }
-  _loadSrc();
+  const ready=_loadSrc();
+  vid.addEventListener('loadedmetadata',()=>{
+    if(!msg.slonDur&&isFinite(vid.duration)){msg.slonDur=Math.round(vid.duration);durT.textContent=_scFmt(msg.slonDur);_vbSaveSoon();}
+  });
 
-  let playing=false;
-  const slonWrap=wrap.querySelector('.slon-circle-wrap');
-
-  slonWrap.onclick=()=>{
-    if(!vid.src&&!vid.srcObject){return;}
-    if(playing){
-      vid.pause();playing=false;
-      if(overlay)overlay.innerHTML=playSvg;
-    }else{
-      vid.muted=false;
-      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
-      playing=true;
-      if(overlay)overlay.innerHTML=pauseSvg;
-    }
+  const stopLoud=()=>{
+    vid._scLoud=false;wrap.classList.remove('sc-loud','sc-paused');
+    vid.muted=true;vid.loop=true;ring.style.strokeDashoffset='1';
+    durT.textContent=_scFmt(msg.slonDur||vid.duration||0);
+    if(_scPlaying===stopLoud)_scPlaying=null;
+    vid.play().catch(()=>{});
   };
-  vid.onended=()=>{playing=false;if(overlay)overlay.innerHTML=playSvg;};
+  vid.addEventListener('timeupdate',()=>{
+    if(!vid._scLoud)return;
+    const d=isFinite(vid.duration)?vid.duration:(msg.slonDur||1);
+    ring.style.strokeDashoffset=String(1-Math.min(1,vid.currentTime/d));
+    durT.textContent=_scFmt(vid.currentTime);
+  });
+  vid.addEventListener('ended',()=>{if(vid._scLoud)stopLoud();});
 
+  // Тап: запуск со звуком с начала; ещё тап — пауза/продолжить
+  face.onclick=async()=>{
+    await ready;if(!srcUrl){toast('Видео недоступно');return;}
+    if(!vid._scLoud){
+      if(_scPlaying)_scPlaying();
+      _scPlaying=stopLoud;
+      vid._scLoud=true;vid.loop=false;vid.currentTime=0;vid.muted=false;
+      wrap.classList.add('sc-loud');
+      vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+      if(!msg.slonPlayed){msg.slonPlayed=true;wrap.classList.remove('vb-unplayed');_vbSaveSoon();}
+      if(_vbAudio&&!_vbAudio.paused)_vbAudio.pause();
+    }else if(vid.paused){vid.play().catch(()=>{});wrap.classList.remove('sc-paused');}
+    else{vid.pause();wrap.classList.add('sc-paused');}
+  };
+  trBtn.onclick=()=>_vbTranscribe(msg,wrap,trBtn,txtEl,async()=>{await ready;return srcUrl;});
   return wrap;
 }
 
@@ -776,9 +903,9 @@ appendMsg=function(msg,container){
     w.innerHTML=esc(msg.name)+elephantBadge+badge;
     body.appendChild(w);
   }
-    body.appendChild(renderSlonBub(msg));
-    const t=document.createElement('div');t.className='msg-time';t.textContent=msg.time+(isOut?' ✓✓':'');
-    body.appendChild(t);wrap.appendChild(av);wrap.appendChild(body);c.appendChild(wrap);
+    body.appendChild(renderSlonBub(msg,isOut));
+    wrap.classList.add('msg-slon');
+    wrap.appendChild(av);wrap.appendChild(body);c.appendChild(wrap);
     return;
   }
   _origAppendMsg(msg,container);
