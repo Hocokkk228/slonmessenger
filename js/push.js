@@ -4,7 +4,7 @@
 // или звонке отправитель просит наш ретранслятор (Cloudflare Worker,
 // push-relay/worker.js) разбудить все устройства получателя.
 // ════════════════════════════════════════
-const PUSH_RELAY='';   // адрес воркера — подставляется после деплоя
+const PUSH_RELAY='https://slon-push.hopasup789.workers.dev';   // Cloudflare Worker (push-relay/)
 const PUSH_VAPID='BGFKS0j-jPYtHB-zbRte_eY5TgPXfqQxlBC4mfhFuYv82n3JRrBGWJd8CRGP7S6AXkBnP9OAoBic4DcUhkDhMXk';
 
 function _pushKeyBytes(b64){
