@@ -119,6 +119,7 @@ function _mlPost(chat,rec){
   window._fbSet(_mlRef(myUsername,key),{...clean,chat,out:true,from:myUsername,dev:_myDeviceId}).catch(e=>console.warn('ml self:',e));
   let p=Promise.resolve();
   if(chat!=='saved'){
+    if(typeof _pushMsg==='function')_pushMsg(chat,(rec.k||'text')==='text'?rec.text:(ML_PREVIEW[rec.k]||'Медиа'));
     p=window._fbSet(_mlRef(chat,key),{...clean,chat:myUsername,out:false,from:myUsername,nick:myNick||('@'+myUsername)});
     p.then(()=>{
       const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);

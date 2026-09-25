@@ -39,7 +39,12 @@ self.addEventListener('message',e=>{
 self.addEventListener('push',e=>{
   let d={};try{d=e.data?e.data.json():{};}catch(_){d={body:e.data&&e.data.text()};}
   if(d.type==='CLOSE_TAG'){e.waitUntil(closeTag(d.tag));return;}
-  e.waitUntil(show(d));
+  e.waitUntil((async()=>{
+    // Мессенджер открыт и на экране — он сам покажет звонок/сообщение
+    const cs=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    if(cs.some(c=>c.visibilityState==='visible'&&c.focused))return;
+    return show(d);
+  })());
 });
 
 // Отклонить без открытия приложения: пишем прямо в Realtime Database (REST)

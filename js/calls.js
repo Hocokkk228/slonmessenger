@@ -228,6 +228,7 @@ async function doStartCall(peerId,isVideo,stream){
   setupCallUI(peerId,isVideo);
   // Уведомляем собеседника о звонке (с callId чтобы отмена корректно привязалась)
   _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null,callId});
+  if(typeof _pushCall==='function')_pushCall(peerId,callId,isVideo); // разбудить телефон собеседника
   // Offer
   try{
     const offer=await _callPC.createOffer();
@@ -678,6 +679,7 @@ function cancelOutgoingCall(){
   if(activeCall?.peerId){
     const callId=activeCall.callId;
     _callSend(activeCall.peerId,{type:'call_cancel',callId});
+    if(typeof _pushCallGone==='function')_pushCallGone(activeCall.peerId); // убрать уведомление о звонке
     if(callId){_cancelledCallIds.add(callId);setTimeout(()=>_cancelledCallIds.delete(callId),60000);}
   }
   endCallCleanup();
