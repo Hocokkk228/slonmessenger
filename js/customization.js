@@ -9,17 +9,8 @@ const AV_FRAMES=[
   {id:'blood',    name:'Кровь',              prem:true,  kind:'fx'},
   {id:'ironman',  name:'Железный человек',   prem:true,  kind:'fx'},
   {id:'catears',  name:'Кошачьи ушки',       prem:false, kind:'fx'},
-  {id:'bunny',    name:'Зайка',              prem:true,  kind:'fx'},
-  {id:'halo',     name:'Ангел',              prem:true,  kind:'fx'},
-  {id:'devil',    name:'Чертёнок',           prem:true,  kind:'fx'},
-  {id:'crown',    name:'Корона',             prem:true,  kind:'fx'},
   {id:'wings',    name:'Крылья',             prem:true,  kind:'fx'},
-  {id:'sparkle',  name:'Звёздная пыль',      prem:true,  kind:'fx'},
-  {id:'hearts',   name:'Влюблён(а)',         prem:false, kind:'fx'},
-  {id:'snow',     name:'Снежок',             prem:true,  kind:'fx'},
-  {id:'bday',     name:'День рождения',      prem:true,  kind:'fx'},
   {id:'shark',    name:'Акульи челюсти',     prem:true,  kind:'fx'},
-  {id:'raven',    name:'Ворон',              prem:true,  kind:'fx'},
 ];
 const AV_FRAME_MAP=Object.fromEntries(AV_FRAMES.map(f=>[f.id,f]));
 // Цветная «шапка» карточки в сетке выбора — как в референсе (розовая карточка «Мяу-мяу» и т.д.)
@@ -28,17 +19,8 @@ const AV_FRAME_CARD_BG={
   blood:'linear-gradient(160deg,#7a1620,#1a0508)',
   ironman:'linear-gradient(160deg,#e8352b,#3a0d08)',
   catears:'linear-gradient(160deg,#ffd66b,#ff9dc0)',
-  bunny:'linear-gradient(160deg,#ffe3ef,#ffb6cf)',
-  halo:'linear-gradient(160deg,#fff6d8,#ffe27a)',
-  devil:'linear-gradient(160deg,#ff6a52,#5c0e08)',
-  crown:'linear-gradient(160deg,#ffe9a8,#d99a14)',
   wings:'linear-gradient(160deg,#d8c9ff,#5a3fc0)',
-  sparkle:'linear-gradient(160deg,#c9b6ff,#6a4fe0)',
-  hearts:'linear-gradient(160deg,#ffc2d6,#ff6a92)',
-  snow:'linear-gradient(160deg,#e3f4ff,#8fc4ea)',
-  bday:'linear-gradient(160deg,#ffd9ec,#a6d8ff)',
   shark:'linear-gradient(160deg,#1e5a78,#03121c)',
-  raven:'linear-gradient(160deg,#3a3a42,#0a0a0c)',
 };
 const AV_CONTOUR_DEFAULT='#3390ec';
 // avFrame может нести цвет для контура: "contour|#ff0000"
@@ -48,16 +30,8 @@ function _avFrameParse(val){const [id,color]=String(val||'').split('|');return {
 function _avFrameInner(id){
   switch(id){
     case 'blood':  return '<i></i><i></i>'; // 2 капли стекают в левом нижнем углу
-    case 'snow':   return Array.from({length:9},()=>'<i></i>').join('');
-    case 'hearts': return '<i>❤️</i><i>💜</i><i>❤️</i>';
     case 'catears':return '<i class="ring"></i><i class="l"></i><i class="r"></i><i class="nose">🐾</i>';
-    case 'bunny':  return '<i class="l"></i><i class="r"></i>';
-    case 'halo':   return '<i class="ring"></i><i class="spark">✨</i>';
-    case 'devil':  return '<i class="l"></i><i class="r"></i><i class="tail"></i>';
-    case 'crown':  return '<i class="cr">👑</i><i class="sp1">✨</i><i class="sp2">✨</i>';
     case 'wings':  return '<i class="l"></i><i class="r"></i>';
-    case 'sparkle':return Array.from({length:7},(_,i)=>`<i style="--n:${i}">✨</i>`).join('');
-    case 'bday':   return '<i class="cake">🎂</i><i class="b1">🎈</i><i class="b2">🎈</i>';
     case 'shark':{
       // Пасть акулы ВОКРУГ аватарки: лицо видно в середине, зубы по кругу
       // сверху и снизу смотрят внутрь, снаружи — кольцо акульей кожи с глазами.
@@ -79,18 +53,6 @@ function _avFrameInner(id){
         <circle cx="${(50+56*Math.cos(343*Math.PI/180)).toFixed(1)}" cy="${(50+56*Math.sin(343*Math.PI/180)).toFixed(1)}" r="3" fill="#0b0d10"/>
       </svg>`;
     }
-    case 'raven':  return `<svg class="avf-raven-svg" viewBox="0 0 100 100" aria-hidden="true">
-        <defs><linearGradient id="wpRavenGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#4a4a54"/><stop offset="1" stop-color="#0a0a0d"/>
-        </linearGradient></defs>
-        <g fill="url(#wpRavenGrad)">
-          <ellipse cx="52" cy="60" rx="26" ry="20"/>
-          <circle cx="30" cy="38" r="16"/>
-          <path d="M14 36l-14 4 14 5z"/>
-          <path d="M46 42c14-4 30 2 34 16-10 6-24 8-34 0-4-6-4-12 0-16z"/>
-        </g>
-        <circle cx="24" cy="34" r="2.6" fill="#ffd75e"/>
-      </svg>`;
     case 'cobweb': // классическая угловая паутина: радиальные нити + дуги
       return `<svg class="avf-web tl" viewBox="0 0 100 100" aria-hidden="true">
           <g fill="none" stroke="#e8ecf2" stroke-width="1.1" stroke-linecap="round">
@@ -273,6 +235,45 @@ function _spPickWallpaper(id){
   if(_spDraft)_spDraft.profileWallpaper=id;
   document.querySelectorAll('.wp-grid .wp-cell').forEach(b=>b.classList.toggle('sel',b.dataset.w===id));
   _wallpaperApply($('spCustPrevWp'),id);
+  $('custSave')?.classList.add('show');
+}
+
+// ════════════════════════════════════════
+// ── ТЕМА ОКНА ПРОФИЛЯ ──
+// Любая тема приложения (THEMES), но только для окна профиля: кто бы его ни
+// открыл — со светлой, like tg или любой другой темой — увидит его в этих цветах.
+// Синхронизируется как поле profileTheme (hello / publicProfile).
+// Работает за счёт data-theme на контейнере: CSS-переменные темы
+// ([data-theme="id"]{--bg1…}) переопределяются только внутри него.
+// ════════════════════════════════════════
+function _profThemeApply(el,id){
+  if(!el)return;
+  const t=id&&THEMES.find(x=>x.id===id);
+  if(t){el.setAttribute('data-theme',t.id);el.classList.add('prof-themed');}
+  else{el.removeAttribute('data-theme');el.classList.remove('prof-themed');}
+}
+function _spProfThemeSection(){
+  const cur=(typeof _spDraft==='object'&&_spDraft)?(_spDraft.profileTheme||''):(myProfileTheme||'');
+  // Карточка-миниатюра сама стоит в этой теме — видно реальные цвета окна
+  const cell=t=>{
+    const locked=t&&t.premium&&!myPremium;const id=t?t.id:'';
+    return `<button class="pth-cell${cur===id?' sel':''}${locked?' locked':''}" data-t="${id}" onclick="_spPickProfTheme('${id}')">
+      <span class="pth-demo"${id?` data-theme="${id}"`:''}>${id?'<i class="pth-top"></i><i class="pth-av"></i><i class="pth-l1"></i><i class="pth-l2"></i><i class="pth-btn"></i>':'<span class="pth-none">Как у<br>смотрящего</span>'}</span>
+      <span class="wp-cell-nm">${t?esc(t.lbl):'Нет'}</span>
+      ${locked?'<span class="avf-lock">🔒</span>':''}
+    </button>`;
+  };
+  return _spSec('Тема окна профиля'+(myPremium?'':' <span class="sp-lock">часть ⭐ Premium</span>'))
+    +`<div class="sp-card sp-pad"><div class="wp-grid pth-grid">${cell(null)}${THEMES.map(cell).join('')}</div></div>`
+    +_spHint('Окно твоего профиля (описание, юзернейм, кнопки) будет в этой теме у всех, кто его откроет — независимо от их темы приложения.');
+}
+function _spPickProfTheme(id){
+  const t=id&&THEMES.find(x=>x.id===id);
+  if(id&&!t)return;
+  if(t&&t.premium&&!myPremium){toast('⭐ Эта тема — в SLON Premium');return;}
+  if(_spDraft)_spDraft.profileTheme=id;
+  document.querySelectorAll('.pth-grid .pth-cell').forEach(b=>b.classList.toggle('sel',b.dataset.t===id));
+  _profThemeApply($('spCustThemeBox'),id);
   $('custSave')?.classList.add('show');
 }
 

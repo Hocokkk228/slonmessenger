@@ -230,11 +230,13 @@ let myProfileBgColor='';
 let myProfilePattern='';
 let myAvFrame='';           // рамка/эффект аватара (id из AV_FRAMES)
 let myProfileWallpaper='';  // обои профиля — большой анимированный баннер за аватаркой (id из PROFILE_WALLPAPERS)
+let myProfileTheme='';      // тема окна профиля (id из THEMES) — другие видят профиль в ней
 let myChatWallpaper='none';
 let peerProfileBgColors={}; // pid->rgbColor
 let peerProfilePatterns={}; // pid->patternId
 let peerAvFrames={};        // pid->avFrame id
 let peerProfileWallpapers={}; // pid->wallpaper id
+let peerProfileThemes={};   // pid->theme id окна профиля
 let myLinkedChannel=''; // username своего канала, привязанного к профилю
 let peerLinkedChannels={}; // pid->username канала, привязанного к профилю
 // ── Профиль/настройки в стиле Telegram (settings-panel.js) ──
@@ -1661,7 +1663,7 @@ function saveAll(){
       // Копия ключевых полей профиля/кастомизации — чтобы не слетали при перезагрузке
       _idb.put('bk_prof_'+u,{
         nick:myNick,lastName:myLastName,bio:myBio,avatar:myAvatar,
-        profileBg:myProfileBg,bgColor:myProfileBgColor,bgPattern:myProfilePattern,avFrame:myAvFrame,profileWallpaper:myProfileWallpaper,
+        profileBg:myProfileBg,bgColor:myProfileBgColor,bgPattern:myProfilePattern,avFrame:myAvFrame,profileWallpaper:myProfileWallpaper,profileTheme:myProfileTheme,
         linkedChannel:myLinkedChannel,birthday:myBirthday,businessHours:myBusinessHours,
         privacy:myPrivacy,notif:myNotif,premium:myPremium,elephant:hasElephantBadge,
         myChannels:myChannels,subscribedChannels:subscribedChannels,ts:Date.now()
@@ -1693,6 +1695,7 @@ function saveAll(){
       localStorage.setItem(p+'bgPattern',JSON.stringify(myProfilePattern));
       localStorage.setItem(p+'avFrame',JSON.stringify(myAvFrame));
       localStorage.setItem(p+'profWp',JSON.stringify(myProfileWallpaper));
+      localStorage.setItem(p+'profTheme',JSON.stringify(myProfileTheme));
       localStorage.setItem(p+'linkedCh',JSON.stringify(myLinkedChannel));
       localStorage.setItem(p+'lastName',JSON.stringify(myLastName));
       localStorage.setItem(p+'birthday',JSON.stringify(myBirthday));
@@ -1787,6 +1790,7 @@ async function _restoreProfileFromIdb(){
     if(empty(myProfilePattern)&&b.bgPattern){myProfilePattern=b.bgPattern;changed=true;}
     if(empty(myAvFrame)&&b.avFrame){myAvFrame=b.avFrame;changed=true;}
     if(empty(myProfileWallpaper)&&b.profileWallpaper){myProfileWallpaper=b.profileWallpaper;changed=true;}
+    if(empty(myProfileTheme)&&b.profileTheme){myProfileTheme=b.profileTheme;changed=true;}
     if(empty(myLinkedChannel)&&b.linkedChannel){myLinkedChannel=b.linkedChannel;changed=true;}
     if(empty(myBirthday)&&b.birthday){myBirthday=b.birthday;changed=true;}
     if(emptyObj(myBusinessHours)&&b.businessHours){myBusinessHours=b.businessHours;changed=true;}
@@ -1839,6 +1843,7 @@ function loadStorage(){
   myProfilePattern=LS.get(p+'bgPattern','');
   myAvFrame=LS.get(p+'avFrame','');
   myProfileWallpaper=LS.get(p+'profWp','');
+  myProfileTheme=LS.get(p+'profTheme','');
   myLinkedChannel=LS.get(p+'linkedCh','');
   myLastName=LS.get(p+'lastName','');
   myBirthday=LS.get(p+'birthday',null);

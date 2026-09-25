@@ -812,15 +812,21 @@ function _spSetWallpaper(id,el){
 let _spDraft=null;
 function _spCustomize(){
   _spCloseMenu();
-  _spDraft={bg:myProfileBg||'bg0',color:myProfileBgColor||'',pattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||''};
+  _spDraft={bg:myProfileBg||'bg0',color:myProfileBgColor||'',pattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',profileTheme:myProfileTheme||''};
   const cur=(_spDraft.color&&_spDraft.color.includes('|'))?_spDraft.color.split('|'):['#7cb8ff','#3b6fe0'];
   const lock=myPremium?'':' <span class="sp-lock">⭐ Premium</span>';
   _spPush('Кастомизация профиля',`
+    <div class="sp-cust-box" id="spCustThemeBox">
     <div class="sp-cust-prev" id="spCustPrev">
       <div class="sp-cust-wp" id="spCustPrevWp"></div>
       <div class="sp-cust-av"><span class="av-clip">${myAvatar?`<img src="${myAvatar}" alt="">`:esc(((myNick||myUsername)[0]||'?').toUpperCase())}</span></div>
       <div class="sp-cust-name">${esc(_myFullName().trim()||'@'+myUsername)}</div>
       <div class="sp-cust-st">в сети</div>
+    </div>
+    <div class="sp-cust-info">
+      <div class="sp-cust-row"><div class="sp-cust-v">${esc(myBio||'Привет! Я в SLON')}</div><div class="sp-cust-k">О себе</div></div>
+      <div class="sp-cust-row"><div class="sp-cust-v sp-cust-acc">@${esc(myUsername)}</div><div class="sp-cust-k">Имя пользователя</div></div>
+    </div>
     </div>
     ${_spSec('Цвет фона')}
     <div class="sp-card sp-pad"><div class="sp-swatches" id="spSwatches">
@@ -838,6 +844,7 @@ function _spCustomize(){
     </div></div>
     ${_spAvFramesSection()}
     ${typeof _spWallpaperSection==='function'?_spWallpaperSection():''}
+    ${typeof _spProfThemeSection==='function'?_spProfThemeSection():''}
     <div style="height:70px"></div>`,
     {fab:`<button class="sp-fab" id="custSave" onclick="_spSaveCustom()" title="Сохранить">${_spSvg('check')}</button>`});
   _spUpdateCustPrev();
@@ -857,13 +864,14 @@ function _spUpdateCustPrev(dirty){
   const prevAv=pr.querySelector('.sp-cust-av');
   if(prevAv&&typeof _avFrameApply==='function'){_avFrameApply(prevAv,_spDraft.avFrame||'');_avFrameReveal(prevAv);}
   if(typeof _wallpaperApply==='function')_wallpaperApply($('spCustPrevWp'),_spDraft.profileWallpaper||'');
+  if(typeof _profThemeApply==='function')_profThemeApply($('spCustThemeBox'),_spDraft.profileTheme||'');
   document.querySelectorAll('#spSwatches .sp-sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===_spDraft.color));
   document.querySelectorAll('#spPatterns .sp-pat').forEach(b=>b.classList.toggle('sel',b.dataset.p===_spDraft.pattern));
   if(dirty)$('custSave')?.classList.add('show');
 }
 function _spSaveCustom(){
   if(!_spDraft)return;
-  myProfileBg=_spDraft.bg;myProfileBgColor=_spDraft.color;myProfilePattern=_spDraft.pattern;myAvFrame=_spDraft.avFrame||'';myProfileWallpaper=_spDraft.profileWallpaper||'';
+  myProfileBg=_spDraft.bg;myProfileBgColor=_spDraft.color;myProfilePattern=_spDraft.pattern;myAvFrame=_spDraft.avFrame||'';myProfileWallpaper=_spDraft.profileWallpaper||'';myProfileTheme=_spDraft.profileTheme||'';
   saveAll();updateProfileDisplay();
   if(_fbMode)_publishMyProfile();
   if(_fbMode&&typeof _broadcastHello==='function')_broadcastHello();
@@ -882,14 +890,14 @@ function _myHelloFor(pid){
     birthday:_privAllowed('birthday',pid)?(myBirthday||null):null,
     businessHours:myBusinessHours?.enabled?{...myBusinessHours,tz:_myTz()}:null,
     username:myUsername,iid:myInternalId,profileBg:myProfileBg||'bg0',
-    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',linkedChannel:myLinkedChannel||''};
+    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',profileTheme:myProfileTheme||'',linkedChannel:myLinkedChannel||''};
 }
 
 // Публичный профиль в Firebase — его видят все, поэтому скрытое не кладём.
 // «Мои контакты» получают скрытые поля через hello.
 function _myPublicProfile(base){
   const data={nick:base.nick,lastName:myLastName||'',username:myUsername,iid:myInternalId,profileBg:base.profileBg,
-    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',linkedChannel:myLinkedChannel||'',
+    bgColor:myProfileBgColor||'',bgPattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',profileTheme:myProfileTheme||'',linkedChannel:myLinkedChannel||'',
     businessHours:myBusinessHours?.enabled?{...myBusinessHours,tz:_myTz()}:null,ts:Date.now()};
   const put=(k,key,val,empty)=>{const v=_priv(k);if(v==='all')data[key]=val;else if(v==='nobody')data[key]=empty;};
   put('photo','avatar',base.avatar||null,null);
@@ -966,6 +974,8 @@ function _ppRender(pid){
   $('peerProfAv').innerHTML=`<span class="av-clip">${av?`<img src="${av}" alt="">`:_avHtml(pid,name)}</span>`;
   if(typeof _avFrameApply==='function')_avFrameApply($('peerProfAv'),peerAvFrames[pid]||'');
   if(typeof _wallpaperApply==='function')_wallpaperApply($('peerProfWp'),peerProfileWallpapers[pid]||'');
+  // Окно профиля — в теме, которую выбрал сам собеседник
+  if(typeof _profThemeApply==='function')_profThemeApply($('peerProfOverlay'),peerProfileThemes[pid]||'');
   $('peerProfAv').onclick=av?()=>{$('photoImg').src=av;$('photoView').classList.add('show');}:null;
   $('peerProfName').innerHTML=(isBanned?'❄️ ':'')+esc(name)
     +(hasElephant?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
