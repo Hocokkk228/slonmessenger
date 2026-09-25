@@ -679,7 +679,7 @@ function cancelOutgoingCall(){
   if(activeCall?.peerId){
     const callId=activeCall.callId;
     _callSend(activeCall.peerId,{type:'call_cancel',callId});
-    if(typeof _pushCallGone==='function')_pushCallGone(activeCall.peerId); // убрать уведомление о звонке
+    if(typeof _pushCallGone==='function')_pushCallGone(activeCall.peerId,activeCall.isVideo); // убрать уведомление о звонке
     if(callId){_cancelledCallIds.add(callId);setTimeout(()=>_cancelledCallIds.delete(callId),60000);}
   }
   endCallCleanup();

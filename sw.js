@@ -8,21 +8,25 @@ self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
 
 function show(d){
-  const isCall=d.kind==='call';
+  const isCall=d.kind==='call',isMissed=d.kind==='missed';
   const opts={
     body:d.body||'',
     icon:d.icon&&!String(d.icon).startsWith('data:image/svg')?d.icon:ICON,
     badge:ICON,
-    tag:d.tag||(isCall?'call':'msg'),
-    renotify:true,
+    tag:d.tag||(isCall||isMissed?'call':'msg'),
+    renotify:!isMissed,
     requireInteraction:isCall,
-    silent:false,
+    silent:isMissed,
     vibrate:isCall?[400,150,400,150,400,150,400]:[180,80,180],
-    data:{kind:d.kind||'msg',chat:d.chat||'',callId:d.callId||'',peerId:d.peerId||'',me:d.me||'',isVideo:!!d.isVideo},
+    timestamp:d.sentAt||Date.now(),
+    data:{kind:isMissed?'msg':(d.kind||'msg'),chat:d.chat||d.peerId||'',callId:d.callId||'',peerId:d.peerId||'',me:d.me||'',isVideo:!!d.isVideo},
   };
   if(isCall)opts.actions=[{action:'answer',title:'📞 Ответить'},{action:'decline',title:'❌ Отклонить'}];
   else opts.actions=[{action:'open',title:'Открыть'}];
-  return self.registration.showNotification(d.title||'SLON',opts);
+  const title=d.title||'SLON';
+  // Если телефон не принял что-то из опций — всё равно показываем простое уведомление
+  return self.registration.showNotification(title,opts)
+    .catch(()=>self.registration.showNotification(title,{body:opts.body,icon:ICON,tag:opts.tag,data:opts.data}));
 }
 async function closeTag(tag){
   const ns=await self.registration.getNotifications(tag?{tag}:undefined);
@@ -36,14 +40,21 @@ self.addEventListener('message',e=>{
 });
 
 // Web Push (когда приложение закрыто) — payload в том же формате, что NOTIFY
+// Журнал доставки: во сколько пуш реально дошёл до устройства (диагностика задержек)
+function logDelivery(d){
+  if(!d.me||!d.pid)return Promise.resolve();
+  return fetch(DB_URL+'/push_log/'+d.me+'/'+d.pid+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sentAt:d.sentAt||0,recvAt:Date.now(),kind:d.kind||'',ua:(self.navigator&&navigator.userAgent||'').slice(0,90)})}).catch(()=>{});
+}
 self.addEventListener('push',e=>{
   let d={};try{d=e.data?e.data.json():{};}catch(_){d={body:e.data&&e.data.text()};}
-  if(d.type==='CLOSE_TAG'){e.waitUntil(closeTag(d.tag));return;}
   e.waitUntil((async()=>{
+    const log=logDelivery(d);
     // Мессенджер открыт и на экране — он сам покажет звонок/сообщение
     const cs=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    if(cs.some(c=>c.visibilityState==='visible'&&c.focused))return;
-    return show(d);
+    const onScreen=cs.some(c=>c.visibilityState==='visible'&&c.focused);
+    if(!onScreen)await show(d);
+    await log;
   })());
 });
 

@@ -38,7 +38,7 @@ function _pushSend(to,payload){
   if(!PUSH_RELAY||!to||to===myUsername)return;
   try{
     fetch(PUSH_RELAY+'/send',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
-      body:JSON.stringify({to,payload:{...payload,me:to}})}).catch(()=>{});
+      body:JSON.stringify({to,payload:{...payload,me:to,sentAt:Date.now(),pid:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}})}).catch(()=>{});
   }catch(e){}
 }
 function _pushMyName(){return (typeof _myFullName==='function'&&_myFullName().trim())||myNick||('@'+myUsername);}
@@ -50,7 +50,11 @@ function _pushCall(to,callId,isVideo){
   _pushSend(to,{kind:'call',title:_pushMyName(),body:isVideo?'📹 Входящий видеозвонок':'📞 Входящий звонок',
     callId:callId||'',peerId:myUsername,isVideo:!!isVideo,tag:'call'});
 }
-function _pushCallGone(to){_pushSend(to,{type:'CLOSE_TAG',tag:'call'});}
+// Звонок отменили — уведомление о звонке заменяется «пропущенным» (как в Telegram).
+// Пустой пуш без уведомления Chrome наказывает системным «сайт обновлён в фоне».
+function _pushCallGone(to,isVideo){
+  _pushSend(to,{kind:'missed',title:_pushMyName(),body:isVideo?'📹 Пропущенный видеозвонок':'📞 Пропущенный звонок',peerId:myUsername,chat:myUsername,tag:'call'});
+}
 
 // Один раз на устройстве просим разрешить уведомления — плашкой с кнопкой
 // (без нажатия пользователя телефонные браузеры системный запрос не показывают)
@@ -76,5 +80,31 @@ function _notifAskOnce(){
   requestAnimationFrame(()=>el.classList.add('show'));
 }
 
+// Установка как приложение (Android: WebAPK — настоящее приложение в системе
+// со своими настройками батареи/уведомлений; с ним пуши доходят надёжнее)
+let _installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_installEvt=e;});
+window.addEventListener('appinstalled',()=>{_installEvt=null;$('installAsk')?.remove();toast('SLON установлен 🐘');});
+function _installAskOnce(){
+  if(!_installEvt||!myUsername||$('installAsk')||$('notifAsk'))return;
+  try{if(localStorage.getItem('sl_install_asked'))return;}catch(e){}
+  const el=document.createElement('div');
+  el.id='installAsk';el.className='notif-ask';
+  el.innerHTML=`<div class="na-ico"><img src="launchericon-96x96.png" alt=""></div>
+    <div class="na-txt"><b>Установи SLON как приложение</b><span>Иконка на рабочем столе, отдельное окно и надёжные уведомления о звонках</span></div>
+    <div class="na-btns"><button class="na-no">Не сейчас</button><button class="na-yes">Установить</button></div>`;
+  const done=()=>{try{localStorage.setItem('sl_install_asked','1');}catch(e){}el.classList.remove('show');setTimeout(()=>el.remove(),300);};
+  el.querySelector('.na-no').onclick=done;
+  el.querySelector('.na-yes').onclick=async()=>{done();const ev=_installEvt;_installEvt=null;if(!ev)return;try{ev.prompt();await ev.userChoice;}catch(e){}};
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+}
+// Для кнопки в настройках: установить вручную
+function installSlonApp(){
+  if(_installEvt){const ev=_installEvt;_installEvt=null;ev.prompt();return;}
+  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  toast(ios?'Safari → «Поделиться» → «На экран Домой»':'Меню браузера (⋮) → «Установить приложение» / «Добавить на главный экран»',6000);
+}
+
 // Подписываемся, как только есть аккаунт, Firebase и разрешение на уведомления
-setInterval(()=>{if(_fbMode){_pushSubscribe();_notifAskOnce();}},5000);
+setInterval(()=>{if(_fbMode){_pushSubscribe();_notifAskOnce();_installAskOnce();}},5000);
