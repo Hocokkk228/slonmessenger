@@ -19,15 +19,16 @@ if (-not $hostName -or -not $user -or -not $pass) { Write-Host 'Не все по
 # UDP + TCP + TLS на 443 (проходит почти через любые сети)
 $urls = "turn:$server,turn:$server`?transport=tcp,turns:$hostName`:443?transport=tcp"
 
-function Put-Secret($name, $value) {
-  Write-Host "→ $name" -NoNewline
-  $value | npx --yes wrangler@4 secret put $name 2>&1 | Out-Null
-  if ($LASTEXITCODE -ne 0) { Write-Host '  ошибка' -ForegroundColor Red; throw "wrangler secret put $name" }
-  Write-Host '  ok' -ForegroundColor Green
-}
-Put-Secret 'TURN_URLS' $urls
-Put-Secret 'TURN_USER' $user
-Put-Secret 'TURN_PASS' $pass
+# Все три секрета одной командой: временный JSON-файл, сразу удаляется
+$tmp = Join-Path $env:TEMP ('slon-turn-' + [guid]::NewGuid().ToString('N') + '.json')
+@{ TURN_URLS = $urls; TURN_USER = $user; TURN_PASS = $pass } | ConvertTo-Json | Out-File -Encoding utf8 $tmp
+try {
+  Write-Host 'Записываю на сервер…'
+  npx --yes wrangler@4 secret bulk $tmp
+  if ($LASTEXITCODE -ne 0) { throw 'wrangler secret bulk' }
+} catch {
+  Write-Host ('Ошибка: ' + $_) -ForegroundColor Red; Read-Host 'Enter — закрыть'; exit 1
+} finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
 Write-Host ''
 Write-Host 'Готово! Звонки сами перейдут на новый TURN (перезайди в SLON).' -ForegroundColor Green
 Read-Host 'Enter — закрыть'
