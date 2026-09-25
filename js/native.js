@@ -164,3 +164,12 @@ function _offerUpdate(info){
   el.querySelector('.na-yes').onclick=()=>{done();location.href=info.url;};
   document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));
 }
+
+// ── Скачать приложение для Android (кнопка в настройках и на экране входа) ──
+const APK_URL='https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk';
+function downloadAndroidApp(){
+  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(ios){toast('Для iPhone: Safari → «Поделиться» → «На экран Домой»',6000);return;}
+  location.href=APK_URL;
+  toast('Скачивается SLON.apk — открой его, чтобы установить',6000);
+}

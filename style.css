@@ -2355,3 +2355,7 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .na-btns button:hover{background:var(--hover);}
 .na-btns .na-no{color:var(--text2);}
 .na-ico img{width:30px;height:30px;border-radius:8px;}
+
+/* ссылка на APK на экране входа; в самом приложении не нужна */
+.auth-apk{margin-top:6px;}
+.is-native .auth-apk{display:none;}

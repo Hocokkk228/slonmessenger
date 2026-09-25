@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// Ключ подписи хранится вне репозитория: %USERPROFILE%/.slon/keystore.properties
+def slonKeyProps = new Properties()
+def slonKeyFile = new File(System.getProperty('user.home'), '.slon/keystore.properties')
+if (slonKeyFile.exists()) slonKeyFile.withInputStream { slonKeyProps.load(it) }
+// Версия приложения — из android-app/package.json
+def slonPkg = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+def slonVer = slonPkg.version
+def slonCode = slonVer.tokenize('.').collect { it as int }.inject(0) { acc, v -> acc * 100 + v }
+
 android {
     namespace = "com.sloncomp.slon"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +16,8 @@ android {
         applicationId "com.sloncomp.slon"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode slonCode
+        versionName slonVer
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +25,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (slonKeyFile.exists()) {
+                storeFile file(slonKeyProps['storeFile'])
+                storePassword slonKeyProps['storePassword']
+                keyAlias slonKeyProps['keyAlias']
+                keyPassword slonKeyProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (slonKeyFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
