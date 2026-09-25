@@ -2422,3 +2422,91 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 /* подсветка сообщения при переходе по цитате */
 .msg.msg-flash .msg-body{animation:msgFlash 1.2s ease;}
 @keyframes msgFlash{0%,40%{filter:brightness(.85) drop-shadow(0 0 0 var(--accent));background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:14px;}100%{background:transparent;}}
+
+/* ════════ Реакции (как в Telegram) ════════ */
+/* кастомные SLON: белая плитка, чёрные жирные буквы */
+.cx{display:inline-flex;align-items:center;justify-content:center;width:1.2em;height:1.2em;background:#fff;color:#000;border-radius:.26em;font-family:"Arial Black","Segoe UI Black",Arial,sans-serif;font-weight:900;line-height:1;vertical-align:-.18em;box-shadow:0 0 0 1px rgba(0,0,0,.08);overflow:hidden;font-style:normal;}
+.cx b{font-weight:900;letter-spacing:-.03em;}
+.cx-w b{font-size:.92em;}
+.cx-haha b{font-size:.34em;letter-spacing:-.04em;}
+.rx-em{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;line-height:1;}
+
+/* полоска быстрых реакций → полная панель */
+.rx-box{position:fixed;z-index:1000;left:0;top:0;background:var(--bg2);border:1px solid var(--border);border-radius:26px;box-shadow:0 12px 40px rgba(0,0,0,.35);overflow:hidden;
+  opacity:0;transform:scale(.7) translateY(12px);transform-origin:30px 100%;pointer-events:none;
+  transition:opacity .18s ease,transform .26s cubic-bezier(.32,1.3,.5,1);}
+.rx-box.rx-grow{transition:opacity .18s ease,transform .26s cubic-bezier(.32,1.3,.5,1),width .34s cubic-bezier(.2,.85,.25,1),height .34s cubic-bezier(.2,.85,.25,1),left .34s cubic-bezier(.2,.85,.25,1),top .34s cubic-bezier(.2,.85,.25,1),border-radius .34s ease;}
+.rx-box.show{opacity:1;transform:none;pointer-events:auto;}
+.rx-quick{display:flex;align-items:center;gap:1px;padding:4px 4px 4px 6px;height:48px;box-sizing:border-box;white-space:nowrap;transition:opacity .14s ease;}
+.rx-q{width:40px;height:40px;border:none;background:none;border-radius:50%;cursor:pointer;font-size:26px;display:flex;align-items:center;justify-content:center;padding:0;
+  transition:transform .16s cubic-bezier(.3,1.6,.5,1),background .12s;animation:rxQIn .34s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--i)*28ms + 60ms);}
+.rx-q:hover{transform:scale(1.28);}
+.rx-q:active{transform:scale(.9);}
+.rx-q.sel{background:color-mix(in srgb,var(--accent) 22%,transparent);}
+@keyframes rxQIn{from{opacity:0;transform:scale(.2) translateY(8px);}to{opacity:1;transform:none;}}
+.rx-more{width:32px;height:32px;margin-left:2px;border:none;border-radius:50%;background:var(--hover);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;animation:rxQIn .34s .28s both;transition:background .15s,transform .2s;}
+.rx-more:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);transform:translateY(1px);}
+.rx-more svg{width:22px;height:22px;fill:var(--text2);}
+.rx-full{display:none;}
+.rx-box.full{border-radius:16px;}
+.rx-box.full .rx-quick{position:absolute;opacity:0;pointer-events:none;}
+.rx-box.full .rx-full{display:flex;flex-direction:column;height:100%;animation:rxFullIn .32s .06s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes rxFullIn{from{opacity:0;transform:translateY(-10px) scale(.98);}to{opacity:1;transform:none;}}
+.rx-tabs{position:relative;display:flex;gap:2px;padding:8px 8px 4px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.rx-tabs::-webkit-scrollbar{display:none;}
+.rx-tab{flex-shrink:0;width:38px;height:38px;border:none;border-radius:10px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;padding:0;opacity:.6;transition:opacity .2s,transform .2s,background .15s;}
+.rx-tab:hover{background:var(--hover);opacity:.9;}
+.rx-tab.on{opacity:1;transform:scale(1.06);}
+.rx-tab svg{width:22px;height:22px;fill:var(--text2);}
+.rx-tab-ind{position:absolute;left:0;bottom:1px;height:3px;border-radius:3px;background:var(--accent);transition:transform .3s cubic-bezier(.2,.85,.25,1),width .3s cubic-bezier(.2,.85,.25,1);pointer-events:none;}
+.rx-search{display:flex;align-items:center;gap:6px;margin:4px 10px 6px;padding:0 10px;height:38px;border-radius:19px;background:var(--hover);flex-shrink:0;}
+.rx-search>svg{width:20px;height:20px;fill:var(--text2);flex-shrink:0;}
+.rx-q-inp{flex:1;min-width:0;border:none;outline:none;background:none;color:var(--text1);font-size:14px;}
+.rx-filt{display:flex;gap:1px;flex-shrink:0;}
+.rx-filt button{width:26px;height:26px;border:none;border-radius:50%;background:none;cursor:pointer;font-size:15px;padding:0;filter:grayscale(1);opacity:.55;transition:filter .2s,opacity .2s,transform .15s;}
+.rx-filt button:hover,.rx-filt button.on{filter:none;opacity:1;transform:scale(1.12);}
+.rx-scroll{position:relative;flex:1;overflow-y:auto;padding:0 8px 8px;scroll-behavior:auto;overscroll-behavior:contain;}
+.rx-sec-h{font-size:13px;font-weight:600;color:var(--text2);padding:10px 6px 4px;}
+.rx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));}
+.rx-i{height:42px;border:none;border-radius:10px;background:none;cursor:pointer;font-size:27px;display:flex;align-items:center;justify-content:center;padding:0;transition:transform .15s cubic-bezier(.3,1.6,.5,1),background .12s;}
+.rx-i:hover{background:var(--hover);transform:scale(1.18);}
+.rx-i:active{transform:scale(.9);}
+.rx-res.rx-fade{animation:rxFullIn .22s ease both;}
+.rx-empty{text-align:center;color:var(--text2);padding:40px 0;font-size:14px;}
+.rx-clear{display:block;width:100%;margin:8px 0 2px;padding:9px;border:none;border-radius:10px;background:var(--hover);color:var(--red);cursor:pointer;font-size:13px;}
+
+/* плашки реакций под сообщением */
+.msg-rx{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 0;max-width:100%;}
+.rx-chip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 5px 0 7px;border:none;border-radius:14px;cursor:pointer;font-size:17px;
+  background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);transition:transform .15s,background .2s;}
+.rx-chip:hover{transform:scale(1.05);}
+.rx-chip.mine{background:var(--accent);color:#fff;}
+.msg.out .rx-chip{background:color-mix(in srgb,var(--msg-out-time,#4fae4e) 20%,transparent);color:var(--msg-out-time,var(--accent));}
+.msg.out .rx-chip.mine{background:var(--msg-out-time,var(--accent));color:#fff;}
+.rx-chip.rx-new{animation:rxChipIn .35s cubic-bezier(.3,1.5,.5,1) both;}
+@keyframes rxChipIn{from{transform:scale(.3);opacity:0;}to{transform:none;opacity:1;}}
+.rx-chip.rx-pop>.rx-em,.rx-chip.rx-pop>.cx{animation:rxPop .55s cubic-bezier(.3,1.6,.5,1);}
+@keyframes rxPop{0%{transform:scale(.3);}45%{transform:scale(1.55);}100%{transform:scale(1);}}
+.rx-avs{display:inline-flex;}
+.rx-av{width:20px;height:20px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;margin-left:-6px;border:1.5px solid var(--bg2);background:var(--accent);color:#fff;font-size:10px;font-weight:700;box-sizing:border-box;}
+.rx-av:first-child{margin-left:0;}
+.rx-av img{width:100%;height:100%;object-fit:cover;}
+.rx-n{font-size:13px;font-weight:600;min-width:10px;padding-right:3px;}
+/* эффекты */
+#rxFx{position:fixed;inset:0;pointer-events:none;z-index:1100;overflow:hidden;}
+.rx-part{position:absolute;font-size:20px;line-height:1;will-change:transform,opacity;}
+.rx-balloon{position:absolute;white-space:nowrap;line-height:1;will-change:transform,opacity;text-shadow:0 2px 0 rgba(0,0,0,.18),0 0 12px rgba(255,255,255,.35);letter-spacing:.02em;}
+.rx-balloon::after{content:'';position:absolute;left:50%;top:100%;width:1.5px;height:22px;background:currentColor;opacity:.45;border-radius:1px;transform-origin:top;transform:rotate(6deg);}
+body.perf-noanim .rx-box{transition:none;}
+
+/* эмодзи-статус справа от ника */
+.es-ico{display:inline-flex;align-items:center;margin-left:5px;font-size:1em;vertical-align:-.1em;cursor:default;}
+.es-ico[onclick]{cursor:pointer;transition:transform .15s;}
+.es-ico[onclick]:hover{transform:scale(1.15);}
+.es-add svg{width:.95em;height:.95em;fill:currentColor;opacity:.45;}
+.sb-name .es-ico{font-size:.95em;}
+.sp-pat .cx,.admin-row .cx,.sp-wp-ico .cx{font-size:1.1em;}
+.msg-bub>.msg-rx{margin-top:6px;padding-right:44px;}
+.msg.out .msg-bub>.msg-rx{padding-right:58px;}
+.msg.has-rx .msg-bub::after{display:none;}
+#chName .es-ico{font-size:.85em;vertical-align:-.08em;line-height:1;}

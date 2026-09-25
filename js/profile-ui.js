@@ -225,7 +225,10 @@ function _getProfileBgStyle(bgId,bgColor,pattern){
   // Паттерн поверх
   const pat=PREMIUM_BG_PATTERNS.find(p=>p.id===pattern);
   if(!pat)return baseGrad;
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><text y='38' font-size='24' opacity='0.18'>${pat.emoji}</text></svg>`;
+  // Кастомные реакции SLON (W, ХАХА) — только буквы, без белой подложки
+  const svg=pat.txt
+    ?`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><text x='30' y='38' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-size='${pat.txt.length>2?13:26}' fill='#fff' opacity='0.28'>${pat.txt}</text></svg>`
+    :`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><text y='38' font-size='24' opacity='0.18'>${pat.emoji}</text></svg>`;
   const url=`url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   return url+', '+baseGrad;
 }

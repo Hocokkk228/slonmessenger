@@ -1,7 +1,7 @@
 {
   "name": "slon-android",
   "private": true,
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "SLON Messenger — Android-приложение (Capacitor, веб-часть встроена в APK)",
   "scripts": {
     "web": "node scripts/copy-web.cjs",

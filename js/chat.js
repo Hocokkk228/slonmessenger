@@ -427,7 +427,6 @@ function _downloadSlon(msg){
   document.body.appendChild(a);a.click();a.remove();
 }
 
-function closeMsgMenu(){if(_msgMenuEl){_msgMenuEl.remove();_msgMenuEl=null;}}
 
 function _getMsgFromHist(mid){
   for(const hist of [chatHist,grpHist]){
