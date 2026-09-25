@@ -221,7 +221,7 @@ function _spContourColor(color){
 // ════════════════════════════════════════
 const PROFILE_WALLPAPERS=[
   {id:'',       name:'Нет',            prem:false},
-  {id:'skull',  name:'Черепа',         prem:true},
+  {id:'skull',  name:'Пленённые души', prem:true},
   {id:'sakura', name:'Сакура',         prem:true},
   {id:'stars',  name:'Звёздное небо',  prem:true},
 ];
@@ -230,31 +230,9 @@ const PROFILE_WALLPAPER_MAP=Object.fromEntries(PROFILE_WALLPAPERS.map(w=>[w.id,w
 function _wallpaperInner(id){
   switch(id){
     case 'skull':
-      return `<div class="wp-skull-glow"></div>
-        <svg class="wp-skull-svg" viewBox="0 0 100 120" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-          <defs>
-            <linearGradient id="wpBoneGrad" x1="0" y1="0" x2=".7" y2="1">
-              <stop offset="0" stop-color="#fdfdff"/><stop offset=".55" stop-color="#e2e4ee"/><stop offset="1" stop-color="#aeb2c2"/>
-            </linearGradient>
-            <radialGradient id="wpEyeGrad" cx="50%" cy="35%" r="75%">
-              <stop offset="0" stop-color="#fff2f2"/><stop offset=".4" stop-color="#ff4560"/><stop offset="1" stop-color="#6e0016"/>
-            </radialGradient>
-          </defs>
-          <g class="wp-skull-main">
-            <path fill="url(#wpBoneGrad)" stroke="#7d7f8c" stroke-width="1" d="M50 3C29 3 15 17 13 37c-2 15 3 26 12 34l2 13c0 6 5 10 11 10h24c6 0 11-4 11-10l2-13c9-8 14-19 12-34C85 17 71 3 50 3z"/>
-            <path fill="#8b8ea0" opacity=".35" d="M18 26c-3 8-4 16-2 24 1-9 3-17 7-24z"/>
-            <path fill="#8b8ea0" opacity=".35" d="M82 26c3 8 4 16 2 24-1-9-3-17-7-24z"/>
-            <path class="wp-skull-eye" d="M27 41l19-3 2 15-16 6-11-9z"/>
-            <path class="wp-skull-eye" d="M73 41l-19-3-2 15 16 6 11-9z"/>
-            <path fill="#7d7f8c" opacity=".85" d="M47 56h6l3 12-6 8-6-8z"/>
-            <path fill="url(#wpBoneGrad)" stroke="#7d7f8c" stroke-width="1" d="M34 78h32l-2 10c-1 4-4 6-8 6H44c-4 0-7-2-8-6z"/>
-            <path stroke="#7d7f8c" stroke-width="1" d="M40 78v14M46 78v16M50 78v17M54 78v16M60 78v14"/>
-            <path stroke="#9296a6" stroke-width="1" opacity=".5" fill="none" d="M18 20l9 15M83 17l-10 16"/>
-          </g>
-        </svg>
-        <i class="wp-ember" style="--x:12%;--d:0s"></i><i class="wp-ember" style="--x:28%;--d:1.1s"></i>
-        <i class="wp-ember" style="--x:60%;--d:.5s"></i><i class="wp-ember" style="--x:78%;--d:1.8s"></i>
-        <i class="wp-ember" style="--x:90%;--d:2.4s"></i>`;
+      // «Пленённые души» — полутоновые лицо-призрак и рука, генерируются один раз на canvas
+      _wpSoulsEnsure();
+      return '<i class="wp-souls-face"></i><i class="wp-souls-hand"></i><i class="wp-souls-grain"></i>';
     case 'sakura':
       return `<div class="wp-sakura-sky"></div>
         ${Array.from({length:10},(_,i)=>`<i class="wp-petal" style="--x:${(i*97)%100}%;--d:${(i*0.9)%6}s;--sp:${5+(i%4)}s"></i>`).join('')}`;
@@ -296,4 +274,147 @@ function _spPickWallpaper(id){
   document.querySelectorAll('.wp-grid .wp-cell').forEach(b=>b.classList.toggle('sel',b.dataset.w===id));
   _wallpaperApply($('spCustPrevWp'),id);
   $('custSave')?.classList.add('show');
+}
+
+// ════════════════════════════════════════
+// ── «Пленённые души»: сцена в оттенках серого на canvas → полутон (halftone) ──
+// Лицо и рука рисуются отдельными слоями (анимируются независимо), затем
+// переводятся в белые полутоновые точки на прозрачном фоне — цвет градиента
+// профиля остаётся виден между точками. Генерация один раз, blob-URL в CSS-переменные.
+// ════════════════════════════════════════
+let _wpSoulsState=0,_soulsNoBlur=false; // Safari: у canvas нет filter:blur — мягкие свечения пропускаем
+function _soulsEll(g,x,y,rx,ry,rot){g.beginPath();g.ellipse(x,y,rx,ry,rot||0,0,Math.PI*2);g.fill();}
+// Палец: сужается к кончику, светотень поперёк (тёмные края, светлая середина)
+function _soulsFinger(g,w,len,light){
+  const t=w*0.78,gr=g.createLinearGradient(-w/2,0,w/2,0);
+  gr.addColorStop(0,'#262626');gr.addColorStop(.3,light);gr.addColorStop(.62,light);gr.addColorStop(1,'#1a1a1a');
+  g.fillStyle=gr;g.beginPath();g.moveTo(-w/2,0);g.lineTo(-t/2,-len+t/2);
+  g.arc(0,-len+t/2,t/2,Math.PI,0);g.lineTo(w/2,0);g.closePath();g.fill();
+}
+// Лицо: вытянутый измождённый череп-призрак, асимметричные глазницы, огромный кричащий рот
+function _soulsDrawFace(g,W,H){
+  g.save();g.translate(W/2,H/2);g.rotate(-0.1);g.translate(-W/2,-H/2);
+  const cx=W*0.5;
+  if(!_soulsNoBlur){g.filter='blur(22px)';g.fillStyle='rgba(255,255,255,.18)';_soulsEll(g,cx,H*0.48,W*0.38,H*0.44);}
+  // голова + отвисшая челюсть (две формы с одной светотенью)
+  g.filter='blur(5px)';
+  let gr=g.createRadialGradient(cx+W*0.06,H*0.26,W*0.04,cx,H*0.48,W*0.66);
+  gr.addColorStop(0,'#ffffff');gr.addColorStop(.42,'#cfcfcf');gr.addColorStop(.78,'#565656');gr.addColorStop(1,'#101010');
+  g.fillStyle=gr;_soulsEll(g,cx,H*0.42,W*0.31,H*0.38);_soulsEll(g,cx,H*0.7,W*0.23,H*0.22);
+  // впалые виски и щёки
+  g.filter='blur(14px)';g.fillStyle='rgba(0,0,0,.72)';
+  _soulsEll(g,cx-W*0.25,H*0.44,W*0.08,H*0.2);_soulsEll(g,cx+W*0.25,H*0.44,W*0.08,H*0.2);
+  _soulsEll(g,cx-W*0.2,H*0.6,W*0.07,H*0.11);_soulsEll(g,cx+W*0.19,H*0.61,W*0.07,H*0.11);
+  // лоб и скулы — блики
+  g.filter='blur(10px)';g.fillStyle='rgba(255,255,255,.78)';
+  _soulsEll(g,cx+W*0.03,H*0.18,W*0.2,H*0.07);
+  _soulsEll(g,cx-W*0.17,H*0.46,W*0.07,H*0.035,-.4);_soulsEll(g,cx+W*0.16,H*0.47,W*0.065,H*0.032,.4);
+  // глазницы — асимметричные чёрные провалы
+  g.filter='blur(7px)';g.fillStyle='#000';
+  _soulsEll(g,cx-W*0.14,H*0.33,W*0.105,H*0.085,-.5);_soulsEll(g,cx+W*0.12,H*0.345,W*0.09,H*0.075,.4);
+  g.filter='blur(2px)';
+  _soulsEll(g,cx-W*0.14,H*0.335,W*0.064,H*0.05,-.5);_soulsEll(g,cx+W*0.12,H*0.35,W*0.055,H*0.045,.4);
+  // потёки из глазниц
+  g.filter='blur(3px)';g.fillStyle='rgba(0,0,0,.6)';
+  g.beginPath();g.roundRect(cx-W*0.16,H*0.38,W*0.022,H*0.12,W*0.011);g.fill();
+  g.beginPath();g.roundRect(cx+W*0.13,H*0.39,W*0.018,H*0.08,W*0.009);g.fill();
+  // нос — две щели
+  g.filter='blur(3px)';g.fillStyle='#000';
+  _soulsEll(g,cx-W*0.03,H*0.445,W*0.018,H*0.03,.3);_soulsEll(g,cx+W*0.03,H*0.445,W*0.018,H*0.03,-.3);
+  // рот — огромный провал, чуть перекошен
+  g.filter='blur(4px)';_soulsEll(g,cx+W*0.01,H*0.72,W*0.14,H*0.235,.06);
+  // светлый край губ вокруг рта
+  g.filter='blur(6px)';g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=W*0.035;
+  g.beginPath();g.ellipse(cx+W*0.01,H*0.72,W*0.17,H*0.265,.06,Math.PI*0.12,Math.PI*0.88);g.stroke();
+  // верхние зубы — рваная кромка
+  g.filter='blur(1px)';g.fillStyle='#e8e8e8';
+  const tw=W*0.034,ty=H*0.49;
+  for(let i=-3;i<=3;i++){const tx=cx+W*0.005+i*tw*1.05;g.beginPath();g.moveTo(tx-tw/2,ty+Math.abs(i)*H*0.004);g.lineTo(tx+tw/2,ty+Math.abs(i)*H*0.004);
+    g.lineTo(tx+tw*0.1,ty+H*(0.04+0.022*Math.abs(Math.sin(i*1.7))));g.closePath();g.fill();}
+  // нижние зубы — редкие, торчат вверх
+  for(const [dx,h] of [[-0.06,0.03],[-0.02,0.022],[0.035,0.028],[0.07,0.02]]){const tx=cx+W*dx,by=H*0.935;
+    g.beginPath();g.moveTo(tx-tw*0.45,by);g.lineTo(tx+tw*0.45,by);g.lineTo(tx,by-H*h);g.closePath();g.fill();}
+  // внутренняя тьма рта (перекрывает корни зубов)
+  g.filter='blur(3px)';g.fillStyle='#000';_soulsEll(g,cx+W*0.01,H*0.73,W*0.115,H*0.17,.06);
+  // низ уходит во тьму
+  g.filter='none';
+  gr=g.createLinearGradient(0,H*0.86,0,H);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');
+  g.fillStyle=gr;g.fillRect(0,H*0.86,W,H*0.14);
+  g.restore();
+}
+// Рука: раскрытая ладонь, пальцы вверх, тянется к зрителю
+function _soulsDrawHand(g,W,H){
+  const px=W*0.5,py=H*0.62;
+  if(!_soulsNoBlur){g.filter='blur(18px)';g.fillStyle='rgba(255,255,255,.16)';_soulsEll(g,px,py-H*0.1,W*0.38,H*0.38);}
+  g.filter='blur(2.5px)';
+  // запястье
+  let gr=g.createLinearGradient(px-W*0.15,0,px+W*0.15,0);
+  gr.addColorStop(0,'#1e1e1e');gr.addColorStop(.5,'#8f8f8f');gr.addColorStop(1,'#161616');
+  g.fillStyle=gr;g.beginPath();g.roundRect(px-W*0.14,py,W*0.28,H*0.45,W*0.07);g.fill();
+  // ладонь
+  gr=g.createRadialGradient(px+W*0.02,py-H*0.04,W*0.03,px,py,W*0.32);
+  gr.addColorStop(0,'#fbfbfb');gr.addColorStop(.62,'#b8b8b8');gr.addColorStop(1,'#303030');
+  g.fillStyle=gr;g.beginPath();g.roundRect(px-W*0.24,py-H*0.18,W*0.48,H*0.32,W*0.15);g.fill();
+  // пальцы: [смещение основания x, угол, длина, толщина, сдвиг основания y]
+  const fingers=[[-0.165,-0.17,0.34,0.125,0],[-0.055,-0.05,0.39,0.13,-0.01],[0.058,0.07,0.365,0.125,0],[0.16,0.2,0.28,0.108,0.03]];
+  for(const [bx,a,len,w,by] of fingers){
+    g.save();g.translate(px+W*bx,py-H*(0.15-by));g.rotate(a);g.translate(0,H*0.05);
+    _soulsFinger(g,W*w,H*(len+0.05),'#e8e8e8');
+    // суставы — мягкие складки
+    g.fillStyle='rgba(0,0,0,.28)';
+    g.fillRect(-W*w*0.3,-H*(len+0.05)*0.4,W*w*0.6,H*0.007);g.fillRect(-W*w*0.28,-H*(len+0.05)*0.68,W*w*0.56,H*0.006);
+    g.fillStyle='rgba(255,255,255,.45)';_soulsEll(g,0,-H*(len+0.05)*0.88,W*w*0.24,H*0.02);
+    g.restore();
+  }
+  // большой палец — толстый, в сторону и вверх
+  g.save();g.translate(px-W*0.2,py+H*0.05);g.rotate(-1.02);_soulsFinger(g,W*0.145,H*0.26,'#dadada');g.restore();
+  // мягкие линии ладони
+  g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=W*0.008;g.filter='blur(2px)';
+  g.beginPath();g.moveTo(px-W*0.17,py-H*0.06);g.quadraticCurveTo(px,py+H*0.01,px+W*0.19,py-H*0.08);g.stroke();
+  g.beginPath();g.moveTo(px-W*0.13,py+H*0.08);g.quadraticCurveTo(px-W*0.03,py-H*0.02,px+W*0.02,py-H*0.13);g.stroke();
+  // запястье растворяется во тьме
+  g.filter='none';
+  gr=g.createLinearGradient(0,H*0.74,0,H);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');
+  g.fillStyle=gr;g.fillRect(0,H*0.74,W,H*0.26);
+}
+// Края слоя уходят в черноту — на баннере не видно прямоугольника
+function _soulsVignette(g,W,H,cy){
+  g.save();g.filter='none';g.translate(W/2,H*cy);g.scale(1,H/W);
+  const gr=g.createRadialGradient(0,0,W*0.36,0,0,W*0.54);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');
+  g.fillStyle=gr;g.fillRect(-W,-W*2,W*2,W*4);g.restore();
+}
+// Серый рисунок → полутон: белые точки на прозрачном, размер ~ яркость, шум «плёнки» только внутри фигур
+function _soulsHalftone(src,W,H,step){
+  const d=src.getContext('2d').getImageData(0,0,W,H).data;
+  const o=document.createElement('canvas');o.width=W;o.height=H;const og=o.getContext('2d');
+  og.fillStyle='#fff';
+  let row=0;
+  for(let y=0;y<H;y+=step*0.87,row++){
+    for(let x=(row&1)?step/2:0;x<W;x+=step){
+      const i=((Math.min(H-1,y|0))*W+Math.min(W-1,x|0))*4;
+      let l=(d[i]*.3+d[i+1]*.59+d[i+2]*.11)/255;
+      l=Math.pow(l,1.15);l+=(Math.random()-.5)*0.22*Math.sqrt(l);
+      if(l<0.07)continue;
+      og.beginPath();og.arc(x,y,Math.min(step*0.62,Math.sqrt(l)*step*0.6),0,Math.PI*2);og.fill();
+    }
+  }
+  return o;
+}
+function _soulsRender(W,H,draw,cy){
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.fillStyle='#000';g.fillRect(0,0,W,H);
+  _soulsNoBlur=!('filter' in g);
+  draw(g,W,H);_soulsVignette(g,W,H,cy);
+  return {gray:c,ht:_soulsHalftone(c,W,H,7)};
+}
+function _soulsLayer(W,H,draw,cy,cssVar){
+  const {ht}=_soulsRender(W,H,draw,cy);
+  ht.toBlob(b=>{if(b)document.documentElement.style.setProperty(cssVar,`url("${URL.createObjectURL(b)}")`);},'image/png');
+}
+function _wpSoulsEnsure(){
+  if(_wpSoulsState)return;_wpSoulsState=1;
+  try{
+    _soulsLayer(420,640,_soulsDrawFace,0.5,'--wp-souls-face');
+    _soulsLayer(460,560,_soulsDrawHand,0.5,'--wp-souls-hand');
+  }catch(e){console.warn('[SLON] souls wallpaper:',e);}
 }
