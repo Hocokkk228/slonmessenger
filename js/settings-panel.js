@@ -251,11 +251,6 @@ function _spRender(quiet){
    +_spRow({ico:'keyboard',color:'orange',title:'Горячие клавиши',onclick:'_spSoon()'})
   );
 
-  // Приложение для Android — только на сайте (в самом приложении не нужно)
-  if(typeof IS_NATIVE==='undefined'||!IS_NATIVE){
-    h+=card(_spRow({ico:'android',color:'green',title:'SLON для Android',sub:'Скачать приложение (APK)',onclick:'downloadAndroidApp()'}));
-  }
-
   // Premium
   h+=card(
     _spRow({ico:'star',color:'premium',title:'SLON Premium',val:myPremium?'Активна':'',onclick:'_spPremiumInfo()'})
@@ -267,7 +262,9 @@ function _spRender(quiet){
   }
 
   h+=card(_spRow({ico:'logout',color:'red',title:'Выйти из аккаунта',sub:'@'+esc(myUsername),onclick:'logout()',cls:'sp-row-danger'}));
-  h+='<div class="sp-footer">SLON Messenger 🐘</div>';
+  // Внизу, как «Telegram Desktop» в Telegram: приложения SLON для всех платформ
+  h+=`<div class="sp-apps-foot" onclick="_spApps()" role="button">
+    <img src="icons/icon-96.png" alt=""><div><b>SLON Desktop</b><span>Приложения для Windows, Android и iPhone</span></div></div>`;
   const body=$('spBody');
   body.innerHTML=h;
   body.classList.toggle('sp-quiet',!!quiet);
@@ -275,6 +272,51 @@ function _spRender(quiet){
 }
 
 function _spSoon(){toast('Скоро 🐘');}
+
+// ── Страница «Приложения SLON»: Windows / Android / iPhone ──
+const _APP_ICO={
+  windows:'<svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3v-6zm0 13l7.5 1v-7H3v6zm8.5 1.2L21 21v-8.5h-9.5v7.2zm0-15.4v7.2H21V3l-9.5 1.3z"/></svg>',
+  android:'<svg viewBox="0 0 24 24"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.87 3.23a11.4 11.4 0 0 0-9.82 0L5.22 5.92a.38.38 0 1 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>',
+  apple:'<svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9s-2-.9-3.4-.9c-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.3-.8s2 .8 3.4.8 2.2-1.3 3.1-2.5c1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4zM13.9 5c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3-1.5z"/></svg>',
+};
+function _spApps(){
+  const ua=navigator.userAgent;
+  const plat=/iPhone|iPad|iPod/i.test(ua)?'ios':/Android/i.test(ua)?'android':/Windows/i.test(ua)?'windows':'other';
+  const card=(id,ico,title,sub,btn,onclick)=>`<div class="app-card${plat===id?' app-here':''}">
+      <div class="app-card-ico app-${id}">${ico}</div>
+      <div class="app-card-txt"><b>${title}</b><span>${sub}</span>${plat===id?'<i class="app-here-tag">Твоё устройство</i>':''}</div>
+      <button class="app-card-btn" onclick="${onclick}">${btn}</button></div>`;
+  _spPush('Приложения SLON',`
+    <div class="app-hero"><img src="icons/icon-192.png" alt=""><div class="app-hero-name">SLON</div>
+      <div class="app-hero-sub">Мессенджер на всех устройствах — чаты синхронизируются сами</div></div>
+    ${card('windows',_APP_ICO.windows,'SLON для Windows','Своё окно, иконка на рабочем столе и в «Пуске», уведомления','Установить','_installWindows()')}
+    ${card('android',_APP_ICO.android,'SLON для Android','Приложение APK · версия 1.0.0 · 5,4 МБ','Скачать','downloadAndroidApp()')}
+    ${card('ios',_APP_ICO.apple,'SLON для iPhone','Ярлык на экране «Домой» — открывается как приложение, с уведомлениями','Добавить','_iosShortcutHelp()')}
+    <div class="sp-hint">Все приложения бесплатные и сделаны нами. Android может предупредить, что APK не из Google Play — это нормально для приложений, скачанных с сайта.</div>
+    <div style="height:30px"></div>`);
+}
+// Windows: ставим сайт как приложение (отдельное окно, ярлыки, уведомления)
+function _installWindows(){
+  if(typeof _installEvt!=='undefined'&&_installEvt){const ev=_installEvt;_installEvt=null;ev.prompt();return;}
+  if(window.matchMedia('(display-mode: standalone)').matches){toast('SLON уже установлен и открыт как приложение ✅');return;}
+  toast('Открой SLON в Chrome, Edge или Яндекс Браузере → значок «Установить» в адресной строке (или меню ⋮ → «Установить SLON»)',8000);
+}
+// iPhone: программно ярлык не добавить — показываем пошагово, как это сделать в Safari
+function _iosShortcutHelp(){
+  if(window.navigator.standalone){toast('SLON уже открыт с экрана «Домой» ✅');return;}
+  const share='<svg viewBox="0 0 24 24"><path d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7l4-4zm-7 8h3v2H7v7h10v-7h-1v-2h3v11H5V11z"/></svg>';
+  const plus='<svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm6 3h2v3h3v2h-3v3h-2v-3H8v-2h3V8z"/></svg>';
+  const el=document.createElement('div');el.className='ios-help';
+  el.innerHTML=`<div class="ios-help-card">
+    <div class="ios-help-title">Ярлык SLON на iPhone</div>
+    <div class="ios-step"><span class="ios-n">1</span><div>Открой этот сайт в <b>Safari</b></div></div>
+    <div class="ios-step"><span class="ios-n">2</span><div>Нажми <b>«Поделиться»</b> ${share} внизу экрана</div></div>
+    <div class="ios-step"><span class="ios-n">3</span><div>Выбери <b>«На экран «Домой»»</b> ${plus} и нажми «Добавить»</div></div>
+    <div class="ios-step"><span class="ios-n">4</span><div>Открывай SLON <b>с иконки</b> — разреши уведомления, и они будут приходить, даже когда приложение закрыто</div></div>
+    <button class="ios-help-ok">Понятно</button></div>`;
+  el.onclick=e=>{if(e.target===el||e.target.classList.contains('ios-help-ok')){el.classList.remove('show');setTimeout(()=>el.remove(),250);}};
+  document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));
+}
 
 function _spOnScroll(){
   const sc=$('spScroll'),tb=$('spTopbar');if(!sc||!tb)return;
