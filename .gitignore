@@ -5,3 +5,5 @@ _t2.html
 push-relay/.wrangler/
 _t3.html
 server/.wrangler/
+_demo.html
+android-app/android/app/google-services.json
