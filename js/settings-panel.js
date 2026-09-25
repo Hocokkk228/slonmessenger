@@ -290,10 +290,14 @@ function _spApps(){
     <div class="app-hero"><img src="icons/icon-192.png" alt=""><div class="app-hero-name">SLON</div>
       <div class="app-hero-sub">Мессенджер на всех устройствах — чаты синхронизируются сами</div></div>
     ${card('windows',_APP_ICO.windows,'SLON для Windows','Своё окно, иконка на рабочем столе и в «Пуске», уведомления','Установить','_installWindows()')}
-    ${card('android',_APP_ICO.android,'SLON для Android','Приложение APK · версия 1.0.0 · 5,4 МБ','Скачать','downloadAndroidApp()')}
+    ${card('android',_APP_ICO.android,'SLON для Android','<span id="apkInfo">Приложение для Android (APK)</span>','Скачать','downloadAndroidApp()')}
     ${card('ios',_APP_ICO.apple,'SLON для iPhone','Ярлык на экране «Домой» — открывается как приложение, с уведомлениями','Добавить','_iosShortcutHelp()')}
     <div class="sp-hint">Все приложения бесплатные и сделаны нами. Android может предупредить, что APK не из Google Play — это нормально для приложений, скачанных с сайта.</div>
     <div style="height:30px"></div>`);
+  // версия и размер — из version.json (обновляется вместе с релизом)
+  fetch('version.json?'+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(v=>{
+    const a=v.android;const el=$('apkInfo');if(a&&el)el.textContent='Приложение APK · версия '+a.version+(a.size?' · '+a.size:'');
+  }).catch(()=>{});
 }
 // Windows: ставим сайт как приложение (отдельное окно, ярлыки, уведомления)
 function _installWindows(){

@@ -128,6 +128,39 @@ if(IS_NATIVE){
     _NP.App.minimizeApp();
   });
 
+  // ── Работа в фоне: без ограничений батареи + автозапуск (ColorOS, MIUI/HyperOS) ──
+  // Иначе прошивка усыпляет SLON, и сообщения/звонки не приходят, пока его не откроешь.
+  async function _bgAsk(){
+    const S=_NP.SlonSystem;if(!S)return;
+    let st;try{st=await S.backgroundStatus();}catch(e){return;}
+    if(st.unrestricted)return;
+    try{const t=+localStorage.getItem('sl_bg_asked')||0;if(Date.now()-t<3*864e5)return;}catch(e){}
+    if($('bgAsk'))return;
+    const el=document.createElement('div');el.id='bgAsk';el.className='notif-ask';
+    el.innerHTML=`<div class="na-ico"><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zM11 20v-5.5H9L13 7v5.5h2L11 20z"/></svg></div>
+      <div class="na-txt"><b>Разреши SLON работать в фоне</b><span>Чтобы сообщения и звонки приходили сразу, даже когда приложение свёрнуто</span></div>
+      <div class="na-btns"><button class="na-no">Не сейчас</button><button class="na-yes">Разрешить</button></div>`;
+    const done=()=>{try{localStorage.setItem('sl_bg_asked',String(Date.now()));}catch(e){}el.classList.remove('show');setTimeout(()=>el.remove(),300);};
+    el.querySelector('.na-no').onclick=done;
+    el.querySelector('.na-yes').onclick=async()=>{
+      done();
+      await S.requestUnrestricted().catch(()=>{});
+      // На OPPO/realme/OnePlus и Xiaomi/Redmi/POCO ещё отдельный «Автозапуск»
+      const m=String(st.manufacturer||'').toLowerCase();
+      if(/oppo|realme|oneplus|xiaomi|redmi|poco|huawei|honor|vivo/.test(m)){
+        const back=()=>{document.removeEventListener('visibilitychange',back);
+          if(document.visibilityState==='visible')setTimeout(()=>{
+            toast('Теперь включи SLON в «Автозапуске» — открываю настройки',4000);
+            setTimeout(()=>S.openAutostart().catch(()=>{}),1200);
+          },600);};
+        document.addEventListener('visibilitychange',back);
+      }
+    };
+    document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));
+  }
+  setTimeout(_bgAsk,6000);
+  window._bgSetup=()=>{try{localStorage.removeItem('sl_bg_asked');}catch(e){}_bgAsk();};
+
   // ── Статус-бар в цвет темы ──
   const _paintBar=()=>{
     try{
