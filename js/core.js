@@ -20,6 +20,7 @@ window._fbOnValue = (ref, cb, opts) => {
 };
 window._fbOnChildAdded = (ref, cb) => { ref.on('child_added', cb); return ()=>ref.off('child_added', cb); };
 window._fbOnChildRemoved = (ref, cb) => { ref.on('child_removed', cb); return ()=>ref.off('child_removed', cb); };
+window._fbOnChildChanged = (ref, cb) => { ref.on('child_changed', cb); return ()=>ref.off('child_changed', cb); };
 window._fbOff = (ref) => ref.off();
 window._firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));

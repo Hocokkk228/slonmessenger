@@ -295,19 +295,41 @@ function rejectCall(){
   }
 }
 
+// Звонок взяли/отклонили на ЭТОМ устройстве — остальные наши устройства
+// перестают звонить. Отдельный узел call_sync/{я}/{callId} (не inbox: из
+// inbox запись забирает первое прочитавшее устройство, остальные её не видят).
 function _syncCallToSelf(action,callId,peerId){
   if(!_fbMode||!window._fbDb||!myUsername||!callId)return;
   try{
-    // Шлём себе в inbox (все наши устройства слушают inbox/myUsername)
-    _fbSend(myUsername,{
-      type:'call_self_sync',
-      action, // 'answered' | 'rejected'
-      callId,
-      peerId,
-      _device:_myDeviceId, // чтобы отправитель сам себя не обработал
-      ts:Date.now()
-    });
+    const ref=window._fbRef(window._fbDb,'call_sync/'+myUsername+'/'+_callKey(callId));
+    window._fbSet(ref,{action,peerId,dev:_myDeviceId,ts:Date.now()});
+    setTimeout(()=>window._fbRemove(ref).catch(()=>{}),120000); // подчищаем
   }catch(e){}
+}
+// callId → безопасный ключ Firebase
+function _callKey(id){return String(id).replace(/[^A-Za-z0-9_-]/g,'_');}
+let _callSyncOn=false;
+function _listenCallSync(){
+  if(_callSyncOn||!window._fbDb||!myUsername)return;
+  _callSyncOn=true;
+  const ref=window._fbRef(window._fbDb,'call_sync/'+myUsername);
+  const onRec=snap=>{
+    const d=snap.val();if(!d||d.dev===_myDeviceId)return;
+    if(Date.now()-(d.ts||0)>120000)return;
+    const key=snap.key;
+    const same=id=>id&&_callKey(id)===key;
+    _cancelledCallIds?.add(key);
+    // Звонок ещё звонит здесь — молча убираем (без «пропущенного»)
+    if((pendingCall&&(same(pendingCall.callId)||(!pendingCall.callId&&pendingCall.peerId===d.peerId)))||same(_lastIncomingCallId)){
+      stopRingSound();
+      $('incoming').classList.remove('show');
+      pendingCall=null;_lastIncomingCallId=null;
+      if(typeof _closeCallNotif==='function')_closeCallNotif();
+      toast(d.action==='answered'?'📱 Звонок принят на другом устройстве':'Звонок отклонён на другом устройстве');
+    }
+  };
+  window._fbOnChildAdded(ref,onRec);
+  window._fbOnChildChanged?.(ref,onRec);
 }
 
 function setupCallUI(peerId,isVideo){

@@ -35,6 +35,27 @@ const RC_MAX={voice:600,slon:60};   // лимиты длительности, с
 const RC_HOLD_MS=220;                // дольше — это удержание, короче — тап
 const RC_LOCK_DY=70,RC_CANCEL_DX=110;
 const RC_AUDIO={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
+// Микрофон/камера, выбранные в настройках (selMic/selCam) — как в звонках
+function _rcAudioC(strict){
+  const c={...RC_AUDIO};
+  if(typeof selMic!=='undefined'&&selMic&&selMic!=='default')c.deviceId=strict?{exact:selMic}:{ideal:selMic};
+  return c;
+}
+function _rcVideoC(){
+  const v={width:{ideal:480},height:{ideal:480}};
+  if(typeof selCam!=='undefined'&&selCam&&selCam!=='default')v.deviceId={ideal:selCam};else v.facingMode='user';
+  return v;
+}
+// Сначала строго выбранный микрофон; если его отключили — любой доступный
+async function _rcGetStream(mode){
+  const gum=c=>navigator.mediaDevices.getUserMedia(c);
+  if(mode==='slon'){
+    return gum({audio:_rcAudioC(true),video:_rcVideoC()})
+      .catch(()=>gum({audio:_rcAudioC(false),video:_rcVideoC()}))
+      .catch(()=>gum({audio:true,video:true}));
+  }
+  return gum({audio:_rcAudioC(true)}).catch(()=>gum({audio:_rcAudioC(false)})).catch(()=>gum({audio:true}));
+}
 let _rcMode=(()=>{try{return localStorage.getItem('sl_recMode')==='slon'?'slon':'voice';}catch(e){return 'voice';}})();
 let _rec=null;        // текущая запись (см. _rcBegin)
 let _rcPress=null;    // текущее нажатие на кнопку
@@ -135,10 +156,7 @@ async function _rcBegin(locked){
   _rcShowBar(true);
   let stream=null;
   try{
-    stream=mode==='slon'
-      ?await navigator.mediaDevices.getUserMedia({audio:RC_AUDIO,video:{facingMode:'user',width:{ideal:480},height:{ideal:480}}})
-        .catch(()=>navigator.mediaDevices.getUserMedia({audio:true,video:true}))
-      :await navigator.mediaDevices.getUserMedia({audio:RC_AUDIO}).catch(()=>navigator.mediaDevices.getUserMedia({audio:true}));
+    stream=await _rcGetStream(mode);
   }catch(e){
     if(_rec===me){_rec=null;_rcShowBar(false);}
     console.warn('rec getUserMedia:',e);
@@ -750,7 +768,11 @@ function renderSlonBub(msg,isOut){
     try{
       if(src.startsWith('idb:')){
         const p=src.split(':');
-        srcUrl=await _loadMediaFromIdb(p[1],p[2]||'slon');
+        // Медиа могло ещё дописываться в IDB (приём по сети) — ждём до ~6 с
+        for(let i=0;i<15&&!srcUrl;i++){
+          srcUrl=await _loadMediaFromIdb(p[1],p[2]||'slon');
+          if(!srcUrl)await new Promise(r=>setTimeout(r,400));
+        }
       }else if(src.startsWith('blob:')){
         srcUrl=src;_saveMediaToIdb(msg.id,'slon',src).catch(()=>{});
       }else if(src.startsWith('data:')){

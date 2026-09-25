@@ -48,6 +48,8 @@ function initFirebaseMode(){
     _initSlonChannel();
   },800);
   _fbListenSent(myUsername);
+  // Звонок взят/отклонён на другом нашем устройстве — гасим здесь
+  if(typeof _listenCallSync==='function')_listenCallSync();
   // Синхронизация групп между устройствами одного аккаунта
   _fbListenMyGroups();
   // Запускаем Firebase-слушатели групповых сообщений
@@ -586,6 +588,7 @@ function onData(pid,data){
       if(activeCall)break; // уже в звонке
       // Проверяем что это не старый звонок (callId должен отличаться от последнего отменённого)
       if(data.callId&&_cancelledCallIds?.has(data.callId))break;
+      if(data.callId&&typeof _callKey==='function'&&_cancelledCallIds?.has(_callKey(data.callId)))break;
       _pendingIceCandidates=[];
       _lastIncomingCallId=data.callId||null;
       pendingCall={peerId:pid,isVideo:!!data.isVideo,sdp:null,callId:data.callId};
@@ -810,14 +813,14 @@ function onData(pid,data){
           window._fbRemove(window._fbRef(window._fbDb,base)).catch(()=>{});
           if(data.kind==='voice'){
             const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),voiceData:'idb:'+data.id+':voice',voiceDur:data.dur};
-            _saveMediaToIdb(data.id,'voice',fullData);
+            await _saveMediaToIdb(data.id,'voice',fullData); // сначала в IDB, потом рендер — иначе «видео недоступно»
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🎙️ '+(peerNames[spid]||('@'+spid))+': голосовое');}
             updatePreview(spid,'🎙️ Голосовое');
           }else if(data.kind==='slon'){
             const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:data.dur};
-            _saveMediaToIdb(data.id,'slon',fullData);
+            await _saveMediaToIdb(data.id,'slon',fullData); // сначала в IDB, потом рендер — иначе «видео недоступно»
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else{addUnread(spid);toast('🐘 '+(peerNames[spid]||('@'+spid))+': слонкружок');}
