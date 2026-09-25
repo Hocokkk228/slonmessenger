@@ -101,6 +101,7 @@ function sendMsg(){
       saveAll();
       if(activeChat&&activeChat!=='ai'&&activeChat!=='saved')
         sendData(conns[activeChat]||activeChat,{type:'msg_edit',id:mid,text:txt});
+      if(typeof _mlEdit==='function')_mlEdit(found.pid,mid,{text:txt,edited:true});
     }
     cancelEdit();
     return;
@@ -125,13 +126,14 @@ function sendMsg(){
       updatePreview('ai','🐘: '+r.text.slice(0,25));
     },delay);
   }else if(activeChat==='saved'){
-    // Избранное — личный блокнот, никуда не отправляется
+    // Избранное — личный блокнот: только на свои устройства
+    if(typeof _mlPost==='function')_mlPost('saved',{id:mid,k:'text',text:txt,ts});
   }else{
     const c=conns[activeChat];
     if(_fbMode||c?.open){
       sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
-      // Синхронизируем на другие наши устройства
-      if(_fbMode)_syncSentMsg(activeChat,mid,txt,ts);
+      // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
+      if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts});
     }
     else sysMsg(activeChat,'⚠ Нет соединения. Попробуй переподключиться.');
   }
@@ -393,6 +395,7 @@ function deleteMsg(msg,forAll){
   const mid=msg.id;
   // Удаляем из локальной истории
   const found=_getMsgFromHist(mid);
+  if(found&&found.hist===chatHist&&typeof _mlDelete==='function')_mlDelete(found.pid,found.m,forAll);
   if(found){
     found.hist[found.pid]=found.hist[found.pid].filter(m=>m.id!==mid);
     // Удаляем из DOM
@@ -650,8 +653,17 @@ async function sendFileTo(fid,name,mime,isImg,data,ts){
         avatar:myAvatar||null,fileName:name,fileMime:mime,fileIsImg:isImg,ts:ts||Date.now()
       }).catch(()=>{});
     }
-  }else if(activeChat!=='ai'&&activeChat!=='saved'&&(_fbMode||conns[activeChat]?.open)){
-    await doSend(conns[activeChat]||activeChat,activeChat);
+  }else if(activeChat!=='ai'&&(activeChat==='saved'||_fbMode||conns[activeChat]?.open)){
+    const chat=activeChat;
+    // Через журнал: дойдёт, даже если собеседник офлайн, и появится на всех устройствах
+    if(typeof _mlSendMedia==='function'&&_mlOn()){
+      const m=(chatHist[chat]||[]).find(x=>x.id===fid);
+      const ok=await _mlSendMedia(chat,fid,isImg?'photo':'file',data,{name,mime,ts,size:m?.fileInfo?.size||''},
+        pct=>_setMsgUploadProgress(fid,Math.min(99,pct)));
+      _setMsgUploadProgress(fid,100);setTimeout(()=>_setMsgUploadProgress(fid,null),500);
+      if(ok)return;
+    }
+    if(chat!=='saved')await doSend(conns[chat]||chat,chat);
   }
 }
 

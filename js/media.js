@@ -385,6 +385,9 @@ function sendVoiceMsg(dataUrl,dur,mimeType,wave){
   if(activeChat.startsWith('g_')){
     // Группа: загружаем один раз, публикуем в grp_msgs
     _sendGrpMedia(activeChat,mid,'voice',dataUrl,dur,mimeType);
+  }else if(typeof _mlSendMedia==='function'&&_mlOn()&&activeChat!=='ai'){
+    // Журнал: дойдёт офлайн-собеседнику и появится на всех наших устройствах
+    _mlSendMedia(activeChat,mid,'voice',dataUrl,{mime:mimeType,ts,dur,wave});
   }else if(activeChat!=='ai'&&activeChat!=='saved'&&(_fbMode||conns[activeChat]?.open)){
     sendMediaChunked(_fbMode?activeChat:conns[activeChat],'voice',mid,dataUrl,dur,mimeType);
   }
@@ -409,6 +412,13 @@ function sendSlonMsg(dataUrl,dur,mimeType,isBlobUrl=false){
         reader.readAsDataURL(blob);
       }).catch(e=>console.warn('slon fetch error:',e));
     }else{_sendGrpMedia(activeChat,mid,'slon',dataUrl,dur,mimeType);}
+  }else if(typeof _mlSendMedia==='function'&&_mlOn()&&activeChat!=='ai'){
+    const chat=activeChat;
+    const go=d=>_mlSendMedia(chat,mid,'slon',d,{mime:mimeType,ts,dur});
+    if(isBlobUrl){
+      fetch(dataUrl).then(r=>r.blob()).then(blob=>{const rd=new FileReader();rd.onload=e=>go(e.target.result);rd.readAsDataURL(blob);})
+        .catch(e=>console.warn('slon fetch error:',e));
+    }else go(dataUrl);
   }else if(activeChat!=='ai'&&activeChat!=='saved'&&(_fbMode||conns[activeChat]?.open)){
     if(isBlobUrl){
       fetch(dataUrl).then(r=>r.blob()).then(blob=>{
