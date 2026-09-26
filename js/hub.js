@@ -10,7 +10,12 @@ const _hubPres={};   // pid -> {online,ts,ls} с нашего сервера
 function _hubMlKey(){return _getAccountPrefix(myUsername)+'hubMlUpd';}
 function _hubSend(o){
   if(!_hubUp||!_hubWs||_hubWs.readyState!==1)return false;
-  try{_hubWs.send(JSON.stringify(o));return true;}catch(e){return false;}
+  try{
+    const s=JSON.stringify(o);
+    // шлюз Яндекса пропускает сообщения до ~128 КБ — крупное отправляем тем же протоколом по HTTP
+    if(SRV_KIND==='yc'&&s.length>100000){api('/hub',{m:o}).then(d=>{if(d&&d.reply)_hubDispatch(d.reply);}).catch(e=>console.warn('hub http:',e));return true;}
+    _hubWs.send(s);return true;
+  }catch(e){return false;}
 }
 // ── «Обновление…» сверху списка чатов: пока догоняем пропущенное (как Updating… в Telegram) ──
 let _updOn=false,_updT=null,_updSince=0;
@@ -44,7 +49,7 @@ function _hubConnect(){
   try{_hubWs?.close();}catch(e){}
   _hubUser=myUsername;
   const ls=(typeof myPrivacy!=='undefined'&&myPrivacy.lastSeen==='nobody')?'0':'1';
-  const url=API_URL.replace(/^http/,'ws')+'/ws?token='+encodeURIComponent(_apiToken())+'&dev='+encodeURIComponent(_myDeviceId||'')+'&ls='+ls;
+  const url=_wsUrl()+'?token='+encodeURIComponent(_apiToken())+'&dev='+encodeURIComponent(_myDeviceId||'')+'&ls='+ls;
   const ws=new WebSocket(url);
   _hubWs=ws;
   ws.onopen=()=>{
@@ -56,7 +61,8 @@ function _hubConnect(){
     // при шифровании сначала забираем сейф истории — чтобы журнал сразу расшифровался
     if(typeof _e2eOn!=='undefined'&&_e2eOn){_hubAwaitVault=true;_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});}
     else _hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});
-    clearInterval(_hubPing);_hubPing=setInterval(()=>_hubSend({t:'ping'}),25000);
+    // у Яндекса каждое сообщение — вызов функции: пингуем раз в 8 минут (шлюз рвёт после 10 минут тишины)
+    clearInterval(_hubPing);_hubPing=setInterval(()=>_hubSend({t:'ping'}),SRV_KIND==='yc'?480000:25000);
     _hubPollPresence();
   };
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(x){return;}_hubDispatch(m);};
@@ -76,6 +82,9 @@ function _hubMlUpd(upd){if(upd>+(localStorage.getItem(_hubMlKey())||0))try{local
 async function _hubDispatch(m){
   switch(m.t){
     case 'data':_handleIncoming(m.from,m.payload);break;
+    case 'pres':for(const [pid,p] of Object.entries(m.presence||{})){_hubPres[pid]=p;_presApply(pid);}break;
+    case 'reauth':try{_hubWs?.close();}catch(e){}break;        // сервер потерял соединение — переподключимся
+    case 'pong':break;
     case 'batch':await _hubBatch(async()=>{for(const i of m.items||[])_handleIncoming(i.from,i.payload);});break;
     case 'self':{
       const p=m.payload||{};
@@ -95,7 +104,7 @@ async function _hubDispatch(m){
         }
       });
       // сервер отдаёт до 1000 записей — если упёрлись, догоняем дальше
-      if(!m.full&&(m.items||[]).length>=1000){_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});break;}
+      if(m.more||(!m.full&&(m.items||[]).length>=1000)){_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});break;}
       _updShow(false);
       break;
     case 'vault':await _e2eOnVault([m]);break;
@@ -116,6 +125,12 @@ async function _hubDispatch(m){
 // ── «В сети» / «был(а)»: наш сервер + старые версии через Firebase ──
 async function _hubPollPresence(){
   if(!myUsername||!_apiToken())return;
+  if(SRV_KIND==='yc'){
+    // у Яндекса статусы — через сокет (бесплатно), а не HTTP-запросами
+    const ids=Object.keys(peerNames).filter(p=>p&&/^[a-z0-9_]{3,20}$/.test(p)&&!p.startsWith('g_'));
+    for(let i=0;i<ids.length;i+=200)_hubSend({t:'pres_q',u:ids.slice(i,i+200)});
+    return;
+  }
   const ids=Object.keys(peerNames).filter(p=>p&&p!=='ai'&&p!=='saved'&&!p.startsWith('g_')&&!(typeof _isChannelId==='function'&&_isChannelId(p))&&/^[a-z0-9_]{3,20}$/.test(p));
   for(let i=0;i<ids.length;i+=100){
     try{
@@ -124,7 +139,7 @@ async function _hubPollPresence(){
     }catch(e){}
   }
 }
-setInterval(()=>{if(_hubUp&&document.visibilityState==='visible')_hubPollPresence();},25000);
+setInterval(()=>{if(_hubUp&&document.visibilityState==='visible')_hubPollPresence();},SRV_KIND==='yc'?60000:25000);
 
 // Переподключение: вернулись в приложение, появилась сеть, сменился аккаунт
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_hubConnect();if(_hubUp)_hubPollPresence();}});

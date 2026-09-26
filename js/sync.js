@@ -128,6 +128,7 @@ function _srvUpload(dataUrl,meta,onProg){
 }
 function _srvUploadBlob(blob,mime,name,onProg){
   const meta={name};
+  if(SRV_KIND==='yc')return _ycUploadBlob(blob,mime,onProg);
   return new Promise((res,rej)=>{
     const x=new XMLHttpRequest();
     x.open('POST',API_URL+'/media');
@@ -141,11 +142,25 @@ function _srvUploadBlob(blob,mime,name,onProg){
     x.send(blob);
   });
 }
+// Яндекс: сервер выдаёт подписанную ссылку, файл уходит прямо в хранилище (без лимита функции)
+async function _ycUploadBlob(blob,mime,onProg){
+  const d=await api('/media/presign',{size:blob.size,mime});
+  await new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('PUT',d.put);
+    x.setRequestHeader('Content-Type',mime||'application/octet-stream');
+    x.upload.onprogress=e=>{if(e.lengthComputable&&onProg)onProg(Math.round(e.loaded/e.total*100));};
+    x.onload=()=>x.status>=200&&x.status<300?res():rej(new Error('хранилище: '+x.status));
+    x.onerror=()=>rej(new Error('нет интернета'));
+    x.send(blob);
+  });
+  return d.id;
+}
 const _srvCache={};
 function _srvDownload(mid){
   if(_srvCache[mid])return _srvCache[mid];
   const p=(async()=>{
-    const r=await fetch(API_URL+'/media/'+mid);
+    const r=await fetch(_mediaUrl(mid));
     if(!r.ok)throw new Error('медиа не найдено');
     const b=await r.blob();
     return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});

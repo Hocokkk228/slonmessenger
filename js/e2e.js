@@ -378,7 +378,7 @@ async function _e2eEncryptMedia(dataUrl,mime){
   return {mk,blob:new Blob([sealed],{type:'application/octet-stream'}),mime};
 }
 async function _e2eFetchMedia(mid,mk,mime){
-  const r=await fetch(API_URL+'/media/'+mid);
+  const r=await fetch(_mediaUrl(mid));
   if(!r.ok)throw new Error('медиа не найдено');
   const plain=await E2E.openBytes(mk,new Uint8Array(await r.arrayBuffer()),'media');
   const blob=new Blob([plain],{type:mime||'application/octet-stream'});

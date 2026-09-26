@@ -1,0 +1,19 @@
+-- SLON — таблицы в YDB (серверлесс). Колонки u/k вместо user/key — чтобы не спотыкаться о ключевые слова.
+CREATE TABLE users        (username Utf8, salt Utf8, verifier Utf8, created Int64, pass_updated Int64, migrated Int64, PRIMARY KEY (username));
+CREATE TABLE sessions     (token_hash Utf8, username Utf8, device Utf8, created Int64, last_seen Int64, PRIMARY KEY (token_hash), INDEX idx_user GLOBAL ON (username));
+CREATE TABLE resets       (token_hash Utf8, username Utf8, expires Int64, PRIMARY KEY (token_hash));
+CREATE TABLE login_fails  (username Utf8, cnt Int64, until_ts Int64, PRIMARY KEY (username));
+CREATE TABLE admins       (username Utf8, PRIMARY KEY (username));
+CREATE TABLE presence     (username Utf8, online Int64, ts Int64, ls Int64, PRIMARY KEY (username));
+CREATE TABLE profiles     (username Utf8, data Utf8, ts Int64, PRIMARY KEY (username));
+CREATE TABLE user_sync    (username Utf8, data Utf8, ts Int64, PRIMARY KEY (username));
+CREATE TABLE e2e_devices  (username Utf8, device_id Int64, ik Utf8, ikd Utf8, spk_id Int64, spk_pub Utf8, spk_sig Utf8, updated Int64, nk Utf8, nks Utf8, PRIMARY KEY (username, device_id));
+CREATE TABLE e2e_prekeys  (username Utf8, device_id Int64, key_id Int64, pub Utf8, PRIMARY KEY (username, device_id, key_id));
+CREATE TABLE vault_keys   (username Utf8, wrapped Utf8, ts Int64, PRIMARY KEY (username));
+CREATE TABLE fcm_tokens   (username Utf8, device Utf8, tok Utf8, updated Int64, PRIMARY KEY (username, device));
+-- хаб аккаунта: журнал сообщений, офлайн-очередь, сейф истории, «был(а)», живые соединения
+CREATE TABLE ml           (u Utf8, k Utf8, rec Utf8, upd Int64, PRIMARY KEY (u, k), INDEX idx_upd GLOBAL ON (u, upd));
+CREATE TABLE queue        (u Utf8, id Utf8, msg Utf8, ts Int64, PRIMARY KEY (u, id));
+CREATE TABLE vault        (u Utf8, k Utf8, payload Utf8, upd Int64, PRIMARY KEY (u, k), INDEX idx_upd GLOBAL ON (u, upd));
+CREATE TABLE hub_ls       (u Utf8, ls Utf8, PRIMARY KEY (u));
+CREATE TABLE conns        (conn_id Utf8, u Utf8, dev Utf8, bg Int64, at_ts Int64, drained Int64, PRIMARY KEY (conn_id), INDEX idx_user GLOBAL ON (u));

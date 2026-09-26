@@ -14,3 +14,11 @@ _ldr.html
 server/node/node_modules/
 server/node/slon.db*
 server/node/.env
+
+# сервер Yandex: сборка и локальные артефакты
+server/yandex/node_modules/
+server/yandex/dist/
+server/yandex/slon-fn.zip
+server/yandex/.deploy.json
+server/yandex/_*.js
+server/yandex/.env

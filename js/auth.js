@@ -248,7 +248,7 @@ async function doLogout(){
   try{if(typeof _nativeBgStop==='function')_nativeBgStop();}catch(e){}
   try{if(typeof _e2eLogout==='function')await Promise.race([_e2eLogout(),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   // отзываем токен на сервере (не ждём ответа)
-  try{const t=_apiToken();if(t)fetch(API_URL+'/auth/logout',{method:'POST',headers:{Authorization:'Bearer '+t},keepalive:true}).catch(()=>{});}catch(e){}
+  try{const t=_apiToken();if(t)fetch(_apiUrl('/auth/logout'),{method:'POST',headers:{Authorization:'Bearer '+t},keepalive:true}).catch(()=>{});}catch(e){}
   _apiSetToken(myUsername,'');
   LS.del('sl_session');
   LS.del('sl_username');
