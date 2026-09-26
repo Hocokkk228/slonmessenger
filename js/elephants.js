@@ -95,7 +95,7 @@ function _elEyes(t){
     case 'plead':return `<ellipse cx="24.5" cy="28.5" rx="3.6" ry="4" fill="${E}"/><circle cx="25.6" cy="27" r="1.3" fill="#fff"/><circle cx="23.5" cy="30" r=".6" fill="#fff"/><ellipse cx="39.5" cy="28.5" rx="3.6" ry="4" fill="${E}"/><circle cx="40.6" cy="27" r="1.3" fill="#fff"/><circle cx="38.5" cy="30" r=".6" fill="#fff"/>`
       +_S('M21 23.5l6-2',E,1.5)+_S('M43 23.5l-6-2',E,1.5);
     case 'side':return `<g class="el-look">${dot(26,28,'x')+dot(41,28,'x')}</g>`+_S('M21.5 25.2h6',EL_C.line,1.4)+_S('M36.5 25.2h6',EL_C.line,1.4);
-    case 'up':return `<circle cx="24.5" cy="28" r="3.4" fill="#fff" stroke="${E}" stroke-width=".7"/><circle cx="24.5" cy="25.8" r="1.5" fill="${E}"/><circle cx="39.5" cy="28" r="3.4" fill="#fff" stroke="${E}" stroke-width=".7"/><circle cx="39.5" cy="25.8" r="1.5" fill="${E}"/>`;
+    case 'up':return `<circle cx="24.5" cy="28" r="3.4" fill="#fff" stroke="${E}" stroke-width=".7"/><circle class="el-pupil" cx="24.5" cy="25.8" r="1.5" fill="${E}"/><circle cx="39.5" cy="28" r="3.4" fill="#fff" stroke="${E}" stroke-width=".7"/><circle class="el-pupil" cx="39.5" cy="25.8" r="1.5" fill="${E}"/>`;
     case 'shades':return `<path d="M18 24.5h28v1.5l-1.5 4.5q-.8 2.4-3.4 2.4h-3.6q-2.6 0-3.4-2.4l-1-3.1h-2.2l-1 3.1q-.8 2.4-3.4 2.4h-3.6q-2.6 0-3.4-2.4L18 26z" fill="#15161f"/>`+_S('M21 26.5l3 3M36 26.5l3 3','#fff',.9,' opacity=".6"');
     case 'nerd':return dot(...L)+dot(...R)+`<circle cx="24.5" cy="28" r="4.6" fill="none" stroke="${E}" stroke-width="1.5"/><circle cx="39.5" cy="28" r="4.6" fill="none" stroke="${E}" stroke-width="1.5"/>`+_S('M29.1 28h5.8',E,1.5);
     case 'money':return `<text x="24.5" y="31.5" font-size="9" font-weight="900" text-anchor="middle" fill="#27b35a" font-family="Arial">$</text><text x="39.5" y="31.5" font-size="9" font-weight="900" text-anchor="middle" fill="#27b35a" font-family="Arial">$</text>`;
@@ -125,7 +125,7 @@ function _elMouth(t){
     case 'teeth':return `<rect x="26.5" y="44.3" width="11" height="4.6" rx="1.8" fill="#fff" stroke="${E}" stroke-width="1"/>`+_S('M26.8 46.6h10.4M30.2 44.4v4.4M33.8 44.4v4.4',E,.6);
     case 'smirk':return _S('M28.5 46.8q4.5 1.6 7.5-1.8',E,1.6);
     case 'buck':return _S('M27.5 45q4.5 3.6 9 0',E,1.6)+`<rect x="30.2" y="46.4" width="1.7" height="2.2" rx=".4" fill="#fff" stroke="${E}" stroke-width=".4"/><rect x="32.1" y="46.4" width="1.7" height="2.2" rx=".4" fill="#fff" stroke="${E}" stroke-width=".4"/>`;
-    case 'zip':return _S('M26.5 46.5h11',E,1.3)+_S('M28 45.3v2.4M30 45.3v2.4M32 45.3v2.4M34 45.3v2.4M36 45.3v2.4',E,.8)+`<rect x="36.6" y="45" width="2.4" height="3.2" rx=".5" fill="#c9ced9" stroke="${E}" stroke-width=".5"/>`;
+    case 'zip':return _S('M26.5 46.5h11',E,1.3)+_S('M28 45.3v2.4M30 45.3v2.4M32 45.3v2.4M34 45.3v2.4M36 45.3v2.4',E,.8)+`<rect class="el-zipper" x="36.6" y="45" width="2.4" height="3.2" rx=".5" fill="#c9ced9" stroke="${E}" stroke-width=".5"/>`;
     case 'wail':return `<path class="el-jaw" d="M26.5 49.5q5.5-7.5 11 0z" fill="${M}"/>`;
     case 'grawlix':return `<rect class="el-shake2" x="24" y="43" width="16" height="7" rx="2" fill="#15161f"/><text x="32" y="48.4" font-size="5.4" font-weight="900" text-anchor="middle" fill="#ff4d4d" font-family="Arial">&amp;$!#%</text>`;
     case 'none':return '';
@@ -189,11 +189,11 @@ function elSvgInner(id){
       +`<path d="M32 14.8v7.5" stroke="${Ln}" stroke-width="1" stroke-dasharray="1.5 1.7" opacity=".8"/>`;
   const trunk=ghost||eyes==='skull'?(eyes==='skull'?`<path d="M30.4 34l1.6 3 1.6-3z" fill="#2a2a35"/>`:'')
     :`<g class="el-trunk"><path d="M32 31.5c-.4 4 0 7.2 1.8 8.8c1.6 1.3 3.5.6 3.3-1" fill="none" stroke="${Ln}" stroke-width="7.6" stroke-linecap="round"/><path d="M32 31.5c-.4 4 0 7.2 1.8 8.8c1.6 1.3 3.5.6 3.3-1" fill="none" stroke="${B}" stroke-width="5.4" stroke-linecap="round"/>${_S('M30.2 35.6h3.2M30.6 38.2h3',Ln,.6,' opacity=".6"')}</g>`;
-  return `<g class="el-all">${back}${ears}${head}${_elEyes(eyes)}${trunk}${_elMouth(mouth)}${front}${over}</g>`;
+  return `<g class="el-all"><g class="el-top">${back}</g>${ears}<g class="el-head">${head}<g class="el-eyes">${_elEyes(eyes)}</g>${trunk}<g class="el-mouth">${_elMouth(mouth)}</g></g><g class="el-front">${front}</g><g class="el-over">${over}</g></g>`;
 }
 const _elCache={};
 function elSvg(id){
   if(_elCache[id])return _elCache[id];
   const s=_elMap[id];if(!s)return '';
-  return _elCache[id]=`<svg class="el el-a-${s[5]}" viewBox="0 0 64 64" aria-hidden="true">${elSvgInner(id)}</svg>`;
+  return _elCache[id]=`<svg class="el el-i-${id}" viewBox="0 0 64 64" aria-hidden="true">${elSvgInner(id)}</svg>`;
 }
