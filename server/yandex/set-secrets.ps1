@@ -27,6 +27,15 @@ if ($n) { $cfg['TURN_USER'] = $n }
 $p = Read-Host '   TURN пароль'
 if ($p) { $cfg['TURN_PASS'] = $p }
 
+Write-Host '3) Почта для кодов (восстановление пароля, двухэтапный вход). Enter без ввода — пропустить.'
+Write-Host '   Gmail: smtp.gmail.com, порт 465, логин — адрес, пароль — «пароль приложения» из настроек Google.'
+$h = Read-Host '   SMTP сервер (например smtp.gmail.com)'
+if ($h) { $cfg['SMTP_HOST'] = $h; $pt = Read-Host '   SMTP порт (Enter = 465)'; $cfg['SMTP_PORT'] = $(if ($pt) { $pt } else { '465' }) }
+$su = Read-Host '   Адрес почты-отправителя (логин)'
+if ($su) { $cfg['SMTP_USER'] = $su; $cfg['SMTP_FROM'] = 'SLON <' + $su + '>' }
+$sp = Read-Host '   Пароль приложения для этой почты'
+if ($sp) { $cfg['SMTP_PASS'] = $sp }
+
 $cfg | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $f
 Write-Host ''
 Write-Host 'Выкладываю функцию с новыми секретами…'

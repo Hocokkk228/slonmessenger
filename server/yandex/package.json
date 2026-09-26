@@ -3,6 +3,7 @@
   "private": true,
   "main": "index.js",
   "dependencies": {
+    "nodemailer": "^10.0.10",
     "ydb-sdk": "^5.11.1"
   }
 }

@@ -83,6 +83,47 @@ async function putPrekeys(u, dev, opks) {
   await q(`UPSERT INTO e2e_prekeys (username,device_id,key_id,pub) VALUES ${vals.join(',')};`, p);
 }
 
+// ════════ Почта: коды на e-mail (привязка, двухэтапный вход, восстановление) ════════
+const validEmail = e => typeof e === 'string' && e.length <= 120 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+const maskEmail = e => { const [a, d] = String(e).split('@'); return (a.length <= 2 ? a[0] + '*' : a.slice(0, 2) + '***') + '@' + d; };
+let _mailer = null;
+function mailer() {
+  if (_mailer) return _mailer;
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  const port = +SMTP_PORT || 465;
+  _mailer = require('nodemailer').createTransport({ host: SMTP_HOST, port, secure: port === 465, auth: { user: SMTP_USER, pass: SMTP_PASS } });
+  return _mailer;
+}
+async function sendCodeMail(to, code, why) {
+  const m = mailer();
+  if (!m) { const e = new Error('Почта на сервере ещё не настроена'); e.code = 'mail_off'; throw e; }
+  const titles = { bind: 'Подтверждение почты', login: 'Код для входа', rec: 'Восстановление доступа' };
+  const html = `<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:24px;background:#0d1520;color:#e8eef6;border-radius:16px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:6px">SLON</div>
+    <div style="font-size:15px;opacity:.85;margin-bottom:18px">${titles[why] || 'Код'}</div>
+    <div style="font-size:34px;font-weight:700;letter-spacing:8px;background:#1b2a3d;border-radius:12px;padding:16px;text-align:center">${code}</div>
+    <div style="font-size:13px;opacity:.7;margin-top:16px">Код действует 10 минут. Никому его не сообщай — сотрудники SLON никогда его не спрашивают. Если это был не ты — просто проигнорируй письмо.</div></div>`;
+  await m.sendMail({ from: process.env.SMTP_FROM || ('SLON <' + process.env.SMTP_USER + '>'), to, subject: 'SLON: ' + (titles[why] || 'код') + ' — ' + code,
+    text: 'Твой код SLON: ' + code + '\nДействует 10 минут. Никому его не сообщай.', html });
+}
+async function codeIssue(k, email, why) {
+  const prev = await one('SELECT sent FROM email_codes WHERE k=$k;', { k });
+  if (prev && now() - prev.sent < 55000) { const e = new Error('Подожди минуту перед новым кодом'); e.code = 'wait'; throw e; }
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  await q('UPSERT INTO email_codes (k,code_hash,email,expires,tries,sent) VALUES ($k,$h,$e,$x,0,$t);', { k, h: sha(code), e: email, x: now() + 10 * 60e3, t: now() });
+  await sendCodeMail(email, code, why);
+}
+async function codeCheck(k, code) {
+  const r = await one('SELECT code_hash,email,expires,tries FROM email_codes WHERE k=$k;', { k });
+  if (!r || r.expires < now()) return { err: 'Код устарел — запроси новый' };
+  if (r.tries >= 5) return { err: 'Слишком много попыток — запроси новый код' };
+  if (!same(sha(String(code || '').replace(/\D/g, '')), r.code_hash)) { await q('UPDATE email_codes SET tries=$n WHERE k=$k;', { n: (r.tries || 0) + 1, k }); return { err: 'Неверный код' }; }
+  await q('DELETE FROM email_codes WHERE k=$k;', { k });
+  return { ok: true, email: r.email };
+}
+const mailErr = e => e.code === 'mail_off' || e.code === 'wait' ? E(e.code, e.message, e.code === 'wait' ? 429 : 503) : E('mail_failed', 'Не удалось отправить письмо — проверь адрес', 502);
+
 // ════════ Хаб: соединения, доставка, журнал ════════
 // Кэш «кто онлайн» в памяти функции на 5 секунд: одно сообщение раньше читало это из базы 2–3 раза.
 // Сбрасывается при подключении/отключении и когда сокет оказался мёртвым.
@@ -335,7 +376,82 @@ const routes = {
     }
     if (!user.verifier) return J({ ok: true, status: 'set_password', rt: await newReset(u) });
     if (!same(sha(user.salt + d.h), user.verifier)) { await failAdd(u); return E('wrong_password', 'Неверный пароль', 401); }
-    await failClear(u); return J({ ok: true, status: 'ok', token: await newSession(u, d.device) });
+    await failClear(u);
+    // двухэтапный вход: пароль верный — шлём код на почту
+    const ue = await one('SELECT email,twofa FROM user_email WHERE username=$u;', { u });
+    if (ue && ue.twofa && ue.email) {
+      try { await codeIssue('login:' + u, ue.email, 'login'); } catch (e) { if (e.code !== 'wait') return mailErr(e); }
+      return J({ ok: true, status: 'code', hint: maskEmail(ue.email) });
+    }
+    return J({ ok: true, status: 'ok', token: await newSession(u, d.device) });
+  },
+  async 'POST /auth/login/code'(r, d) {
+    const u = String(d.u || '').toLowerCase();
+    if (!validUser(u) || !validHash(d.h)) return E('bad_request', 'Неверные данные');
+    const locked = await failCheck(u); if (locked) return E('locked', 'Слишком много попыток — подожди ' + locked + ' мин.', 429);
+    const user = await getUser(u);
+    if (!user || !user.verifier || !same(sha(user.salt + d.h), user.verifier)) { await failAdd(u); return E('wrong_password', 'Неверный пароль', 401); }
+    const c = await codeCheck('login:' + u, d.code);
+    if (!c.ok) return E('bad_code', c.err, 401);
+    return J({ ok: true, status: 'ok', token: await newSession(u, d.device) });
+  },
+  // ── Почта аккаунта ──
+  async 'GET /auth/email'(r) {
+    if (!r.user) return E('unauthorized', 'Войди заново', 401);
+    const x = await one('SELECT email,twofa FROM user_email WHERE username=$u;', { u: r.user });
+    return J({ ok: true, email: x?.email || null, twofa: !!x?.twofa, mail: !!mailer() });
+  },
+  async 'POST /auth/email/start'(r, d) {
+    if (!r.user) return E('unauthorized', 'Войди заново', 401);
+    const email = String(d.email || '').trim().toLowerCase();
+    if (!validEmail(email)) return E('bad_email', 'Проверь адрес почты');
+    const own = await one('SELECT username FROM email_owner WHERE email=$e;', { e: email });
+    if (own && own.username !== r.user) return E('taken', 'Эта почта уже привязана к другому аккаунту', 409);
+    try { await codeIssue('bind:' + r.user, email, 'bind'); } catch (e) { return mailErr(e); }
+    return J({ ok: true, hint: maskEmail(email) });
+  },
+  async 'POST /auth/email/confirm'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const c = await codeCheck('bind:' + u, d.code);
+    if (!c.ok) return E('bad_code', c.err, 401);
+    const old = await one('SELECT email,twofa FROM user_email WHERE username=$u;', { u });
+    if (old && old.email && old.email !== c.email) await q('DELETE FROM email_owner WHERE email=$e;', { e: old.email });
+    await q('UPSERT INTO user_email (username,email,twofa) VALUES ($u,$e,$t); UPSERT INTO email_owner (email,username) VALUES ($e,$u);', { u, e: c.email, t: old?.twofa || 0 });
+    return J({ ok: true, email: c.email });
+  },
+  async 'POST /auth/email/remove'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const user = await getUser(u);
+    if (user?.verifier && (!validHash(d.h) || !same(sha(user.salt + d.h), user.verifier))) return E('wrong_password', 'Неверный пароль', 401);
+    const x = await one('SELECT email FROM user_email WHERE username=$u;', { u });
+    if (x?.email) await q('DELETE FROM email_owner WHERE email=$e;', { e: x.email });
+    await q('DELETE FROM user_email WHERE username=$u;', { u });
+    return J({ ok: true });
+  },
+  async 'POST /auth/2fa'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const x = await one('SELECT email FROM user_email WHERE username=$u;', { u });
+    if (!x?.email) return E('no_email', 'Сначала привяжи почту', 400);
+    await q('UPDATE user_email SET twofa=$t WHERE username=$u;', { t: d.enable ? 1 : 0, u });
+    return J({ ok: true, twofa: !!d.enable });
+  },
+  // ── Забыл пароль: код на привязанную почту ──
+  async 'POST /auth/recover/start'(r, d) {
+    const email = String(d.email || '').trim().toLowerCase();
+    if (!validEmail(email)) return E('bad_email', 'Проверь адрес почты');
+    const own = await one('SELECT username FROM email_owner WHERE email=$e;', { e: email });
+    if (!own) return E('not_found', 'К этой почте не привязан ни один аккаунт', 404);
+    try { await codeIssue('rec:' + email, email, 'rec'); } catch (e) { return mailErr(e); }
+    return J({ ok: true, hint: maskEmail(email) });
+  },
+  async 'POST /auth/recover/confirm'(r, d) {
+    const email = String(d.email || '').trim().toLowerCase();
+    const c = await codeCheck('rec:' + email, d.code);
+    if (!c.ok) return E('bad_code', c.err, 401);
+    const own = await one('SELECT username FROM email_owner WHERE email=$e;', { e: email });
+    if (!own) return E('not_found', 'Аккаунт не найден', 404);
+    // вход сразу (код доказал владение почтой) + одноразовый токен смены пароля
+    return J({ ok: true, username: own.username, token: await newSession(own.username, d.device), rt: await newReset(own.username) });
   },
   async 'POST /auth/register'(r, d) {
     const u = String(d.u || '').toLowerCase();

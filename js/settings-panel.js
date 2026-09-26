@@ -646,6 +646,7 @@ function _spPrivacy(){
      +_spRow({ico:'lock',color:'blue',title:'Код-пароль',sub:myPasscode?'Включён':'Выключен',onclick:'_spPasscode()'})
      +_spRow({ico:'shieldCheck',color:'green',title:'Пароль аккаунта',sub:'Вход с других устройств',onclick:'_spChangePassword()'})
      +_spRow({ico:'globe',color:'violet',title:'Устройства',onclick:'_spSessions()'})
+     +_spRow({ico:'at',color:'orange',title:'Дополнительные способы входа',sub:'Почта и двухэтапный вход',onclick:'_spLoginMethods()'})
     )
     +_spSec('Конфиденциальность')+_spCard(rows)
     +_spSec('Новые чаты от незнакомых')

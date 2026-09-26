@@ -17,3 +17,7 @@ CREATE TABLE queue        (u Utf8, id Utf8, msg Utf8, ts Int64, PRIMARY KEY (u, 
 CREATE TABLE vault        (u Utf8, k Utf8, payload Utf8, upd Int64, PRIMARY KEY (u, k), INDEX idx_upd GLOBAL ON (u, upd));
 CREATE TABLE hub_ls       (u Utf8, ls Utf8, PRIMARY KEY (u));
 CREATE TABLE conns        (conn_id Utf8, u Utf8, dev Utf8, bg Int64, at_ts Int64, drained Int64, PRIMARY KEY (conn_id), INDEX idx_user GLOBAL ON (u));
+-- почта: привязка к аккаунту, двухэтапный вход, восстановление
+CREATE TABLE user_email   (username Utf8, email Utf8, twofa Int64, PRIMARY KEY (username));
+CREATE TABLE email_owner  (email Utf8, username Utf8, PRIMARY KEY (email));
+CREATE TABLE email_codes  (k Utf8, code_hash Utf8, email Utf8, expires Int64, tries Int64, sent Int64, PRIMARY KEY (k));

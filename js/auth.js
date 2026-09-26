@@ -136,6 +136,8 @@ async function doLogin(){
       _resetRt=d.rt;myUsername=raw;LS.set('sl_username',raw);loadStorage();
       showSetPassword(raw);return;
     }
+    // двухэтапный вход: нужен код из письма
+    if(d.status==='code'&&typeof _emLoginCode==='function'){_emLoginCode(raw,pass,d.hint);return;}
     _authEnter(raw,d.token,false);
     if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);   // ключ бэкапа истории
   }catch(e){
