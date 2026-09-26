@@ -10,6 +10,8 @@ let SLON_LANG=(()=>{try{return JSON.parse(localStorage.getItem('sl_lang'))||'ru'
 function _langName(){return SLON_LANG==='en'?'English':'Русский';}
 
 const _I18N_EN={
+// экран входа
+'Добро пожаловать':'Welcome','Регистрация':'Sign up','Вход':'Log in','Далее':'Next','Войти':'Log in','С возвращением! Введи юзернейм и пароль.':'Welcome back! Enter your username and password.','Выбери юзернейм и придумай пароль.':'Choose a username and a password.','Латинские буквы, цифры и _ · от 3 до 20 символов':'Latin letters, digits and _ · 3 to 20 characters','Пароль (мин. 6 символов)':'Password (min. 6 characters)','Повтори пароль':'Repeat password','Пароль':'Password','Юзернейм':'Username','Нет аккаунта?':'No account?','Зарегистрироваться':'Sign up','Уже есть аккаунт?':'Already have an account?','📱 Скачать SLON для Android':'📱 Download SLON for Android','Защити аккаунт':'Protect your account','Новый пароль (мин. 6 символов)':'New password (min. 6 characters)','Пропустить (не рекомендуется)':'Skip (not recommended)','Установить пароль':'Set password','Забыл пароль?':'Forgot password?',
 'Аккаунт':'Account','Аккаунт заблокирован':'Account blocked','Аккаунт не найден — зарегистрируйся!':'Account not found — sign up!',
 'Активна':'Active','Активные сеансы':'Active sessions','Анимации и производительность':'Animations and Performance','Анимации интерфейса':'Interface animations',
 'Арктика':'Arctic','Архив пуст':'Archive is empty','Архивированные чаты':'Archived chats','Архивировать и заглушать':'Archive and mute',

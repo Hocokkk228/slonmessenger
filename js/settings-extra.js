@@ -1096,7 +1096,9 @@ setInterval(()=>{
 // ════════════════════════════════════════
 let _authStop=null;
 function _authStart3d(){
+  // 3D-слон и частицы убраны с экрана входа — там простой логотип (быстрее и легче)
   if(_authStop)return;
+  _authLangBtn();_authStop=()=>{_authStop=null;};return;
   const stopSp=_premSparks($('authSparks'),['#7cc4ff','#3390ec','#a5d8ff','#5aa9f8','#dbeeff']);
   let stop3d=()=>{};
   _loadThree().then(T=>{
@@ -1104,6 +1106,17 @@ function _authStart3d(){
     stop3d=_premElephant(T,$('auth3d'),{color:0x3b8cf5,dark:0x2366c9,rimColor:0x7fd3ff,fillColor:0x9cc8ff,rest:{x:.1,y:-.6},scale:.9});
   }).catch(()=>{});
   _authStop=()=>{stopSp();stop3d();_authStop=null;};
+}
+// Кнопка языка на экране входа: «Continue in English» ↔ «Продолжить на русском»
+function _authLangBtn(){const b=document.getElementById('authLangBtn');if(b)b.textContent=(typeof SLON_LANG!=='undefined'&&SLON_LANG==='en')?'Продолжить на русском':'Continue in English';}
+function _authToggleLang(){
+  const card=document.getElementById('authCard');
+  const to=(typeof SLON_LANG!=='undefined'&&SLON_LANG==='en')?'ru':'en';
+  card?.classList.add('auth-lang-out');
+  setTimeout(()=>{
+    if(typeof _setLang==='function')_setLang(to);
+    setTimeout(()=>{_authLangBtn();card?.classList.remove('auth-lang-out');card?.classList.add('auth-lang-in');setTimeout(()=>card?.classList.remove('auth-lang-in'),420);},180);
+  },200);
 }
 // Вход ↔ регистрация: одна секция уезжает, другая выезжает
 function _authSwitch(to){

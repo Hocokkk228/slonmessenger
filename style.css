@@ -2671,3 +2671,15 @@ video.mv-media{cursor:default;}
 .slcf-btn{border:none;background:none;color:var(--accent);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;padding:9px 10px;border-radius:8px;cursor:pointer;transition:background .15s;}
 .slcf-btn:hover{background:var(--hover);}
 .slcf-btn.danger{color:var(--red,#e53935);}
+
+/* ── Экран входа: простой логотип и кнопка языка ── */
+.auth-logo-simple{display:flex;align-items:center;justify-content:center;margin:6px auto 14px;}
+.auth-logo-simple img{width:96px;height:96px;border-radius:26px;box-shadow:0 10px 30px rgba(0,0,0,.35);user-select:none;animation:authLogoIn .5s cubic-bezier(.2,.9,.3,1.2) both;}
+@keyframes authLogoIn{from{opacity:0;transform:scale(.8) translateY(8px)}to{opacity:1;transform:none}}
+.auth-lang{display:block;margin:14px auto 2px;padding:9px 16px;border:1px solid var(--border);border-radius:20px;background:transparent;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;transition:background .15s,transform .15s;}
+.auth-lang:hover{background:var(--hover);}
+.auth-lang:active{transform:scale(.96);}
+#authCard{transition:opacity .2s ease,filter .2s ease,transform .2s ease;}
+#authCard.auth-lang-out{opacity:0;filter:blur(6px);transform:scale(.97);}
+#authCard.auth-lang-in{animation:authLangIn .42s cubic-bezier(.2,.9,.3,1.15);}
+@keyframes authLangIn{from{opacity:0;filter:blur(6px);transform:scale(.97)}to{opacity:1;filter:none;transform:none}}

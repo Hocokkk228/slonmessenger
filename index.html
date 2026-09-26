@@ -79,11 +79,8 @@
 <!-- ── USERNAME SETUP OVERLAY ── -->
 <div class="username-overlay" id="usernameOverlay">
   <div class="username-card" id="authCard">
-    <!-- Логотип: 3D-слон с искрами, его можно крутить -->
-    <div class="auth-logo" id="authLogo">
-      <canvas class="auth-sparks" id="authSparks"></canvas>
-      <div class="auth-3d" id="auth3d"><div class="prem-fallback auth-fb">🐘</div></div>
-    </div>
+    <!-- Логотип SLON (без 3D и частиц — открывается мгновенно) -->
+    <div class="auth-logo auth-logo-simple" id="authLogo"><img src="icons/icon-192.png" alt="SLON" draggable="false"></div>
 
     <!-- ══ ВХОД ══ -->
     <div id="authLogin" class="auth-sec">
@@ -142,6 +139,9 @@
       <div class="auth-alt"><a href="#" class="auth-link" onclick="skipSetPassword();return false">Пропустить (не рекомендуется)</a></div>
       <button class="username-btn" onclick="doSetPassword()">Установить пароль</button>
     </div>
+
+    <!-- Язык: весь интерфейс переключается сразу, с анимацией -->
+    <button class="auth-lang" id="authLangBtn" data-noi18n onclick="_authToggleLang()">Continue in English</button>
   </div>
 </div>
 
