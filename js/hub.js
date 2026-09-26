@@ -50,6 +50,7 @@ function _hubConnect(){
   ws.onopen=()=>{
     if(_hubWs!==ws)return;
     _hubUp=true;_hubRetry=0;
+    setTimeout(()=>{try{_sendRead(activeChat,true);}catch(e){}},1500);
     // догоняем журнал сообщений с последней синхронизации
     // при шифровании сначала забираем сейф истории — чтобы журнал сразу расшифровался
     if(typeof _e2eOn!=='undefined'&&_e2eOn){_hubAwaitVault=true;_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});}

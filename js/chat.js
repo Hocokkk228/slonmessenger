@@ -272,6 +272,8 @@ function appendMsg(msg,container){
   }
   const t=document.createElement('div');t.className='msg-time';
   let statusIcon='';
+  // старые записи о звонках — без статуса: ответил/отклонил → видел, иначе доставлено
+  if(isOut&&msg.type==='call'&&!msg.status)msg.status=(msg.callOutcome==='answered'||msg.callOutcome==='declined')?'read':'delivered';
   if(isOut){
     if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
     else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
@@ -616,9 +618,9 @@ function renderChat(id){
   const first=part(start,hist.length);
   c.append(...first.childNodes);
   c.dataset.lastMsgTs=first.dataset.lastMsgTs||'0';
-  scrollDown();
+  scrollDown(true);
   _updatePinnedBar();
-  _sendRead(id);
+  _sendRead(id,true);
   _rcMore=()=>{
     _rcJob=null;
     if(activeChat!==id||!start)return false;
@@ -640,14 +642,15 @@ function _rcFlush(){while(_rcJob){clearTimeout(_rcJob);if(!_rcMore())break;}}
 
 // «Прочитано» собеседнику: чат открыт и виден на экране. Шлём «всё до последнего
 // входящего» (upto) — надёжно, даже если какое-то отдельное подтверждение потерялось.
-function _sendRead(id){
+function _sendRead(id,force){
   if(!id||id==='ai'||id==='saved'||id.startsWith('g_')||(typeof _isChannelId==='function'&&_isChannelId(id)))return;
   if(document.visibilityState!=='visible'||activeChat!==id)return;
   if(window.innerWidth<=640&&$('sidebar')?.classList.contains('open'))return;   // на телефоне открыт список, а не чат
   const hist=chatHist[id]||[];
   const unread=hist.filter(m=>m.sender==='inc'&&!m.readSent);
-  if(!unread.length)return;
-  const upto=Math.max(...unread.map(m=>m.ts||0));
+  if(!unread.length&&!force)return;
+  let upto=0;for(let i=hist.length-1;i>=0;i--){const m=hist[i];if(m&&m.sender==='inc'&&(m.ts||0)>upto){upto=m.ts;break;}}
+  if(!upto)return;
   sendData(conns[id]||id,{type:'read',ids:unread.map(m=>m.id).slice(-50),upto});
   unread.forEach(m=>m.readSent=true);
   saveAll();
@@ -856,8 +859,13 @@ async function _resolveFileSrc(fdid){
   return fileStore[fdid]||null;
 }
 
-function scrollDown(){
-  const m=$('msgs');if(m)requestAnimationFrame(()=>{m.scrollTop=m.scrollHeight;});
+function scrollDown(force){
+  const m=$('msgs');if(!m)return;
+  const last=m.lastElementChild;
+  const nearBottom=m.scrollHeight-m.scrollTop-m.clientHeight<160;
+  // человек листает историю — новое входящее не должно дёргать его вниз (как в Telegram)
+  if(!force&&!nearBottom&&!(last&&last.classList.contains('out')))return;
+  requestAnimationFrame(()=>{m.scrollTop=m.scrollHeight;});
 }
 
 function resizeInp(el){

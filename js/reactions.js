@@ -143,7 +143,7 @@ function _rxAv(u){
 function _rxRender(m,root){
   const wrap=(root||document).querySelector('[data-msg-id="'+CSS.escape(String(m.id))+'"]');if(!wrap)return;
   const body=wrap.querySelector('.msg-body')||wrap;
-  let box=body.querySelector(':scope>.msg-rx');
+  let box=body.querySelector(':scope>.msg-rx')||wrap.querySelector('.msg-bub>.msg-rx');
   const groups={};
   for(const [u,e] of Object.entries(m.rx||{}))if(_rxValid(e))(groups[e]=groups[e]||[]).push(u);
   const keys=Object.keys(groups);

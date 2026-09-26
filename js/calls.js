@@ -732,6 +732,7 @@ function _logCallMessage(peerId,o){
     name:o.outgoing?undefined:(peerNames[peerId]||('@'+peerId)),
     avatar:o.outgoing?null:(peerAvatars[peerId]||null),
     callOutgoing:!!o.outgoing,callOutcome:o.outcome,callSecs:o.secs||0,isVideo:!!o.isVideo};
+  if(o.outgoing)msg.status=(o.outcome==='answered'||o.outcome==='declined')?'read':'delivered';
   if(!chatHist[peerId])chatHist[peerId]=[];
   chatHist[peerId].push(msg);
   if(typeof activeChat!=='undefined'&&activeChat===peerId){appendMsg(msg);scrollDown();}
