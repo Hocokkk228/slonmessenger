@@ -17,6 +17,7 @@ const SLON_YC={
 // Какой сервер: 'yc' (Яндекс) или 'cf' (Cloudflare). Можно задать вручную: localStorage['sl_srv']='"yc"'.
 const SRV_KIND=(()=>{
   try{const o=JSON.parse(localStorage.getItem('sl_srv')||'null');if(o==='yc'||o==='cf')return o;}catch(e){}
+  if(window.SLON_SRV==='yc'||window.SLON_SRV==='cf')return window.SLON_SRV;   // копия сайта на Яндексе задаёт сама
   return 'cf';
 })();
 const API_URL=(()=>{
