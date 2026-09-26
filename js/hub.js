@@ -123,11 +123,16 @@ async function _hubDispatch(m){
 }
 
 // ── «В сети» / «был(а)»: наш сервер + старые версии через Firebase ──
+let _hubPresTick=0,_hubPresInit=false;
 async function _hubPollPresence(){
   if(!myUsername||!_apiToken())return;
   if(SRV_KIND==='yc'){
-    // у Яндекса статусы — через сокет (бесплатно), а не HTTP-запросами
-    const ids=Object.keys(peerNames).filter(p=>p&&/^[a-z0-9_]{3,20}$/.test(p)&&!p.startsWith('g_'));
+    // у Яндекса статусы — через сокет (бесплатно), а не HTTP-запросами.
+    // Экономия базы: раз в минуту — только открытый чат, весь список — раз в 5 минут
+    _hubPresTick=(_hubPresTick+1)%5;
+    const all=_hubPresTick===1||!_hubPresInit;_hubPresInit=true;
+    const ids=(all?Object.keys(peerNames):[activeChat]).filter(p=>p&&/^[a-z0-9_]{3,20}$/.test(p)&&!p.startsWith('g_'));
+    if(!ids.length)return;
     for(let i=0;i<ids.length;i+=200)_hubSend({t:'pres_q',u:ids.slice(i,i+200)});
     return;
   }

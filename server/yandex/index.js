@@ -83,8 +83,17 @@ async function putPrekeys(u, dev, opks) {
 }
 
 // ════════ Хаб: соединения, доставка, журнал ════════
+// Кэш «кто онлайн» в памяти функции на 5 секунд: одно сообщение раньше читало это из базы 2–3 раза.
+// Сбрасывается при подключении/отключении и когда сокет оказался мёртвым.
+const _connCache = new Map();
+const connDrop = u => _connCache.delete(u);
 async function liveConns(u) {
-  return q('SELECT conn_id, bg FROM conns VIEW idx_user WHERE u=$u AND at_ts>$cut;', { u, cut: now() - CONN_TTL });
+  const c = _connCache.get(u);
+  if (c && now() - c.t < 5000) return c.rows;
+  const rows = await q('SELECT conn_id, bg FROM conns VIEW idx_user WHERE u=$u AND at_ts>$cut;', { u, cut: now() - CONN_TTL });
+  _connCache.set(u, { t: now(), rows });
+  if (_connCache.size > 500) _connCache.delete(_connCache.keys().next().value);
+  return rows;
 }
 async function wsSend(connId, obj) {
   const data = Buffer.from(typeof obj === 'string' ? obj : JSON.stringify(obj), 'utf8').toString('base64');
@@ -93,7 +102,7 @@ async function wsSend(connId, obj) {
       method: 'POST', headers: { Authorization: 'Bearer ' + iam(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ data, type: 'TEXT' })
     });
-    if (r.status === 404 || r.status === 410) { await q('DELETE FROM conns WHERE conn_id=$c;', { c: connId }); return false; }
+    if (r.status === 404 || r.status === 410) { await q('DELETE FROM conns WHERE conn_id=$c;', { c: connId }); _connCache.clear(); return false; }
     return r.ok;
   } catch (e) { return false; }
 }
@@ -237,12 +246,14 @@ async function onWs(event) {
     const bg = qs.bg === '1' ? 1 : 0;
     await q('UPSERT INTO conns (conn_id,u,dev,bg,at_ts,drained) VALUES ($c,$u,$d,$b,$t,0);', { c: connId, u, d: String(qs.dev || '').slice(0, 40), b: bg, t: now() });
     await q('UPSERT INTO hub_ls (u,ls) VALUES ($u,$l);', { u, l: qs.ls === '0' ? '0' : '1' });
+    connDrop(u);
     if (!bg) await setPresence(u, true);
     return { statusCode: 200 };
   }
   if (type === 'DISCONNECT') {
     const row = await one('SELECT u,bg FROM conns WHERE conn_id=$c;', { c: connId });
     await q('DELETE FROM conns WHERE conn_id=$c;', { c: connId });
+    if (row) connDrop(row.u);
     if (row && !row.bg) { const left = (await liveConns(row.u)).filter(c => !c.bg && c.conn_id !== connId); if (!left.length) await setPresence(row.u, false); }
     return { statusCode: 200 };
   }
