@@ -551,7 +551,7 @@ function onData(pid,data){
       if(Array.isArray(data.ids))for(const mid of data.ids){const m=hist.find(x=>x.id===mid);if(m&&m.ts>upto)upto=m.ts;}
       let changed=false;
       for(const m of hist){
-        if(m.sender==='me'&&m.status!=='read'&&(m.ts||0)<=upto){m.status='read';_updateMsgStatus(m.id,'read');changed=true;}
+        if(m.sender==='me'&&m.status!=='read'&&(m.ts||0)<=upto){m.status='read';m.readAt=Date.now();_updateMsgStatus(m.id,'read');changed=true;}
       }
       if(changed)saveAll();
       break;}

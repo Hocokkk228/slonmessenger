@@ -250,6 +250,16 @@ function appendMsg(msg,container){
     else{prog.style.display='none';}
     bub.appendChild(prog);
     body.appendChild(bub);
+  }else if(msg.fileInfo&&typeof _isVideoMsg==='function'&&_isVideoMsg(msg)){
+    // видео — кадр и кнопка «▶», по клику открывается в просмотре
+    const bub=document.createElement('div');bub.className='video-bub';
+    bub.innerHTML='<video preload="metadata" muted playsinline></video><span class="vb-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><span class="vb-name">'+esc(msg.fileInfo.name)+'</span>';
+    const v=bub.querySelector('video');
+    _resolveFileSrc(msg.fileDataId).then(src=>{if(src)v.src=src+(String(src).startsWith('blob:')?'':'')+'#t=0.1';});
+    bub.onclick=()=>openMedia(msg);
+    const prog=document.createElement('div');prog.className='upload-progress';
+    if(msg.uploadProgress!=null&&msg.uploadProgress<100){_renderProgressRing(prog,msg.uploadProgress);}else{prog.style.display='none';}
+    bub.appendChild(prog);body.appendChild(bub);
   }else if(msg.fileInfo){
     const bub=document.createElement('div');bub.className='file-bub';
     const fid=msg.fileDataId;bub.onclick=()=>{if(fid)dlFile(fid,msg.fileInfo.name);};
@@ -308,6 +318,8 @@ const _MI={
   save:'M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z',
   edit:'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
   pin:'M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2z',
+  open:'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
+  img:'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z',
   dl:'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
   del:'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
 };
@@ -319,8 +331,11 @@ function showMsgMenu(e,msg,isOut){
   const acts=[];
   const add=(ico,label,fn,danger)=>acts.push({ico,label,fn,danger});
   const isChannel=_isChannelId?.(activeChat)||activeChat===SLON_CHANNEL_ID;
+  const isVid=typeof _isVideoMsg==='function'&&_isVideoMsg(msg);
+  if((msg.photoId||isVid)&&typeof openMedia==='function')add('open','Открыть',()=>openMedia(msg));
   if(!isChannel&&activeChat!=='ai')add('reply','Ответить',()=>startReply(msg));
-  if(msg.text)add('copy','Копировать',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');});
+  if(msg.photoId)add('img','Копировать изображение',()=>_copyImage(msg));
+  if(msg.text)add('copy','Копировать текст',()=>{navigator.clipboard.writeText(msg.text);toast('Скопировано');});
   if(msg.photoId)add('dl','Скачать фото',()=>_downloadPhoto(msg));
   else if(msg.fileInfo&&msg.fileDataId)add('dl','Скачать файл',()=>dlFile(msg.fileDataId,msg.fileInfo.name));
   else if(msg.voiceData)add('dl','Скачать аудио',()=>_downloadVoice(msg));
@@ -333,12 +348,16 @@ function showMsgMenu(e,msg,isOut){
   }else{
     if(isOut&&msg.text)add('edit','Изменить',()=>startEditMsg(msg));
     add('pin',msg.pinned?'Открепить':'Закрепить',()=>togglePinMsg(msg));
-    add('del','Удалить у себя',()=>deleteMsg(msg,false),!isOut);
-    if(isOut)add('del','Удалить у всех',()=>deleteMsg(msg,true),true);
+    add('del','Удалить',()=>_askDeleteMsg(msg,isOut),true);
   }
   const menu=$('chatCtxMenu');
+  let foot='';
+  if(isOut&&activeChat!=='saved'&&activeChat!=='ai'){
+    const st=msg.status==='read'?(msg.readAt?'прочитано в '+fmtTime(msg.readAt):'прочитано'):msg.status==='delivered'?'доставлено':'отправлено';
+    foot='<div class="ctx-foot"><span class="ctx-foot-ticks'+(msg.status==='read'?' read':'')+'">'+(msg.status==='read'||msg.status==='delivered'?'✓✓':'✓')+'</span>'+st+'</div>';
+  }
   menu.innerHTML=acts.map((x,i)=>(x.ico==='del'&&acts[i-1]?.ico!=='del'?'<div class="ctx-sep"></div>':'')+
-    `<div class="ctx-item${x.danger?' danger':''}" data-i="${i}"><svg viewBox="0 0 24 24"><path d="${_MI[x.ico]}"/></svg><span>${x.label}</span></div>`).join('');
+    `<div class="ctx-item${x.danger?' danger':''}" data-i="${i}"><svg viewBox="0 0 24 24"><path d="${_MI[x.ico]}"/></svg><span>${x.label}</span></div>`).join('')+foot;
   menu.querySelectorAll('.ctx-item').forEach(el=>el.onclick=ev=>{
     ev.stopPropagation();el.classList.add('picked');closeMsgMenu();
     // «Ответить» трогает поле ввода (клавиатура на телефоне) — ждём, пока меню плавно исчезнет
@@ -352,6 +371,26 @@ function showMsgMenu(e,msg,isOut){
   const w=menu.offsetWidth||206,h=menu.offsetHeight||acts.length*42;
   menu.style.left=Math.max(8,Math.min(x,window.innerWidth-w-8))+'px';
   menu.style.top=Math.max(8,Math.min(y,window.innerHeight-h-8))+'px';
+}
+// Удаление сообщения — через окно подтверждения
+async function _askDeleteMsg(msg,isOut){
+  const peer=peerNames[activeChat]||'';
+  const both=isOut&&activeChat!=='saved'&&!activeChat.startsWith('g_');
+  const r=typeof slonConfirm==='function'?await slonConfirm({title:'Удалить сообщение',text:'Удалить это сообщение насовсем?',
+    buttons:both?[{label:'Удалить у меня и у '+peer,value:'all',danger:true},{label:'Удалить только у меня',value:'me',danger:true},{label:'Отмена',value:null}]
+      :[{label:'Удалить',value:'me',danger:true},{label:'Отмена',value:null}]}):'me';
+  if(r)deleteMsg(msg,r==='all');
+}
+// Копировать фото в буфер (браузеры принимают только PNG)
+async function _copyImage(msg){
+  try{
+    const src=await _resolvePhotoSrc(msg.photoId);if(!src)throw 0;
+    const img=new Image();img.src=src;await img.decode();
+    const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d').drawImage(img,0,0);
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    toast('Изображение скопировано');
+  }catch(e){toast('Не получилось скопировать');}
 }
 function closeMsgMenu(){$('chatCtxMenu')?.classList.remove('show');_msgMenuTarget=null;}
 

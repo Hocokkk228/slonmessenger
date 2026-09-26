@@ -2623,3 +2623,51 @@ body.perf-noanim .el,body.perf-noanim .el *{animation:none!important;}
 
 /* очередь исходящих: ждут отправки */
 .ob-wait{font-size:12px;color:var(--text2);text-align:center;padding:6px 10px 2px;line-height:1.3;}
+
+/* ════════ Просмотр фото/видео ════════ */
+.mv{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:none;flex-direction:column;opacity:0;transition:opacity .2s ease;}
+.mv.show{display:flex;animation:mvIn .22s ease forwards;}
+.mv.closing{animation:mvOut .2s ease forwards;}
+@keyframes mvIn{from{opacity:0}to{opacity:1}}
+@keyframes mvOut{from{opacity:1}to{opacity:0}}
+.mv-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;z-index:2;background:linear-gradient(rgba(0,0,0,.55),transparent);}
+.mv-who{display:flex;align-items:center;gap:10px;min-width:0;}
+.mv-av{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+.mv-av img{width:100%;height:100%;object-fit:cover;}
+.mv-name{color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mv-date{color:rgba(255,255,255,.65);font-size:12.5px;}
+.mv-acts{display:flex;gap:4px;}
+.mv-btn{width:40px;height:40px;border:none;border-radius:50%;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.mv-btn:hover{background:rgba(255,255,255,.12);}
+.mv-btn svg{width:22px;height:22px;fill:#fff;}
+.mv-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-out;}
+.mv-media{max-width:94vw;max-height:84dvh;object-fit:contain;border-radius:6px;transition:transform .18s ease;cursor:zoom-in;user-select:none;animation:mvZoomIn .25s cubic-bezier(.2,.8,.2,1);}
+.mv.zoomed .mv-media{cursor:grab;transition:none;}
+video.mv-media{cursor:default;}
+@keyframes mvZoomIn{from{transform:scale(.92);opacity:.4}to{transform:scale(1);opacity:1}}
+/* видео в чате */
+.video-bub{position:relative;max-width:300px;border-radius:12px;overflow:hidden;cursor:pointer;background:#000;}
+.video-bub video{display:block;width:100%;max-height:340px;object-fit:cover;pointer-events:none;}
+.vb-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;}
+.vb-play svg{width:26px;height:26px;fill:#fff;}
+.vb-name{position:absolute;left:8px;bottom:6px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:8px;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* строка статуса в меню сообщения */
+.ctx-foot{display:flex;align-items:center;gap:8px;margin:4px -6px -6px;padding:10px 16px;border-top:6px solid rgba(0,0,0,.18);font-size:13px;color:var(--text2);}
+.ctx-foot-ticks{font-size:12px;letter-spacing:-3px;}
+.ctx-foot-ticks.read{color:var(--accent);}
+/* ════════ Окно подтверждения (как в Telegram) ════════ */
+.sc-wrap{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s ease;padding:16px;}
+.sc-wrap.show{opacity:1;}
+.sc-wrap.closing{opacity:0;}
+.sc-box{background:color-mix(in srgb,var(--bg2) 92%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:16px;padding:18px 18px 10px;width:min(330px,100%);box-shadow:0 20px 60px rgba(0,0,0,.45);transform:scale(.92);transition:transform .22s cubic-bezier(.2,.9,.3,1.2);}
+.sc-wrap.show .sc-box{transform:scale(1);}
+.sc-wrap.closing .sc-box{transform:scale(.95);}
+.sc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sc-av{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.sc-av img{width:100%;height:100%;object-fit:cover;}
+.sc-title{font-size:17px;font-weight:700;color:var(--text1);}
+.sc-text{font-size:14px;color:var(--text1);line-height:1.4;margin-bottom:14px;}
+.sc-btns{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.sc-btn{border:none;background:none;color:var(--accent);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;padding:9px 10px;border-radius:8px;cursor:pointer;transition:background .15s;}
+.sc-btn:hover{background:var(--hover);}
+.sc-btn.danger{color:var(--red,#e53935);}
