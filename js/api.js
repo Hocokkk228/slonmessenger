@@ -3,7 +3,19 @@
 // Переезд с Firebase, этап 1: аккаунты и вход. Пароль проверяет сервер,
 // устройство хранит только токен сессии (sl_tok_{username}).
 // ════════════════════════════════════════
-const API_URL='https://slon-api.hopasup789.workers.dev';
+// Адрес сервера. По умолчанию — Cloudflare. Но:
+//  • если приложение открыто С САМОГО сервера SLON (свой хостинг раздаёт и сайт, и API
+//    на одном адресе) — берём этот же адрес автоматически;
+//  • можно жёстко задать: localStorage['sl_api']='https://мой-сервер' (работает и в APK).
+const API_URL=(()=>{
+  try{const o=localStorage.getItem('sl_api');if(o)return String(JSON.parse(o)||o).replace(/\/+$/,'');}catch(e){}
+  try{
+    const h=location.hostname;
+    if(location.protocol!=='file:'&&h&&!/(^|\.)github\.io$/i.test(h)&&!/^(localhost|127\.|\[?::1)/i.test(h))
+      return location.origin;      // свой сервер: и сайт, и API тут же
+  }catch(e){}
+  return 'https://slon-api.hopasup789.workers.dev';
+})();
 
 function _apiToken(u){try{return JSON.parse(localStorage.getItem('sl_tok_'+(u||myUsername)))||'';}catch(e){return '';}}
 function _apiSetToken(u,t){try{if(t)localStorage.setItem('sl_tok_'+u,JSON.stringify(t));else localStorage.removeItem('sl_tok_'+u);}catch(e){}}

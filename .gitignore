@@ -9,3 +9,8 @@ _demo.html
 android-app/android/app/google-services.json
 _el.html
 _ldr.html
+
+# автономный сервер: локальная база и зависимости
+server/node/node_modules/
+server/node/slon.db*
+server/node/.env
