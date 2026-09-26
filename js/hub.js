@@ -90,6 +90,7 @@ async function _hubDispatch(m){
       const p=m.payload||{};
       if(p.type==='profile_sync'){if(typeof _psRemote==='function')_psRemote(p);}
       else if(p.type==='call_sync'){if(typeof _callSyncApply==='function')_callSyncApply(p.key,p);}
+      else if(p.type==='dev_active'){if(typeof _onDevActive==='function')_onDevActive(p);}
       break;}
     case 'ml':
       if(m.rec?.del||m.rec?.gone||m.chg)_mlOnChange(m.key,m.rec);

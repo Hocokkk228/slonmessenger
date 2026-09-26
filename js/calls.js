@@ -341,8 +341,8 @@ function _syncCallToSelf(action,callId,peerId){
   if(!_fbMode||!window._fbDb||!myUsername||!callId)return;
   try{
     const ref=window._fbRef(window._fbDb,'call_sync/'+myUsername+'/'+_callKey(callId));
-    window._fbSet(ref,{action,peerId,dev:_myDeviceId,ts:Date.now()});
-    if(typeof _hubSend==='function')_hubSend({t:'self',payload:{type:'call_sync',key:_callKey(callId),action,peerId,dev:_myDeviceId,ts:Date.now()}});
+    window._fbSet(ref,{action,peerId,dev:_myDeviceId,win:typeof _WIN_ID!=='undefined'?_WIN_ID:'',ts:Date.now()});
+    if(typeof _hubSend==='function')_hubSend({t:'self',payload:{type:'call_sync',key:_callKey(callId),action,peerId,dev:_myDeviceId,win:typeof _WIN_ID!=='undefined'?_WIN_ID:'',ts:Date.now()}});
     setTimeout(()=>window._fbRemove(ref).catch(()=>{}),120000); // подчищаем
   }catch(e){}
 }
@@ -359,7 +359,9 @@ function _listenCallSync(){
 }
 // Звонок взяли/отклонили на другом нашем устройстве (из Firebase или хаба)
 function _callSyncApply(key,d){
-    if(!d||d.dev===_myDeviceId)return;
+    // своё же окно — пропускаем; другое окно этого же браузера — применяем (у них общий _myDeviceId)
+    if(!d)return;
+    if(d.win?d.win===(typeof _WIN_ID!=='undefined'?_WIN_ID:''):d.dev===_myDeviceId)return;
     if(Date.now()-(d.ts||0)>120000)return;
     const same=id=>id&&_callKey(id)===key;
     _cancelledCallIds?.add(key);

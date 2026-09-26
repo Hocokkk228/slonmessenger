@@ -204,12 +204,16 @@ public class SlonBgService extends Service {
             } else if ("self".equals(t)) {
                 JSONObject p = m.optJSONObject("payload");
                 if (p != null && "call_sync".equals(p.optString("type"))) cancelCall();
+                // ты сейчас в SLON на другом устройстве — здесь не уведомляем о сообщениях
+                else if (p != null && "dev_active".equals(p.optString("type"))) activeElsewhereUntil = System.currentTimeMillis() + 70000;
             }
         } catch (Exception ignored) { }
     }
 
+    private long activeElsewhereUntil = 0;
     private void showMessage(String chat, String title, String body) {
         if (appVisible) return;
+        if (System.currentTimeMillis() < activeElsewhereUntil && !"__test".equals(chat)) return;
         Notification n = new NotificationCompat.Builder(this, CH_MSG)
                 .setSmallIcon(R.drawable.ic_stat_slon).setColor(0xFF3390EC)
                 .setContentTitle(title).setContentText(body)
