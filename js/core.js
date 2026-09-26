@@ -7,8 +7,11 @@ const firebaseConfig = {
   messagingSenderId: "1045440523817",
   appId: "1:1045440523817:web:c7fd2f599238014f3bb638"
 };
-firebase.initializeApp(firebaseConfig);
-const _db = firebase.database();
+// SDK Firebase лежит у нас (js/vendor) — не зависим от gstatic. Если он всё же не загрузился,
+// приложение всё равно запускается: основной сервер — свой, Firebase только для групп/каналов.
+let _db=null;
+try{firebase.initializeApp(firebaseConfig);_db=firebase.database();}
+catch(e){console.warn("Firebase недоступен:",e&&e.message);_db={ref:()=>({set:()=>Promise.resolve(),update:()=>Promise.resolve(),remove:()=>Promise.resolve(),push:()=>Promise.resolve(),on:()=>{},off:()=>{},once:()=>Promise.resolve({val:()=>null,exists:()=>false}),limitToLast(){return this},orderByChild(){return this},equalTo(){return this},child(){return this}}),goOffline(){},goOnline(){}};}
 window._fbDb = _db;
 window._fbRef = (db, path) => db.ref(path);
 window._fbSet = (ref, val) => ref.set(val);
