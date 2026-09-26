@@ -4,5 +4,10 @@
     "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
     "notes": "Новый сервер — работает в России без VPN"
+  },
+  "windows": {
+    "version": "1.0.0",
+    "size": "82 МБ",
+    "url": "https://github.com/Hocokkk228/slonmessenger/releases/download/desktop-v1.0.0/SLON-Setup.exe"
   }
 }

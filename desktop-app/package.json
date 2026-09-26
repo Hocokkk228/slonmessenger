@@ -1,0 +1,47 @@
+{
+  "name": "slon-desktop",
+  "productName": "SLON",
+  "version": "1.0.0",
+  "description": "SLON — мессенджер для Windows",
+  "main": "main.js",
+  "author": "SLON",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "copy-web": "node scripts/copy-web.js",
+    "dist": "node scripts/copy-web.js && electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.sloncomp.slon.desktop",
+    "productName": "SLON",
+    "artifactName": "SLON-Setup.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SLON",
+      "runAfterFinish": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}

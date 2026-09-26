@@ -224,6 +224,9 @@ function _offerUpdate(info){
 
 // ── Скачать приложение для Android (кнопка в настройках и на экране входа) ──
 const APK_URL='https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk';
+// SLON для Windows — установщик из релиза на GitHub
+const EXE_URL='https://github.com/Hocokkk228/slonmessenger/releases/download/desktop-v1.0.0/SLON-Setup.exe';
+function downloadWindowsApp(){location.href=EXE_URL;toast('Скачивается SLON-Setup.exe — запусти его, чтобы установить',6000);}
 function downloadAndroidApp(){
   const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
   if(ios){toast('Для iPhone: Safari → «Поделиться» → «На экран Домой»',6000);return;}
