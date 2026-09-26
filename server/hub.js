@@ -130,6 +130,15 @@ export class UserHub extends DurableObject{
   // Синк своего профиля: разослать всем своим устройствам
   pushSelf(payload){this.broadcast({t:'self',payload});}
   online(){return this.appSockets().length>0;}
+  // Выгрузка для переезда на новый сервер (только по секретному ключу, см. worker.js)
+  dump(part,after,limit){
+    limit=Math.min(+limit||500,2000);after=after||'';
+    if(part==='ml')return [...this.sql.exec('SELECT key,rec,upd FROM ml WHERE key>? ORDER BY key LIMIT ?',after,limit)];
+    if(part==='vault')return [...this.sql.exec('SELECT key,blob,upd FROM vault WHERE key>? ORDER BY key LIMIT ?',after,Math.min(limit,50))];
+    if(part==='queue')return [...this.sql.exec('SELECT id,msg,ts FROM queue ORDER BY id')];
+    if(part==='kv')return [...this.sql.exec('SELECT k,v FROM kv')];
+    return [];
+  }
 
   mlPut(key,rec,except){
     const now=Date.now();

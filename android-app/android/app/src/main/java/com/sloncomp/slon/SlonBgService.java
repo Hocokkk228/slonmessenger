@@ -80,7 +80,8 @@ public class SlonBgService extends Service {
                 .build();
         int type = Build.VERSION.SDK_INT >= 34 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING : 0;
         try { ServiceCompat.startForeground(this, NID_BG, n, type); } catch (Exception e) { stopSelf(); return; }
-        http = new OkHttpClient.Builder().pingInterval(30, TimeUnit.SECONDS).retryOnConnectionFailure(true).build();
+        // пинги протокола WebSocket (кадры ping/pong): шлюз их не тарифицирует и не будит функцию
+        http = new OkHttpClient.Builder().pingInterval(60, TimeUnit.SECONDS).retryOnConnectionFailure(true).build();
         // сеть появилась — сразу переподключаемся
         try {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
@@ -155,7 +156,7 @@ public class SlonBgService extends Service {
     }
     private final Runnable ping = new Runnable() {
         @Override public void run() {
-            if (ws != null) { ws.send("{\"t\":\"ping\"}"); h.postDelayed(this, 25000); }
+            if (ws != null) { /* прикладной пинг больше не нужен — хватает кадров ping протокола (см. pingInterval) */ }
         }
     };
 

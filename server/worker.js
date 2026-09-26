@@ -29,6 +29,7 @@ export class MediaStore extends DurableObject{
     this.sql.exec('INSERT OR REPLACE INTO meta(id,mime,name,size,chunks,owner,created) VALUES(?,?,?,?,?,?,?)',id,mime,name,b.length,n,owner,Date.now());
     return {id,size:b.length};
   }
+  listIds(after){return [...this.sql.exec('SELECT id,mime,size FROM meta WHERE id>? ORDER BY id LIMIT 1000',after||'')];}
   async get(id){
     const m=[...this.sql.exec('SELECT * FROM meta WHERE id=?',id)][0];
     if(!m)return null;
@@ -343,6 +344,21 @@ const routes={
     return json({ok:true});
   },
 
+  // ── Выгрузка для переезда на новый сервер: только по секретному ключу DUMP_KEY ──
+  async 'GET /admin/dump-hub'(req,env){
+    if(!env.DUMP_KEY||req.headers.get('X-Dump-Key')!==env.DUMP_KEY)return err('forbidden','Нельзя',403);
+    const q=new URL(req.url).searchParams,u=String(q.get('u')||'').toLowerCase();
+    if(!validUser(u))return err('bad_request','Неверный юзернейм');
+    const rows=await env.HUB.get(env.HUB.idFromName(u)).dump(q.get('part'),q.get('after'),q.get('limit'));
+    return json({ok:true,rows});
+  },
+  async 'GET /admin/media-ids'(req,env){
+    if(!env.DUMP_KEY||req.headers.get('X-Dump-Key')!==env.DUMP_KEY)return err('forbidden','Нельзя',403);
+    const q=new URL(req.url).searchParams;
+    const shard=+q.get('shard')||0;
+    const rows=await env.MEDIA.get(env.MEDIA.idFromName('shard'+shard)).listIds(q.get('after'));
+    return json({ok:true,rows});
+  },
   // Сброс пароля — только админ
   async 'POST /admin/reset-password'(req,env,d){
     const a=await authed(req,env);if(!a||!(await isAdmin(env,a)))return err('forbidden','Только для админов',403);

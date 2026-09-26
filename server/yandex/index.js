@@ -27,6 +27,11 @@ const validUser = u => typeof u === 'string' && /^[a-z0-9_]{3,20}$/.test(u);
 const validHash = h => typeof h === 'string' && /^[0-9a-f]{64}$/.test(h);
 const now = () => Date.now();
 
+// ── Firebase: только мягкий перенос старых аккаунтов (кто ещё ни разу не входил после переезда) ──
+const FB = 'https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app';
+async function fbGet(p) { try { const r = await fetch(FB + '/' + p + '.json', { signal: AbortSignal.timeout(5000) }); return r.ok ? await r.json() : null; } catch (e) { return null; } }
+async function fbPut(p, v) { try { await fetch(FB + '/' + p + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v), signal: AbortSignal.timeout(5000) }); } catch (e) { } }
+
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mime, X-Name', 'Access-Control-Max-Age': '86400' };
 const J = (o, s = 200) => ({ statusCode: s, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
 const E = (code, msg, s = 400) => J({ ok: false, error: code, message: msg }, s);
@@ -301,7 +306,19 @@ const routes = {
     if (!validUser(u) || !validHash(d.h)) return E('bad_request', 'Неверные данные');
     const locked = await failCheck(u); if (locked) return E('locked', 'Слишком много попыток — подожди ' + locked + ' мин.', 429);
     const user = await getUser(u);
-    if (!user) return E('not_found', 'Аккаунт не найден — зарегистрируйся!', 404);
+    if (!user) {
+      // нет у нас — пробуем перенести из Firebase (как делал старый сервер)
+      const fb = await fbGet('auth/' + u);
+      if (!fb) return E('not_found', 'Аккаунт не найден — зарегистрируйся!', 404);
+      if (!fb.hash || fb.reset) {
+        const t = now();
+        await q('UPSERT INTO users (username,salt,verifier,created,pass_updated,migrated) VALUES ($u,$n1,$n2,$t,$t,1);', { u, n1: null, n2: null, t });
+        return J({ ok: true, status: 'set_password', rt: await newReset(u) });
+      }
+      if (!same(fb.hash, d.h)) { await failAdd(u); return E('wrong_password', 'Неверный пароль', 401); }
+      await setPassword(u, d.h, true); await fbPut('auth/' + u, { migrated: true, ts: now() }); await failClear(u);
+      return J({ ok: true, status: 'ok', token: await newSession(u, d.device), migrated: true });
+    }
     if (!user.verifier) return J({ ok: true, status: 'set_password', rt: await newReset(u) });
     if (!same(sha(user.salt + d.h), user.verifier)) { await failAdd(u); return E('wrong_password', 'Неверный пароль', 401); }
     await failClear(u); return J({ ok: true, status: 'ok', token: await newSession(u, d.device) });
@@ -310,7 +327,8 @@ const routes = {
     const u = String(d.u || '').toLowerCase();
     if (!validUser(u) || !validHash(d.h)) return E('bad_request', 'Юзернейм: 3–20 символов, латиница, цифры и _');
     if (await getUser(u)) return E('taken', 'Юзернейм занят — выбери другой или войди', 409);
-    await setPassword(u, d.h, false);
+    if (await fbGet('auth/' + u)) return E('taken', 'Юзернейм занят — выбери другой или войди', 409);
+    await setPassword(u, d.h, false); await fbPut('auth/' + u, { migrated: true, ts: now() });
     return J({ ok: true, token: await newSession(u, d.device) });
   },
   async 'POST /auth/set-password'(r, d) {
@@ -345,7 +363,7 @@ const routes = {
   async 'GET /auth/exists'(r) {
     const u = String(r.qs.get('u') || '').toLowerCase();
     if (!validUser(u)) return J({ ok: true, exists: false });
-    return J({ ok: true, exists: !!(await getUser(u)) });
+    return J({ ok: true, exists: !!(await getUser(u)) || !!(await fbGet('auth/' + u)) });
   },
   async 'GET /turn'(r) {
     if (!r.user) return E('unauthorized', 'Войди заново', 401);
