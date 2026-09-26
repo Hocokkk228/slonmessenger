@@ -1,9 +1,9 @@
 {
   "android": {
-    "version": "1.6.0",
+    "version": "1.6.1",
     "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Новый сервер — работает в России без VPN"
+    "notes": "Просмотр медиа, любые файлы, синхронизация звонков и уведомлений между устройствами, восстановление пароля по почте"
   },
   "windows": {
     "version": "1.0.0",
