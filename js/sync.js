@@ -381,3 +381,65 @@ saveAll=function(){
   try{_psPush();}catch(e){}
   return r;
 };
+
+
+// ════════ Очередь исходящих (когда сервер недоступен) ════════
+// Только текст: медиа (крупные блобы) сюда не кладём. Хранится по аккаунту.
+// Досылается при переподключении к серверу; сервер идемпотентен по ключу.
+const _obKey=()=>'sl_u_'+myUsername+'_outbox';
+function _obLoad(){try{const a=JSON.parse(localStorage.getItem(_obKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function _obSave(a){try{localStorage.setItem(_obKey(),JSON.stringify(a.slice(-500)));}catch(e){}}
+function _obAdd(chat,rec){
+  const a=_obLoad();
+  if(a.some(x=>x.rec&&x.rec.id===rec.id))return;      // уже в очереди
+  a.push({chat,rec,at:Date.now()});_obSave(a);
+  _obBadge();
+}
+// «В сети» ли мы для журнала: есть токен и живое соединение с хабом
+const _obHubMode=()=>typeof _apiToken==='function'&&_apiToken()&&typeof _hubUp!=='undefined';
+let _obDraining=false;
+async function _obDrain(){
+  if(_obDraining||!myUsername||!_hubUp)return;
+  _obDraining=true;
+  try{
+    let a=_obLoad();if(!a.length){_obBadge();return;}
+    const rest=[];
+    for(const it of a){
+      if(!it||!it.rec||!it.chat){continue;}
+      // сообщение удалили из истории — не досылаем
+      const exists=(chatHist[it.chat]||[]).some(m=>m.id===it.rec.id)||it.chat==='saved';
+      if(!exists)continue;
+      if(!_hubUp){rest.push(it);continue;}            // связь снова пропала — оставляем на потом
+      try{await _mlPost0(it.chat,{...it.rec,_fromOutbox:1});}
+      catch(e){rest.push(it);}
+    }
+    _obSave(rest);_obBadge();
+  }finally{_obDraining=false;}
+}
+// маленький счётчик «ждут отправки» в статусе списка чатов
+function _obBadge(){
+  const n=_obLoad().length,el=document.getElementById('sbUpd');
+  if(!el)return;
+  let b=document.getElementById('obWait');
+  if(!n){b&&b.remove();return;}
+  if(!b){b=document.createElement('div');b.id='obWait';b.className='ob-wait';el.parentNode.insertBefore(b,el.nextSibling);}
+  b.textContent='⏳ Ждут отправки: '+n+' — отправим, как появится связь';
+}
+
+// Оборачиваем _mlPost: нет связи с хабом — кладём в очередь вместо потери
+const _mlPost0=_mlPost;
+_mlPost=function(chat,rec){
+  // только личные текстовые (медиа и служебное — мимо очереди)
+  const queueable=rec&&(rec.k==='text'||!rec.k)&&chat&&chat!=='ai'&&!String(chat).startsWith('g_')&&!(typeof _isChannelId==='function'&&_isChannelId(chat));
+  if(queueable&&_obHubMode()&&!_hubUp&&!rec._fromOutbox){
+    _obAdd(chat,rec);
+    return Promise.resolve();     // сообщение уже в истории (одна галочка) — досыл при связи
+  }
+  const r=_mlPost0(chat,rec);
+  return r;
+};
+
+// Досыл при переподключении и раз в 20 c на всякий
+window.addEventListener('online',()=>setTimeout(_obDrain,800));
+setInterval(()=>{if(_hubUp)_obDrain();},20000);
+setTimeout(_obBadge,2500);

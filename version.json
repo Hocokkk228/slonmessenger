@@ -1,8 +1,8 @@
 {
   "android": {
-    "version": "1.5.0",
+    "version": "1.5.1",
     "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Обновления интерфейса теперь приходят сразу с сайта; всё стало быстрее"
+    "notes": "Очередь исходящих: сообщения не теряются без связи, досылаются сами"
   }
 }

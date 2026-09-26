@@ -2620,3 +2620,6 @@ body.perf-noanim .el,body.perf-noanim .el *{animation:none!important;}
 .rx-box.full .rx-quick{transition:opacity .16s ease;}
 /* в списках выбора (узоры) слоники стоят — анимация только там, где на них смотрят */
 .sp-pat .el,.sp-pat .el *,.admin-row .el,.admin-row .el *,.sp-pick .el,.sp-pick .el *{animation:none!important;}
+
+/* очередь исходящих: ждут отправки */
+.ob-wait{font-size:12px;color:var(--text2);text-align:center;padding:6px 10px 2px;line-height:1.3;}
