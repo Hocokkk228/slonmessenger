@@ -12,7 +12,7 @@ let fn;try{fn=JSON.parse(yc(['serverless','function','get',cfg.fn,'--format','js
 const env=['YDB_DATABASE='+cfg.db,'BUCKET='+cfg.bucket,'S3_KEY_ID='+key.access_key.key_id,'S3_SECRET='+key.secret];
 // дополнительные секреты (TURN, FCM, админы) — если лежат в %USERPROFILE%\.slon\yc-env.json
 const extraF=path.join(process.env.USERPROFILE,'.slon','yc-env.json');
-if(fs.existsSync(extraF))for(const [k,v] of Object.entries(JSON.parse(fs.readFileSync(extraF,'utf8'))))env.push(k+'='+v);
+if(fs.existsSync(extraF))for(const [k,v] of Object.entries(JSON.parse(fs.readFileSync(extraF,'utf8'))))env.push(k+'_B64='+Buffer.from(String(v)).toString('base64'));   // base64: в значениях бывают запятые
 const out=JSON.parse(yc(['serverless','function','version','create','--function-id',fn.id,'--runtime','nodejs22','--entrypoint','index.handler',
   '--memory','256m','--execution-timeout','30s','--source-path',path.join(__dirname,'slon-fn.zip'),'--service-account-id',sa,
   '--environment',env.join(','),'--format','json']));

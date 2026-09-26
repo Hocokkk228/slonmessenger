@@ -7,6 +7,8 @@
 // Протокол тот же, что у Cloudflare-версии (worker.js + hub.js), клиент почти не меняется.
 // ════════════════════════════════════════════════════════════════
 const crypto = require('crypto');
+// секреты из деплоя приходят в base64 (в JSON и списках есть запятые) — раскладываем обратно
+for (const [k, v] of Object.entries(process.env)) if (k.endsWith('_B64') && !process.env[k.slice(0, -4)]) { try { process.env[k.slice(0, -4)] = Buffer.from(v, 'base64').toString('utf8'); } catch (e) { } }
 const { q, qAll, one, setToken } = require('./db');
 
 const BUILTIN_ADMINS = (process.env.ADMINS || 'mamedov,vadimslonik67').split(',').map(s => s.trim()).filter(Boolean);
