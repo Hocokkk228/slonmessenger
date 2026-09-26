@@ -5,14 +5,11 @@ function toggleBlockUser(pid){
     delete blockedUsers[pid];
     toast('Пользователь разблокирован');
   }else{
-    showModal(`
-      <div class="m-title">🚫 Заблокировать @${esc(pid)}?</div>
-      <div class="m-info">Ты больше не будешь получать сообщения, звонки и запросы от этого пользователя.</div>
-      <div class="m-btns">
-        <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-        <button class="btn-danger" onclick="doBlockUser('${pid}')">Заблокировать</button>
-      </div>
-    `);
+    const name=peerNames[pid]||('@'+pid);
+    slonConfirm({title:'Заблокировать',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
+      text:'Заблокировать '+name+'? Ты больше не будешь получать от него сообщения, звонки и запросы.',
+      buttons:[{label:'Заблокировать',value:'block',danger:true},{label:'Заблокировать и удалить чат',value:'both',danger:true},{label:'Отмена',value:null}]})
+    .then(r=>{if(!r)return;doBlockUser(pid);if(r==='both'&&typeof doDeleteChat==='function')doDeleteChat(pid);});
     return;
   }
   saveAll();
@@ -40,6 +37,10 @@ async function _fetchPeerElephantBadges(){
 
 async function adminGrantBadge(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
+  const ok=await slonConfirm({title:'Выдать слонгалочку',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
+    text:'Выдать слонгалочку 🐘 пользователю @'+pid+'? Она будет видна всем рядом с именем.',
+    buttons:[{label:'Выдать',value:true},{label:'Отмена',value:null}]});
+  if(!ok)return;
   try{
     await window._fbSet(window._fbRef(window._fbDb,'elephant_badges/'+pid),true);
     peerElephantBadges[pid]=true;
@@ -154,6 +155,11 @@ async function _fetchPeerPremiums(){
 
 async function adminGrantPremium(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
+  const days=await slonConfirm({title:'Выдать Premium',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
+    text:'На какой срок выдать SLON Premium ⭐ пользователю @'+pid+'?',
+    buttons:[{label:'30 дней',value:30},{label:'3 месяца',value:90},{label:'1 год',value:365},{label:'Навсегда ✨',value:-1},{label:'Отмена',value:null}]});
+  if(days)return doAdminGrantPremium(pid,days);
+  return;
   showModal(`
     <div class="m-title">⭐ Выдать Premium @${esc(pid)}</div>
     <div class="m-info">Выбери срок подписки:</div>
@@ -218,6 +224,11 @@ function _loadAdminsFromFirebase(){
 
 async function adminGrantAdmin(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
+  const ok=await slonConfirm({title:'Права администратора',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
+    text:'@'+pid+' получит доступ к консоли администратора SLON. Отменить это можно только с правами суперадмина.',
+    buttons:[{label:'Выдать права',value:true,danger:true},{label:'Отмена',value:null}]});
+  if(!ok)return;
+  if(typeof doAdminGrantAdmin==='function')return doAdminGrantAdmin(pid);
   showModal(`
     <div class="m-title">🛡 Выдать права администратора</div>
     <div class="m-info">@${esc(pid)} получит доступ к консоли администратора SLON. Это нельзя отменить без прав суперадмина.</div>

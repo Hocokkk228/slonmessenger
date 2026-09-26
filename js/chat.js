@@ -705,11 +705,7 @@ function clearChat(){
 
 function showChatDeleteMenu(){
   if(!activeChat||activeChat==='ai')return;
-  if(confirm('Удалить чат у всех участников?')){
-    deleteChatFor(true);
-  }else if(confirm('Удалить только у себя?')){
-    deleteChatFor(false);
-  }
+  _askDeleteChat(activeChat);
 }
 
 function showRemoteTyping(pid){
@@ -1089,14 +1085,19 @@ function ctxDeleteChat(){
   $('chatCtxMenu').classList.remove('show');
   if(!ctxTargetId)return;
   const id=ctxTargetId;
-  showModal(`
-    <div class="m-title">Удалить чат?</div>
-    <div class="m-info">История переписки с <b>${esc(peerNames[id]||('@'+id))}</b> исчезнет из списка чатов. Если человек напишет снова — чат появится.</div>
-    <div class="m-btns">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-danger" onclick="doDeleteChat('${id}')">Удалить</button>
-    </div>
-  `);
+  _askDeleteChat(id);
+}
+// Удалить чат: у меня и у собеседника / только у меня (как в Telegram)
+async function _askDeleteChat(id){
+  const name=peerNames[id]||('@'+id);
+  const personal=!id.startsWith('g_')&&id!=='saved'&&!(typeof _isChannelId==='function'&&_isChannelId(id));
+  const r=await slonConfirm({title:'Удалить чат',avatar:(peerAvatars[id]?'<img src="'+esc(peerAvatars[id])+'" alt="">':''),
+    text:'Удалить чат с '+name+' насовсем?',
+    buttons:personal?[{label:'Удалить у меня и у '+name,value:'all',danger:true},{label:'Удалить только у меня',value:'me',danger:true},{label:'Отмена',value:null}]
+      :[{label:'Удалить',value:'me',danger:true},{label:'Отмена',value:null}]});
+  if(!r)return;
+  if(r==='all')sendData(conns[id]||id,{type:'chat_delete',forAll:true});
+  doDeleteChat(id);
 }
 
 function doDeleteChat(id){

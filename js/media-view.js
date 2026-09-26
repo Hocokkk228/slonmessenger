@@ -132,18 +132,18 @@ openPhoto = function (id) {
 function slonConfirm(o) {
   return new Promise(res => {
     const wrap = document.createElement('div');
-    wrap.className = 'sc-wrap';
-    wrap.innerHTML = `<div class="sc-box" role="dialog">
-      <div class="sc-head">${o.avatar ? `<div class="sc-av">${o.avatar}</div>` : ''}<div class="sc-title">${esc(o.title || '')}</div></div>
-      ${o.text ? `<div class="sc-text">${esc(o.text)}</div>` : ''}
+    wrap.className = 'slcf-wrap';
+    wrap.innerHTML = `<div class="slcf-box" role="dialog">
+      <div class="slcf-head">${o.avatar ? `<div class="slcf-av">${o.avatar}</div>` : ''}<div class="slcf-title">${esc(o.title || '')}</div></div>
+      ${o.text ? `<div class="slcf-text">${esc(o.text)}</div>` : ''}
       ${o.html || ''}
-      <div class="sc-btns">${(o.buttons || [{ label: 'OK', value: true }]).map((b, i) => `<button class="sc-btn${b.danger ? ' danger' : ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div>
+      <div class="slcf-btns">${(o.buttons || [{ label: 'OK', value: true }]).map((b, i) => `<button class="slcf-btn${b.danger ? ' danger' : ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div>
     </div>`;
     const btns = o.buttons || [{ label: 'OK', value: true }];
     const done = v => { wrap.classList.add('closing'); document.removeEventListener('keydown', key); setTimeout(() => wrap.remove(), 180); res(v); };
     const key = e => { if (e.key === 'Escape') done(null); };
     wrap.addEventListener('click', e => {
-      const b = e.target.closest('.sc-btn');
+      const b = e.target.closest('.slcf-btn');
       if (b) return done(btns[+b.dataset.i].value);
       if (e.target === wrap) done(null);
     });
