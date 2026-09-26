@@ -724,10 +724,25 @@ function showRemoteTyping(pid){
 let _inpHadFocus=false;
 function _keepInpFocus(e){_inpHadFocus=document.activeElement===$('msgInp');if(_inpHadFocus)e.preventDefault();}
 function _restoreInpFocus(){if(_inpHadFocus){const i=$('msgInp');if(i&&document.activeElement!==i)i.focus({preventScroll:true});}_inpHadFocus=false;}
+let _inpComp='';   // слово, которое сейчас набирается (composition)
 function _syncInpState(){
-  const inp=$('msgInp');$('inpWrap')?.classList.toggle('has-text',!!inp?.value.trim());
+  const inp=$('msgInp');$('inpWrap')?.classList.toggle('has-text',!!(inp?.value.trim()||_inpComp.trim()));
 }
 
+// Android (русская раскладка и подсказки клавиатуры): слово набирается в режиме «composition»,
+// и input/value приходят с опозданием — поэтому кнопка «отправить» не появлялась. Следим и за этим.
+(function(){
+  const bind=()=>{
+    const i=document.getElementById('msgInp');if(!i){setTimeout(bind,500);return;}
+    i.addEventListener('compositionupdate',e=>{_inpComp=e.data||'';_syncInpState();});
+    i.addEventListener('compositionend',()=>{_inpComp='';});
+    ['compositionend','keyup','change','paste','cut'].forEach(ev=>i.addEventListener(ev,()=>setTimeout(_syncInpState,0)));
+    let t=null;
+    i.addEventListener('focus',()=>{clearInterval(t);t=setInterval(_syncInpState,300);});
+    i.addEventListener('blur',()=>{clearInterval(t);_syncInpState();});
+  };
+  bind();
+})();
 function onTyping(el){
   resizeInp(el);
   _syncInpState();
