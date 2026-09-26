@@ -73,7 +73,7 @@ const _S=(d,c,w,x)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}
 const _elHeart=(x,y,s,c,cls)=>`<path class="${cls||''}" d="M${x} ${y+s*.9}C${x-s*1.9} ${y-s*.3} ${x-s} ${y-s*1.7} ${x} ${y-s*.55}C${x+s} ${y-s*1.7} ${x+s*1.9} ${y-s*.3} ${x} ${y+s*.9}z" fill="${c}"/>`;
 function _elEyes(t){
   const E=EL_C.eye,L=[24.5,28],R=[39.5,28];
-  const dot=(x,y,cls)=>`<g class="${cls||'el-blink'}"><ellipse cx="${x}" cy="${y}" rx="2.4" ry="2.9" fill="${E}"/><circle cx="${x+.8}" cy="${y-1}" r=".85" fill="#fff"/></g>`;
+  const dot=(x,y,cls)=>`<g class="${cls||'el-blink'}"><ellipse cx="${x}" cy="${y}" rx="2.9" ry="3.5" fill="url(#elEye)"/><ellipse cx="${x+1}" cy="${y-1.3}" rx="1.15" ry="1.3" fill="#fff"/><circle cx="${x-.9}" cy="${y+1.5}" r=".5" fill="#fff" opacity=".8"/></g>`;
   const arc=(x,y)=>_S(`M${x-3} ${y+1}q3 -4 6 0`,E,1.9);
   const shut=(x,y)=>_S(`M${x-2.8} ${y}q2.8 2.2 5.6 0`,E,1.7);
   switch(t){
@@ -172,23 +172,44 @@ function _elExtra(t){
   }
   return '';
 }
-// Сам слоник (viewBox 64×64). opts.flat — без анимационных классов не надо, просто статичная картинка
+// Сам слоник (viewBox 64×64): объём как у уточек — градиенты, блики, мягкие тени
+const _elMix=(hex,t,to)=>{const n=parseInt(hex.slice(1),16),c=[n>>16,(n>>8)&255,n&255],o=to==='w'?255:0;
+  return '#'+c.map(v=>Math.round(v+(o-v)*t).toString(16).padStart(2,'0')).join('');};
+const _elKey=c=>c.slice(1);
+const _elColors=[...new Set([EL_C.body,...ELEPHANTS.map(e=>e[6]).filter(Boolean)])];
+function elDefsStr(){
+  let d=`<radialGradient id="elEye" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#4b5170"/><stop offset=".6" stop-color="#15172a"/><stop offset="1" stop-color="#05060c"/></radialGradient>`
+   +`<radialGradient id="elHi"><stop offset="0" stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`
+   +`<radialGradient id="elPink" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#ffd3dc"/><stop offset=".6" stop-color="#f4a0b3"/><stop offset="1" stop-color="#d9738d"/></radialGradient>`
+   +`<radialGradient id="elBlushG"><stop offset="0" stop-color="#ff7f9f" stop-opacity=".75"/><stop offset="1" stop-color="#ff7f9f" stop-opacity="0"/></radialGradient>`;
+  for(const c of _elColors){const k=_elKey(c);
+    d+=`<radialGradient id="elB${k}" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="${_elMix(c,.45,'w')}"/><stop offset=".5" stop-color="${c}"/><stop offset="1" stop-color="${_elMix(c,.32,'b')}"/></radialGradient>`
+      +`<linearGradient id="elT${k}" x1="0" x2="1"><stop offset="0" stop-color="${_elMix(c,.18,'b')}"/><stop offset=".45" stop-color="${_elMix(c,.25,'w')}"/><stop offset="1" stop-color="${_elMix(c,.3,'b')}"/></linearGradient>`;}
+  return d;
+}
 function elSvgInner(id){
   const s=_elMap[id];if(!s)return '';
   const [,,eyes,mouth,extra,,face]=s;
-  const B=face||EL_C.body,Ln=EL_C.line,ghost=extra.includes('ghost');
+  const B=face||EL_C.body,k=_elKey(B),G=`url(#elB${k})`,Ln=_elMix(B,.4,'b'),ghost=extra.includes('ghost');
   const ex=extra.split(' ').filter(Boolean);
-  const back=ex.filter(x=>['halo','crown','partyHat','cowboy','horns','fire','boom','gradCap','icicles'].includes(x)).map(_elExtra).join('');
-  const front=ex.filter(x=>!['halo','crown','partyHat','cowboy','horns','fire','boom','gradCap','icicles','mask','melt'].includes(x)).map(_elExtra).join('');
+  const TOP=['halo','crown','partyHat','cowboy','horns','fire','boom','gradCap','icicles'];
+  const back=ex.filter(x=>TOP.includes(x)).map(_elExtra).join('');
+  const front=ex.filter(x=>!TOP.includes(x)&&x!=='mask'&&x!=='melt').map(_elExtra).join('');
   const over=ex.filter(x=>x==='mask'||x==='melt').map(_elExtra).join('');
-  const ears=ghost?'':`<g class="el-earL"><ellipse cx="12.5" cy="30" rx="11" ry="13.5" transform="rotate(-14 12.5 30)" fill="${B}" stroke="${Ln}" stroke-width="1.2"/><ellipse cx="13.5" cy="31" rx="6.6" ry="9.4" transform="rotate(-14 13.5 31)" fill="${EL_C.ear}"/></g>`
-    +`<g class="el-earR"><ellipse cx="51.5" cy="30" rx="11" ry="13.5" transform="rotate(14 51.5 30)" fill="${B}" stroke="${Ln}" stroke-width="1.2"/><ellipse cx="50.5" cy="31" rx="6.6" ry="9.4" transform="rotate(14 50.5 31)" fill="${EL_C.ear}"/></g>`;
+  const ear=(cx,rot,icx)=>`<ellipse cx="${cx}" cy="30" rx="11" ry="13.5" transform="rotate(${rot} ${cx} 30)" fill="${G}" stroke="${Ln}" stroke-width=".7" stroke-opacity=".6"/>`
+    +`<ellipse cx="${icx}" cy="31" rx="6.6" ry="9.4" transform="rotate(${rot} ${icx} 31)" fill="url(#elPink)"/>`
+    +`<ellipse cx="${cx+(rot<0?-3:3)}" cy="22" rx="3.2" ry="2" transform="rotate(${rot} ${cx} 22)" fill="url(#elHi)" opacity=".7"/>`;
+  const ears=ghost?'':`<g class="el-earL">${ear(12.5,-14,13.5)}</g><g class="el-earR">${ear(51.5,14,50.5)}</g>`;
   const head=ghost
-    ?`<path d="M13 32q0-19 19-19t19 19v20q-3 3-5 0t-4.6 0-4.7 0-4.7 0-4.6 0-5 0q-2 3-5 0z" fill="${B}" stroke="#cfd4e6" stroke-width="1.2" opacity=".96"/>`
-    :`<ellipse cx="32" cy="32" rx="19" ry="18" fill="${B}" stroke="${Ln}" stroke-width="1.2"/><ellipse cx="32" cy="38" rx="11" ry="7" fill="#fff" opacity=".12"/>`
-      +`<path d="M32 14.8v7.5" stroke="${Ln}" stroke-width="1" stroke-dasharray="1.5 1.7" opacity=".8"/>`;
+    ?`<path d="M13 32q0-19 19-19t19 19v20q-3 3-5 0t-4.6 0-4.7 0-4.7 0-4.6 0-5 0q-2 3-5 0z" fill="${G}" stroke="#cfd4e6" stroke-width=".8" opacity=".96"/><ellipse cx="25" cy="21" rx="7" ry="4.5" fill="url(#elHi)" transform="rotate(-20 25 21)"/>`
+    :`<ellipse cx="32" cy="32" rx="19" ry="18" fill="${G}" stroke="${Ln}" stroke-width=".7" stroke-opacity=".6"/>`
+      +`<ellipse cx="25" cy="21" rx="8.5" ry="5" fill="url(#elHi)" transform="rotate(-22 25 21)"/>`
+      +`<path d="M32 14.8v7.5" stroke="${Ln}" stroke-width=".9" stroke-dasharray="1.5 1.7" opacity=".7"/>`
+      +`<circle cx="20.5" cy="36.5" r="4.2" fill="url(#elBlushG)"/><circle cx="43.5" cy="36.5" r="4.2" fill="url(#elBlushG)"/>`;
+  const tp='M32 31.5c-.4 4 0 7.2 1.8 8.8c1.6 1.3 3.5.6 3.3-1';
   const trunk=ghost||eyes==='skull'?(eyes==='skull'?`<path d="M30.4 34l1.6 3 1.6-3z" fill="#2a2a35"/>`:'')
-    :`<g class="el-trunk"><path d="M32 31.5c-.4 4 0 7.2 1.8 8.8c1.6 1.3 3.5.6 3.3-1" fill="none" stroke="${Ln}" stroke-width="7.6" stroke-linecap="round"/><path d="M32 31.5c-.4 4 0 7.2 1.8 8.8c1.6 1.3 3.5.6 3.3-1" fill="none" stroke="${B}" stroke-width="5.4" stroke-linecap="round"/>${_S('M30.2 35.6h3.2M30.6 38.2h3',Ln,.6,' opacity=".6"')}</g>`;
+    :`<g class="el-trunk"><path d="${tp}" fill="none" stroke="${Ln}" stroke-opacity=".7" stroke-width="7.2" stroke-linecap="round"/><path d="${tp}" fill="none" stroke="url(#elT${k})" stroke-width="5.8" stroke-linecap="round"/>`
+      +`<path d="M31.2 32.5c-.2 3 .1 5.2 1.3 6.6" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1" stroke-linecap="round"/>${_S('M30.4 36h3M30.8 38.4h2.8',Ln,.6,' opacity=".5"')}</g>`;
   return `<g class="el-all"><g class="el-top">${back}</g>${ears}<g class="el-head">${head}<g class="el-eyes">${_elEyes(eyes)}</g>${trunk}<g class="el-mouth">${_elMouth(mouth)}</g></g><g class="el-front">${front}</g><g class="el-over">${over}</g></g>`;
 }
 const _elCache={};
@@ -197,3 +218,209 @@ function elSvg(id){
   const s=_elMap[id];if(!s)return '';
   return _elCache[id]=`<svg class="el el-i-${id}" viewBox="0 0 64 64" aria-hidden="true">${elSvgInner(id)}</svg>`;
 }
+
+// ── Анимации: у каждого — тело + уши + хобот + глаза + рот, каждое своим ритмом ──
+const EK={
+  // тело
+  hop:'0%,70%,100%{transform:none}12%{transform:translateY(1px) scale(1.12,.86)}30%{transform:translateY(-8px) scale(.9,1.12)}46%{transform:translateY(0) scale(1.14,.84)}56%{transform:scale(.96,1.05)}64%{transform:scale(1.02,.98)}',
+  hop2:'0%,100%{transform:none}8%{transform:translateY(1px) scale(1.1,.88)}20%{transform:translateY(-6px) scale(.92,1.1)}32%{transform:scale(1.12,.86)}44%{transform:translateY(-4px) scale(.95,1.06)}56%{transform:scale(1.08,.92)}66%{transform:none}',
+  nod:'0%,100%{transform:none}20%{transform:rotate(-6deg) translateY(-1.5px)}45%{transform:rotate(4deg) translateY(1px) scale(1.03,.97)}70%{transform:rotate(-2deg)}',
+  lean:'0%,100%{transform:none}40%,70%{transform:rotate(10deg) translateX(2px) scale(1.04)}',
+  tilt:'0%,100%{transform:rotate(-4deg)}50%{transform:rotate(-14deg) translateX(-1.5px)}',
+  sway:'0%,100%{transform:rotate(-9deg) translateX(-1.5px)}50%{transform:rotate(9deg) translateX(1.5px) translateY(-1.5px)}',
+  dance:'0%,100%{transform:translateX(-3px) rotate(-14deg) scale(1.04,.96)}25%{transform:translateY(-4px) scale(.96,1.06)}50%{transform:translateX(3px) rotate(14deg) scale(1.04,.96)}75%{transform:translateY(-4px) scale(.96,1.06)}',
+  laugh:'0%,100%{transform:rotate(-8deg) translateY(0) scale(1.03,.97)}50%{transform:rotate(-13deg) translateY(-3.5px) scale(.97,1.05)}',
+  roll:'0%,100%{transform:translateX(-5px) rotate(-50deg)}50%{transform:translateX(5px) rotate(50deg) translateY(-2px)}',
+  flip:'0%,55%,100%{transform:none}10%{transform:translateY(1px) scale(1.12,.86)}28%{transform:translateY(-9px) rotate(180deg) scale(.9)}44%{transform:translateY(0) rotate(360deg) scale(1.12,.86)}50%{transform:rotate(360deg)}',
+  spin:'0%,50%,100%{transform:none}60%{transform:translateY(-6px) rotate(-180deg) scale(1.06)}78%{transform:translateY(0) rotate(-360deg) scale(1.12,.88)}86%{transform:rotate(-360deg)}',
+  float:'0%,100%{transform:translateY(1.5px) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}',
+  beat:'0%,100%{transform:scale(1)}14%{transform:scale(1.14)}28%{transform:scale(1)}42%{transform:scale(1.1)}70%{transform:scale(1)}',
+  shrink:'0%,12%,88%,100%{transform:none}30%,72%{transform:scale(.86) translateY(3px) rotate(-8deg)}',
+  kiss:'0%,15%,70%,100%{transform:none}30%,55%{transform:scale(1.18) translateY(1px) rotate(4deg)}',
+  squeeze:'0%,100%{transform:none}35%,60%{transform:scale(1.1,.9)}45%{transform:scale(1.14,.86)}',
+  proud:'0%,100%{transform:none}35%,75%{transform:rotate(-9deg) translateY(-2.5px) scale(1.06)}',
+  bow:'0%,12%,70%,100%{transform:none}32%,50%{transform:rotate(18deg) translateY(4px) scale(.94)}',
+  recoil:'0%,35%,100%{transform:none}6%{transform:translateX(-4px) rotate(-12deg) scale(1.08,.92)}16%{transform:translateX(1px) rotate(3deg)}',
+  jolt:'0%,45%,100%{transform:none}8%{transform:scale(.78) translateY(5px)}20%{transform:scale(1.16,1.1) translateY(-5px)}32%{transform:scale(.97)}',
+  inflate:'0%{transform:scale(1)}38%{transform:scale(1.24,1.2)}42%{transform:scale(1.26,1.18) rotate(3deg)}45%{transform:scale(1.26,1.2) rotate(-3deg)}48%{transform:scale(.86)}58%{transform:scale(1.05)}66%,100%{transform:scale(1)}',
+  melt:'0%,20%,100%{transform:none}70%,85%{transform:translateY(6px) scale(1.12,.78)}',
+  sob:'0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(-2.5px) scale(.97,1.04)}40%{transform:translateY(0) scale(1.03,.97)}60%{transform:translateY(-2px)}',
+  rage:'0%,100%{transform:scale(1) rotate(0)}10%{transform:scale(1.1) rotate(-6deg)}20%{transform:scale(1.04) rotate(6deg)}30%{transform:scale(1.12) rotate(-5deg)}40%{transform:scale(1.02) rotate(4deg)}55%{transform:scale(1.14)}70%{transform:scale(1)}',
+  fume:'0%,45%,100%{transform:none}50%{transform:scale(1.08,.94) translateY(1px)}55%{transform:translateX(-2px) scale(1.08,.94)}60%{transform:translateX(2px) scale(1.08,.94)}65%{transform:translateX(-2px) scale(1.06)}70%{transform:translateX(2px)}80%{transform:none}',
+  shiver:'0%,100%{transform:translateX(-1px) scale(.97,1.02)}50%{transform:translateX(1px) scale(.97,1.02)}',
+  orbit:'0%,100%{transform:translate(3px,0) rotate(8deg)}25%{transform:translate(0,3px) rotate(0)}50%{transform:translate(-3px,0) rotate(-8deg)}75%{transform:translate(0,-3px) rotate(0)}',
+  upside:'0%,25%{transform:rotate(0)}40%{transform:rotate(200deg) scale(1.08)}48%,75%{transform:rotate(180deg)}90%{transform:rotate(380deg) scale(1.08)}100%{transform:rotate(360deg)}',
+  stare:'0%,55%,100%{transform:none}62%,90%{transform:scale(1.22) translateY(1px)}',
+  cough:'0%,50%,100%{transform:none}56%{transform:translateY(-3px) scale(1.1,.92) rotate(-4deg)}62%{transform:scale(.97,1.03)}70%{transform:translateY(-3px) scale(1.1,.92) rotate(4deg)}78%{transform:none}',
+  headbang:'0%,100%{transform:rotate(-4deg) translateY(-1px)}45%{transform:rotate(16deg) translateY(3px) scale(1.04,.96)}',
+  sigh:'0%,100%{transform:none}30%{transform:scale(1.06,1.03) translateY(-1.5px) rotate(-5deg)}65%{transform:scale(.96,.98) translateY(1.5px)}',
+  evil:'0%,100%{transform:rotate(-3deg)}20%{transform:rotate(-12deg) translateY(-2px) scale(1.04)}28%,44%,60%{transform:rotate(-12deg) translateY(.5px)}36%,52%{transform:rotate(-12deg) translateY(-1.5px)}',
+  crazy:'0%,100%{transform:rotate(-12deg) translate(-2px,1px)}15%{transform:rotate(10deg) translate(2px,-3px) scale(1.08)}30%{transform:rotate(-4deg) translate(-1px,-4px) scale(.92,1.08)}50%{transform:rotate(14deg) translate(3px,2px)}70%{transform:rotate(-8deg) translate(0,-1px) scale(1.1,.9)}85%{transform:rotate(6deg) translate(-2px,0)}',
+  ghost:'0%,100%{transform:translate(-3px,1px) rotate(-5deg);opacity:1}50%{transform:translate(3px,-4px) rotate(5deg);opacity:.4}',
+  sleep:'0%{transform:none}65%{transform:rotate(16deg) translateY(3px) scale(1.03)}74%{transform:rotate(18deg) translateY(3.5px)}78%{transform:rotate(-6deg) translateY(-2px) scale(1.05)}86%,100%{transform:none}',
+  tired:'0%,10%,100%{transform:none}60%,85%{transform:translateY(5px) scale(1.04,.9) rotate(5deg)}',
+  no:'0%,62%,100%{transform:none}8%,32%,54%{transform:rotate(-12deg) translateX(-1px)}20%,44%{transform:rotate(12deg) translateX(1px)}',
+  heat:'0%,100%{transform:skewX(-7deg)}50%{transform:skewX(7deg) scale(1.03,.94) translateY(1px)}',
+  scream:'0%,100%{transform:none}12%{transform:scale(1.1,.88)}24%{transform:scale(.88,1.2) translateY(-3px)}28%{transform:scale(.88,1.2) translate(-1.5px,-3px)}32%{transform:scale(.88,1.2) translate(1.5px,-3px)}36%{transform:scale(.88,1.2) translate(-1.5px,-3px)}40%,60%{transform:scale(.88,1.2) translateY(-3px)}72%{transform:scale(1.05,.95)}82%{transform:none}',
+  sip:'0%,20%,75%,100%{transform:none}40%,60%{transform:rotate(-10deg) translateY(-1px)}',
+  wiggle:'0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg) scale(1.03,.97)}75%{transform:rotate(7deg) scale(1.03,.97)}',
+  impact:'0%,12%,34%,100%{transform:none}16%{transform:scale(1.14,.84) translateY(2px)}24%{transform:scale(.96,1.05)}',
+  // уши (L — левое, R — правое)
+  fL:'0%,100%{transform:rotate(0)}50%{transform:rotate(-24deg) scale(.95,1.05)}',
+  fR:'0%,100%{transform:rotate(0)}50%{transform:rotate(24deg) scale(.95,1.05)}',
+  slowL:'0%,100%{transform:rotate(3deg)}50%{transform:rotate(-13deg)}',
+  slowR:'0%,100%{transform:rotate(-3deg)}50%{transform:rotate(13deg)}',
+  perkL:'0%,25%,100%{transform:rotate(0)}38%{transform:rotate(-32deg) scale(1.12)}50%{transform:rotate(-20deg) scale(1.05)}62%,80%{transform:rotate(-28deg) scale(1.1)}',
+  perkR:'0%,25%,100%{transform:rotate(0)}38%{transform:rotate(32deg) scale(1.12)}50%{transform:rotate(20deg) scale(1.05)}62%,80%{transform:rotate(28deg) scale(1.1)}',
+  droopL:'0%,15%,100%{transform:rotate(0)}55%,90%{transform:rotate(30deg) scaleY(.92)}',
+  droopR:'0%,15%,100%{transform:rotate(0)}55%,90%{transform:rotate(-30deg) scaleY(.92)}',
+  foldL:'0%,12%,88%,100%{transform:rotate(0)}30%,72%{transform:rotate(36deg) scale(.9)}',
+  foldR:'0%,12%,88%,100%{transform:rotate(0)}30%,72%{transform:rotate(-36deg) scale(.9)}',
+  flutL:'0%,100%{transform:rotate(0)}50%{transform:rotate(-10deg)}',
+  flutR:'0%,100%{transform:rotate(0)}50%{transform:rotate(10deg)}',
+  wigL:'0%,50%,100%{transform:rotate(0)}15%{transform:rotate(-22deg)}30%{transform:rotate(5deg)}',
+  wigR:'0%,50%,100%{transform:rotate(0)}65%{transform:rotate(22deg)}80%{transform:rotate(-5deg)}',
+  // хобот
+  swing:'0%,100%{transform:rotate(-10deg)}50%{transform:rotate(14deg)}',
+  wag:'0%,100%{transform:rotate(-18deg)}50%{transform:rotate(18deg)}',
+  curl:'0%,20%,85%,100%{transform:rotate(0)}40%,70%{transform:rotate(-40deg) scale(.92,1.05)}',
+  trumpet:'0%,35%,100%{transform:rotate(0)}48%{transform:rotate(-78deg) scale(1.05,1.18)}56%{transform:rotate(-66deg) scale(1.05,1.15)}64%{transform:rotate(-78deg) scale(1.05,1.18)}82%{transform:rotate(0)}',
+  tdroop:'0%,100%{transform:rotate(4deg)}50%{transform:rotate(12deg) scaleY(1.1)}',
+  sniff:'0%,55%,100%{transform:rotate(0)}62%{transform:rotate(-10deg) scaleY(.94)}68%{transform:rotate(5deg)}74%{transform:rotate(-10deg) scaleY(.94)}82%{transform:rotate(0)}',
+  twirl:'0%,100%{transform:rotate(0)}25%{transform:rotate(-28deg)}50%{transform:rotate(16deg) scale(.95)}75%{transform:rotate(-12deg)}',
+  // глаза
+  blink:'0%,44%,52%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}',
+  blink2:'0%,70%,78%,86%,100%{transform:scaleY(1)}74%,82%{transform:scaleY(.08)}',
+  look:'0%,15%,85%,100%{transform:translateX(0)}25%,45%{transform:translateX(-2.4px)}55%,75%{transform:translateX(2.4px)}',
+  pop:'0%,100%{transform:scale(1)}10%{transform:scale(.7)}25%{transform:scale(1.5)}40%{transform:scale(1.2)}55%{transform:scale(1.38)}',
+  squint:'0%,20%,85%,100%{transform:scaleY(1)}35%,70%{transform:scaleY(.42) translateY(.5px)}',
+  dart:'0%,100%{transform:translate(0,0)}20%{transform:translate(-2px,0)}40%{transform:translate(2px,-1px)}60%{transform:translate(-1px,1px)}80%{transform:translate(2px,0)}',
+  glint:'0%,100%{transform:scale(1)}50%{transform:scale(1.22)}',
+  up:'0%,100%{transform:none}50%{transform:translate(1.2px,-2px)}',
+  happy:'0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-1px) scaleY(1.35)}',
+  shades:'0%{transform:translateY(-16px);opacity:0}14%{opacity:1}24%,88%{transform:none;opacity:1}100%{transform:translateY(-16px);opacity:0}',
+  nerd:'0%,20%,45%,100%{transform:none}28%{transform:translateY(-2.8px)}36%{transform:translateY(-.5px)}',
+  coin:'0%,100%{transform:scaleX(1)}50%{transform:scaleX(-1)}',
+  // рот
+  talk:'0%,100%{transform:scaleY(1)}25%{transform:scaleY(.5)}50%{transform:scaleY(1.25)}75%{transform:scaleY(.7)}',
+  grow:'0%,100%{transform:scale(1)}50%{transform:scale(1.4,1.25)}',
+  laughM:'0%,100%{transform:scale(1)}50%{transform:scale(1.15,.55)}',
+  chomp:'0%,100%{transform:scaleY(1)}50%{transform:scaleY(.2)}',
+  wob:'0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}',
+  pout:'0%,15%,70%,100%{transform:scale(1)}30%,55%{transform:scale(1.7) translateY(-.5px)}',
+  open:'0%,100%{transform:scale(1)}20%{transform:scale(.6)}35%,70%{transform:scale(1.5,1.75)}',
+  smirkM:'0%,100%{transform:none}50%{transform:scaleX(1.35) rotate(-7deg) translateX(1px)}',
+  quiver:'0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(.7px) scaleX(.88)}',
+  // предметы и отдельные части
+  winkEye:'0%,28%,62%,100%{transform:scaleY(1)}35%,55%{transform:scaleY(.08)}',
+  hug:'0%,100%{transform:scaleX(1)}40%,60%{transform:scaleX(.7)}',
+  halo:'0%,100%{transform:scaleX(1) translateY(0)}50%{transform:scaleX(.25) translateY(-2px)}',
+  roll2:'0%,100%{transform:translate(0,0)}25%{transform:translate(1.6px,1.4px)}50%{transform:translate(0,3.4px)}75%{transform:translate(-1.6px,1.4px)}',
+  maskPuff:'0%,50%,62%,78%,100%{transform:scale(1)}56%,70%{transform:scale(1.1,1.15)}',
+  popC:'0%,44%{transform:scale(0);opacity:0}50%{transform:scale(1.35);opacity:1}80%{transform:scale(1);opacity:1}100%{transform:scale(1.15);opacity:0}',
+  tip:'0%,20%,60%,100%{transform:none}35%,45%{transform:translate(-2px,-5px) rotate(-20deg)}',
+  glow:'0%,100%{opacity:1}50%{opacity:.55}',
+  zip:'0%,15%{transform:translateX(-10px)}45%,90%{transform:none}100%{transform:translateX(-10px)}',
+  brk:'0%,30%{transform:none;opacity:1}35%,45%{transform:rotate(-10deg)}40%,50%{transform:rotate(10deg)}80%{transform:translateY(9px) rotate(22deg);opacity:0}100%{opacity:0}',
+  stamp:'0%{transform:scale(3) rotate(-30deg);opacity:0}14%,85%{transform:scale(1) rotate(0);opacity:1}100%{transform:scale(1);opacity:0}',
+  toss:'0%,15%,70%,100%{transform:none}35%{transform:translateY(-17px) rotate(200deg)}55%{transform:translateY(-2px) rotate(360deg)}',
+  cup:'0%,20%,75%,100%{transform:none}40%,60%{transform:translate(8px,-7px) rotate(-28deg)}',
+};
+// тело / уши / хобот / глаза / рот — «имя/секунды», «-» — стоит на месте
+const EA={
+  smile:'nod/2.6 slow/2.6 swing/2.6 blink/3.4 grow/2.6',
+  grin:'hop2/1.9 f/.38 wag/.38 happy/.95 talk/.95',
+  laugh:'laugh/.42 f/.21 wag/.42 happy/.42 laughM/.21',
+  rofl:'roll/1.2 f/.3 wag/.3 happy/.4 laughM/.2',
+  sweat:'sigh/2.4 slow/1.2 sniff/2.4 look/2.4 quiver/.4',
+  wink:'lean/2.2 wig/2.2 curl/2.2 -/0 smirkM/2.2',
+  blush:'shrink/3 fold/3 tdroop/1.5 squint/3 quiver/.5',
+  love:'beat/1.1 f/.55 trumpet/2.2 glint/.55 grow/1.1',
+  kiss:'kiss/2 perk/2 curl/2 squint/2 pout/2',
+  hugs:'squeeze/1.6 fold/1.6 swing/1.6 happy/1.6 grow/1.6',
+  halo:'float/3 slow/3 swing/3 blink/3 grow/3',
+  cool:'nod/1.5 wig/3 swing/1.5 shades/3 smirkM/3',
+  nerd:'nod/2.8 slow/2.8 sniff/2.8 nerd/2.8 talk/1.4',
+  star:'flip/2.4 perk/2.4 trumpet/2.4 glint/.6 grow/1.2',
+  party:'dance/.9 f/.45 wag/.45 happy/.45 laughM/.45',
+  think:'tilt/3.2 slow/3.2 twirl/3.2 up/3.2 wob/3.2',
+  smirk:'lean/2.8 wig/2.8 curl/2.8 squint/2.8 smirkM/2.8',
+  neutral:'stare/3.4 slow/3.4 sniff/3.4 blink2/3.4 -/0',
+  eyeroll:'sigh/2.6 droop/2.6 tdroop/2.6 -/0 quiver/1.3',
+  sleep:'sleep/4 droop/4 tdroop/2 -/0 grow/2',
+  tired:'tired/3.6 droop/3.6 tdroop/1.8 squint/3.6 quiver/1.8',
+  mask:'cough/2.4 perk/2.4 sniff/2.4 squint/2.4 -/0',
+  sick:'sway/2.6 droop/2.6 twirl/2.6 squint/2.6 wob/1.3',
+  hot:'heat/1 flut/.12 tdroop/1 squint/2 wob/.5',
+  cold:'shiver/.09 flut/.1 wag/.18 dart/.8 chomp/.12',
+  dizzy:'orbit/1.3 wig/1.3 twirl/1.3 -/0 wob/1.3',
+  boom:'inflate/2 perk/2 trumpet/2 pop/2 open/2',
+  cowboy:'nod/2.4 slow/2.4 swing/2.4 blink/2.4 talk/1.2',
+  sad:'sigh/3.2 droop/3.2 tdroop/3.2 blink/3.2 quiver/1',
+  cry:'sob/.5 flut/.25 tdroop/1 -/0 laughM/.25',
+  plead:'kiss/2.2 fold/2.2 curl/2.2 glint/1.1 quiver/.3',
+  scream:'scream/1.6 perk/1.6 trumpet/1.6 pop/1.6 open/1.6',
+  shock:'jolt/2.2 perk/2.2 trumpet/2.2 pop/2.2 open/2.2',
+  angry:'fume/1.6 flut/.16 wag/.4 squint/1.6 chomp/.4',
+  rage:'rage/.8 flut/.1 wag/.2 dart/.4 talk/.2',
+  devil:'evil/1.6 wig/1.6 curl/1.6 squint/1.6 laughM/.2',
+  skull:'wiggle/.5 -/0 -/0 dart/1 chomp/.22',
+  clown:'spin/2.8 f/.35 twirl/1.4 blink2/2.8 grow/1.4',
+  ghost:'ghost/3 -/0 -/0 blink/3 open/3',
+  money:'hop/1.4 perk/1.4 trumpet/1.4 coin/.7 talk/.7',
+  tongue:'wiggle/1 wig/1 wag/.5 squint/2 wob/.25',
+  crazy:'crazy/1.1 wig/.55 twirl/.55 dart/.55 wob/.3',
+  zip:'nod/2.6 slow/2.6 sniff/2.6 look/2.6 -/0',
+  upside:'upside/3 f/.5 swing/1.5 blink/3 grow/1.5',
+  melt:'melt/3 droop/3 tdroop/3 squint/3 wob/1.5',
+  like:'hop/1.4 perk/1.4 curl/1.4 happy/1.4 grow/1.4',
+  dislike:'no/2.2 droop/2.2 tdroop/2.2 blink/2.2 quiver/.6',
+  wave:'sway/1.1 f/.55 swing/1.1 happy/1.1 talk/.55',
+  pray:'bow/1.8 fold/1.8 tdroop/1.8 -/0 grow/1.8',
+  heart:'beat/.8 f/.4 curl/1.6 glint/.8 grow/.8',
+  broken:'sigh/2.4 droop/2.4 tdroop/2.4 blink/2.4 quiver/.4',
+  fire:'headbang/.45 f/.225 wag/.45 squint/.9 laughM/.45',
+  hundred:'impact/2.4 perk/2.4 trumpet/2.4 pop/2.4 grow/2.4',
+  king:'proud/2.6 perk/2.6 trumpet/2.6 squint/2.6 smirkM/2.6',
+  grad:'impact/2.6 f/.4 trumpet/2.6 happy/1.3 grow/1.3',
+  coffee:'sip/3 slow/3 curl/3 squint/3 pout/3',
+  popper:'recoil/1.6 perk/1.6 trumpet/1.6 pop/1.6 laughM/.4',
+  cake:'dance/1.4 f/.7 wag/.7 happy/.7 talk/.7',
+};
+const EA_X={   // отдельные части: [селектор, анимация, секунды, transform-origin]
+  wink:[['.el-blink','winkEye',2.2]],hugs:[['.el-front','hug',1.6]],halo:[['.el-top','halo',2,'center']],
+  eyeroll:[['.el-pupil','roll2',2.6]],mask:[['.el-over','maskPuff',2.4]],boom:[['.el-top','popC',2,'center']],
+  cowboy:[['.el-top','tip',2.4,'left bottom']],devil:[['.el-top','glow',.8]],zip:[['.el-zipper','zip',2.6]],
+  broken:[['.el-front','brk',2.4]],hundred:[['.el-front','stamp',2.4,'center']],grad:[['.el-top','toss',2.6,'center']],
+  coffee:[['.el-front','cup',3,'center']],
+};
+const EA_CENTER=new Set(['rofl','star','clown','upside','dizzy','crazy']);
+function _elAnimCss(){
+  let css='.el .el-all{transform-box:view-box;transform-origin:32px 46px}.el .el-earL{transform-origin:88% 45%}.el .el-earR{transform-origin:12% 45%}'
+    +'.el .el-trunk{transform-origin:30% 0}.el .el-eyes,.el .el-mouth{transform-origin:center}.el .el-top{transform-origin:center bottom}';
+  for(const [n,k] of Object.entries(EK))css+=`@keyframes ek_${n}{${k}}`;
+  for(const [id,spec] of Object.entries(EA)){
+    const [b,e,t,y,m]=spec.split(' ').map(x=>x.split('/'));
+    const sel=`.el-i-${id}`,an=(n,d,ez)=>`animation:ek_${n} ${d}s ${ez||'ease-in-out'} infinite`;
+    if(b[0]!=='-')css+=`${sel} .el-all{${an(b[0],b[1])}${EA_CENTER.has(id)?';transform-origin:32px 32px':''}}`;
+    if(e[0]!=='-')css+=`${sel} .el-earL{${an(e[0]==='f'?'fL':e[0]+'L',e[1])}}${sel} .el-earR{${an(e[0]==='f'?'fR':e[0]+'R',e[1])}}`;
+    if(t[0]!=='-')css+=`${sel} .el-trunk{${an(t[0],t[1])}}`;
+    if(y[0]!=='-')css+=`${sel} .el-eyes{${an(y[0],y[1],y[0]==='shades'?'cubic-bezier(.3,1.4,.5,1)':'')}}`;
+    if(m[0]!=='-')css+=`${sel} .el-mouth{${an(m[0],m[1])}}`;
+    for(const [s,n,d,o] of EA_X[id]||[])css+=`${sel} ${s}{${an(n,d)}${o?';transform-origin:'+o:''}}`;
+  }
+  return css+'body.perf-noanim .el,body.perf-noanim .el *{animation:none!important}';
+}
+// общие градиенты и анимации — один раз на страницу
+(function _elBoot(){
+  if(typeof document==='undefined')return;
+  const go=()=>{
+    if(document.getElementById('elDefs'))return;
+    const d=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    d.id='elDefs';d.setAttribute('aria-hidden','true');d.style.cssText='position:absolute;width:0;height:0;overflow:hidden';
+    d.innerHTML='<defs>'+elDefsStr()+'</defs>';
+    document.body.appendChild(d);
+    const st=document.createElement('style');st.id='elAnim';st.textContent=_elAnimCss();document.head.appendChild(st);
+  };
+  if(document.body)go();else document.addEventListener('DOMContentLoaded',go);
+})();

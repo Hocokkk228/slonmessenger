@@ -223,7 +223,7 @@ function _patRingsSvg(pat){
     const a=(i/n)*Math.PI*2+off*Math.PI/180;
     g+=icon(320+Math.cos(a)*r*1.3,200+Math.sin(a)*r*.82,s,o);
   }
-  return `<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'><defs><filter id='m'><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -.21 -.41 -.08 1 0'/></filter></defs>${g}</svg>`;
+  return `<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'><defs><filter id='m'><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -.21 -.41 -.08 1 0'/></filter>${pat.el&&typeof elDefsStr==='function'?elDefsStr().replace(/"/g,"'"):''}</defs>${g}</svg>`;
 }
 function _getProfileBgStyle(bgId,bgColor,pattern){
   let baseGrad;
