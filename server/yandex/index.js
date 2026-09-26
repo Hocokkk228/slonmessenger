@@ -34,7 +34,7 @@ const FB = 'https://slon-376b4-default-rtdb.europe-west1.firebasedatabase.app';
 async function fbGet(p) { try { const r = await fetch(FB + '/' + p + '.json', { signal: AbortSignal.timeout(5000) }); return r.ok ? await r.json() : null; } catch (e) { return null; } }
 async function fbPut(p, v) { try { await fetch(FB + '/' + p + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v), signal: AbortSignal.timeout(5000) }); } catch (e) { } }
 
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mime, X-Name', 'Access-Control-Max-Age': '86400' };
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Slon-Auth, X-Mime, X-Name', 'Access-Control-Max-Age': '86400' };
 const J = (o, s = 200) => ({ statusCode: s, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
 const E = (code, msg, s = 400) => J({ ok: false, error: code, message: msg }, s);
 
@@ -64,7 +64,8 @@ async function sessionUser(token) {
   if (now() - (s.last_seen || 0) > 3600e3) await q('UPDATE sessions SET last_seen=$t WHERE token_hash=$h;', { t: now(), h });
   return s.username;
 }
-const bearer = hd => { const a = hd['authorization'] || ''; return a.startsWith('Bearer ') ? a.slice(7) : ''; };
+// токен SLON: X-Slon-Auth (прямой вызов функции) или Authorization: Bearer (через шлюз — фоновая служба Android)
+const bearer = hd => { if (hd['x-slon-auth']) return hd['x-slon-auth']; const a = hd['authorization'] || ''; return a.startsWith('Bearer ') ? a.slice(7) : ''; };
 async function isAdmin(u) { if (BUILTIN_ADMINS.includes(u)) return true; return !!(await one('SELECT username FROM admins WHERE username=$u;', { u })); }
 async function failCheck(u) { const f = await one('SELECT cnt,until_ts FROM login_fails WHERE username=$u;', { u }); return f && f.cnt >= MAX_FAILS && f.until_ts > now() ? Math.ceil((f.until_ts - now()) / 60000) : 0; }
 async function failAdd(u) {

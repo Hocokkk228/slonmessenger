@@ -38,6 +38,10 @@ function _mediaUrl(id){return SRV_KIND==='yc'?SLON_YC.media+id:API_URL+'/media/'
 // фоновой службе Android нужен адрес, у которого есть /ws и /push/fcm — у Яндекса это шлюз
 const _BG_API=SRV_KIND==='yc'?SLON_YC.gw:API_URL;
 
+// Токен SLON в заголовке. У Яндекса «Authorization: Bearer» перехватывает сама платформа
+// (считает облачным токеном и отвечает 403) — поэтому там свой заголовок X-Slon-Auth.
+function _authHeader(tok){return SRV_KIND==='yc'?{'X-Slon-Auth':tok}:{Authorization:'Bearer '+tok};}
+
 function _apiToken(u){try{return JSON.parse(localStorage.getItem('sl_tok_'+(u||myUsername)))||'';}catch(e){return '';}}
 function _apiSetToken(u,t){try{if(t)localStorage.setItem('sl_tok_'+u,JSON.stringify(t));else localStorage.removeItem('sl_tok_'+u);}catch(e){}}
 
@@ -56,7 +60,7 @@ async function api(path,body,opts={}){
 async function _apiOnce(path,body,opts={}){
   const headers={'Content-Type':'application/json'};
   const tok=opts.token!==undefined?opts.token:_apiToken();
-  if(tok)headers.Authorization='Bearer '+tok;
+  if(tok)Object.assign(headers,_authHeader(tok));
   let r;
   try{
     r=await fetch(_apiUrl(path),{method:body!==undefined?'POST':'GET',headers,body:body!==undefined?JSON.stringify(body):undefined});
