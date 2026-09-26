@@ -568,7 +568,7 @@ let _pendingRemoteOffer=null;
 let _lastIncomingCallId=null; // callId последнего входящего звонка
 let _cancelledCallIds=new Set(); // callId отменённых звонков (чтобы не показывать при оффлайн-доставке)
 const ICE_SERVERS=[
-  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},
   {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
@@ -1292,7 +1292,7 @@ let _gc = null; // активный групповой звонок
 //         muted: false, camOff: false }
 
 const _GC_ICE = [
-  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},
   {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
 ];
@@ -1515,7 +1515,7 @@ let _vrSignalUnsub = null;
 let _vrCurrentGid = null; // какая группа сейчас открыта в панели войсов
 
 const _VR_ICE = [
-  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},
   {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
   {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
 ];

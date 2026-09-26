@@ -97,7 +97,7 @@ async function _apiLoadTurn(){
   try{
     const d=await api('/turn');
     const list=(d.iceServers||[]).filter(s=>s&&s.urls);
-    if(list.length){ICE_SERVERS.splice(0,ICE_SERVERS.length,{urls:'stun:stun.cloudflare.com:3478'},...list);}
+    if(list.length){ICE_SERVERS.splice(0,ICE_SERVERS.length,{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},...list);}
   }catch(e){}
 }
 setTimeout(_apiLoadTurn,4000);

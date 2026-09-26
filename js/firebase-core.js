@@ -493,6 +493,10 @@ function sendData(conn,data){
   try{if(conn?.open){conn.send(data);}}catch(e){}
 }
 
+// Сигналы звонка — строго по очереди: сервер может доставить их почти одновременно,
+// а параллельные setRemoteDescription/addIceCandidate ломают соединение (сбросы при камере/демонстрации)
+let _sigChain=Promise.resolve();
+const _sigRun=fn=>{_sigChain=_sigChain.then(fn,fn).catch(e=>console.warn('sig:',e));};
 function onData(pid,data){
   switch(data.type){
     case 'hello':
@@ -635,7 +639,7 @@ function onData(pid,data){
       break;
     case 'call_offer':
       // SDP offer от звонящего
-      (async()=>{
+      _sigRun(async()=>{
         // Сохраняем SDP в pendingCall если он есть (UI входящего звонка показан)
         if(pendingCall?.peerId===pid){pendingCall.sdp=data.sdp;}
         // На случай если offer пришёл РАНЬШЕ call_incoming — кэшируем
@@ -655,19 +659,19 @@ function onData(pid,data){
             _callSend(pid,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
           }catch(e){console.warn('late offer handle:',e);}
         }
-      })();
+      });
       break;
     case 'call_answer':
-      (async()=>{
+      _sigRun(async()=>{
         if(!activeCall||activeCall.peerId!==pid||!_callPC)return;
         try{
           await _callPC.setRemoteDescription(_boostDesc(data.sdp));
           await _flushPendingIce();
         }catch(e){console.warn('set answer error:',e);}
-      })();
+      });
       break;
     case 'call_ice':
-      (async()=>{
+      _sigRun(async()=>{
         if(!data.candidate)return;
         // Если PC ещё не создан или remoteDescription не установлен — буферизуем
         if(!_callPC||!_callPC.remoteDescription||!_callPC.remoteDescription.type){
@@ -676,7 +680,7 @@ function onData(pid,data){
         }
         try{await _callPC.addIceCandidate(new RTCIceCandidate(data.candidate));}
         catch(e){console.warn('ice candidate error:',e);}
-      })();
+      });
       break;
     case 'system_premium':
       myPremium=true;saveAll();buildThemeGrids();updateProfileDisplay();
@@ -713,7 +717,7 @@ function onData(pid,data){
       break;
     case 'webrtc_offer':
       // Renegotiation offer (camera/screen added or removed mid-call)
-      (async()=>{
+      _sigRun(async()=>{
         if(!_callPC||!data.sdp)return;
         try{
           // Коллизия офферов: если мы сами ждём ответ — откатываем свой,
@@ -731,11 +735,11 @@ function onData(pid,data){
           setTimeout(()=>{_updateRemoteVideoUI();_tryPlayRemote();},700);
           setTimeout(()=>{_updateRemoteVideoUI();},1500);
         }catch(e){console.warn('webrtc_offer renegotiate error:',e);}
-      })();
+      });
       break;
     case 'webrtc_answer':
       // Renegotiation answer
-      (async()=>{
+      _sigRun(async()=>{
         if(!_callPC||!data.sdp)return;
         try{
           await _callPC.setRemoteDescription(_boostDesc(data.sdp));
@@ -743,7 +747,7 @@ function onData(pid,data){
           setTimeout(()=>_updateRemoteVideoUI(),200);
           setTimeout(()=>{_updateRemoteVideoUI();_tryPlayRemote();},700);
         }catch(e){console.warn('webrtc_answer renegotiate error:',e);}
-      })();
+      });
       break;
     case 'group_invite':
       recvGrpInvite(data);
