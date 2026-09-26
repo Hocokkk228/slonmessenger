@@ -494,6 +494,11 @@
     <div class="sb-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
+      <!-- «Обновление…»: плавно раздвигает верх списка, пока догоняем пропущенное -->
+      <div class="sb-upd" id="sbUpd"><div class="sb-upd-in">
+        <span class="sb-upd-ico"><svg class="sb-upd-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg><svg class="sb-upd-ok" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span class="sb-upd-txt">Обновление<span class="sb-upd-dots"><i>.</i><i>.</i><i>.</i></span></span>
+      </div></div>
       <!-- МОЙ ПРОФИЛЬ + НАСТРОЙКИ (выезжает поверх списка чатов, как в Telegram) -->
       <!-- АРХИВ: открывается поверх списка чатов -->
       <div class="arc-panel" id="arcPanel">

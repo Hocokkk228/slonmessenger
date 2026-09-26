@@ -200,7 +200,7 @@ if(IS_NATIVE){
   // ── Обновления: встроенная версия vs version.json на сайте ──
   (async()=>{
     try{
-      const mine=await (await fetch('app-version.json')).json();
+      const mine=await (await fetch(location.origin+'/app-version.json')).json();
       const site=await (await fetch(APP_SITE+'version.json?'+Date.now(),{cache:'no-store'})).json();
       if(site.android&&site.android.version&&site.android.version!==mine.version&&_verNewer(site.android.version,mine.version)){
         setTimeout(()=>_offerUpdate(site.android),4000);

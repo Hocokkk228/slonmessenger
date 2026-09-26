@@ -1,8 +1,8 @@
 {
   "android": {
-    "version": "1.4.5",
+    "version": "1.5.0",
     "size": "5,3 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Объёмные слоники с живой мимикой"
+    "notes": "Обновления интерфейса теперь приходят сразу с сайта; всё стало быстрее"
   }
 }

@@ -208,23 +208,29 @@ function applyRgbProfile(){
   toast('Цвет профиля обновлён 🎨');
 }
 
-// Значки узора кольцами вокруг аватарки: ближе — крупнее и заметнее, дальше — меньше и бледнее
+// Значки узора кольцами вокруг аватарки: ближе — крупнее и заметнее, дальше — меньше и бледнее.
+// Слоник описан один раз (symbol) и расставлен ссылками <use>, фильтр — один на всю группу, результат кешируется.
+const _patMemo={};
 function _patRingsSvg(pat){
+  if(_patMemo[pat.id])return _patMemo[pat.id];
+  const el=pat.el&&typeof elSvgInner==='function';
   const icon=(x,y,s,o)=>{
-    if(pat.el&&typeof elSvgInner==='function')
-      return `<svg x='${(x-s/2).toFixed(1)}' y='${(y-s/2).toFixed(1)}' width='${s}' height='${s}' viewBox='0 0 64 64' opacity='${o}' filter='url(#m)'>${elSvgInner(pat.el).replace(/"/g,"'")}</svg>`;
+    if(el)return `<use href='#pe' x='${(x-s/2).toFixed(1)}' y='${(y-s/2).toFixed(1)}' width='${s}' height='${s}' opacity='${o}'/>`;
     if(pat.txt)return `<text x='${x.toFixed(1)}' y='${y.toFixed(1)}' text-anchor='middle' dominant-baseline='central' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-size='${(pat.txt.length>2?s*.42:s*.9).toFixed(1)}' fill='#000' opacity='${o}'>${pat.txt}</text>`;
     return `<text x='${x.toFixed(1)}' y='${y.toFixed(1)}' text-anchor='middle' dominant-baseline='central' font-size='${(s*.8).toFixed(1)}' opacity='${(o*.8).toFixed(2)}'>${pat.emoji}</text>`;
   };
   // [радиус, сколько, размер, прозрачность, поворот кольца]
   const rings=[[84,6,26,.34,0],[128,10,22,.26,18],[178,14,19,.18,6],[232,18,16,.12,14],[290,22,14,.08,4]];
   let g='';
-  for(const [r,n,s,o,off] of rings)for(let i=0;i<n;i++){
+  for(const [r,n,sz,o,off] of rings)for(let i=0;i<n;i++){
     const a=(i/n)*Math.PI*2+off*Math.PI/180;
-    g+=icon(320+Math.cos(a)*r*1.3,200+Math.sin(a)*r*.82,s,o);
+    g+=icon(320+Math.cos(a)*r*1.3,200+Math.sin(a)*r*.82,sz,o);
   }
-  return `<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'><defs><filter id='m'><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -.21 -.41 -.08 1 0'/></filter>${pat.el&&typeof elDefsStr==='function'?elDefsStr().replace(/"/g,"'"):''}</defs>${g}</svg>`;
+  const defs=`<filter id='m'><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -.21 -.41 -.08 1 0'/></filter>`
+    +(el?elDefsStr().replace(/"/g,"'")+`<symbol id='pe' viewBox='0 0 64 64'>${elSvgInner(pat.el).replace(/"/g,"'")}</symbol>`:'');
+  return _patMemo[pat.id]=`<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='640' height='400' viewBox='0 0 640 400'><defs>${defs}</defs>${el?`<g filter='url(#m)'>${g}</g>`:g}</svg>`;
 }
+const _patUrlMemo={};
 function _getProfileBgStyle(bgId,bgColor,pattern){
   let baseGrad;
   if(bgColor&&bgColor.includes('|')){
@@ -242,7 +248,7 @@ function _getProfileBgStyle(bgId,bgColor,pattern){
   // Паттерн поверх
   const pat=PREMIUM_BG_PATTERNS.find(p=>p.id===pattern);
   if(!pat)return baseGrad;
-  const url=`url("data:image/svg+xml,${encodeURIComponent(_patRingsSvg(pat))}")`;
+  const url=_patUrlMemo[pat.id]||(_patUrlMemo[pat.id]=`url("data:image/svg+xml,${encodeURIComponent(_patRingsSvg(pat))}")`);
   // центр узора — центр аватарки (--avy задаёт шапка профиля)
   return url+' calc(50%) calc(var(--avy,110px) - 200px) / 640px 400px no-repeat, '+baseGrad;
 }

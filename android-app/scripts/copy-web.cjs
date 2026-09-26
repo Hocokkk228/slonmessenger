@@ -7,6 +7,9 @@ const copy=(rel)=>{const src=path.join(root,rel),dst=path.join(www,rel);
   if(fs.statSync(src).isDirectory()){fs.mkdirSync(dst,{recursive:true});for(const f of fs.readdirSync(src))copy(path.join(rel,f));}
   else fs.copyFileSync(src,dst);};
 for(const f of ['index.html','style.css','manifest.json','sw.js','js','icons'])copy(f);
+// index.html приложения — загрузчик: свежий интерфейс с сайта, встроенная копия (app.html) — если сети нет
+fs.renameSync(path.join(www,'index.html'),path.join(www,'app.html'));
+fs.copyFileSync(path.join(__dirname,'loader.html'),path.join(www,'index.html'));
 // версия сборки — приложение сравнивает её с version.json на сайте и предлагает обновиться
 const ver=require('../package.json').version;
 fs.writeFileSync(path.join(www,'app-version.json'),JSON.stringify({version:ver,build:Date.now()}));

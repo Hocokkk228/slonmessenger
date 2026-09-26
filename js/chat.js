@@ -396,6 +396,7 @@ function startReply(m){
 function cancelReply(){_replyTo=null;$('inpWrap').classList.remove('replying');}
 // нажали на цитату — прокрутить к исходному сообщению и подсветить
 function jumpToMsg(id){
+  if(!document.querySelector('[data-msg-id="'+id+'"]'))_rcFlush();
   const el=document.querySelector('[data-msg-id="'+id+'"]');
   if(!el){toast('Сообщение не найдено');return;}
   el.scrollIntoView({behavior:'smooth',block:'center'});
@@ -597,15 +598,45 @@ function _handleChatDelete(pid,data){
   toast((peerNames[pid]||('@'+pid))+' удалил историю чата');
 }
 
+// Открытие чата как в Telegram: сразу — последние сообщения, остальное дорисовывается
+// порциями в фоне (прокрутка не прыгает). Раньше рисовалась вся история разом — чат открывался с лагом.
+let _rcJob=null,_rcMore=null;
 function renderChat(id){
-  const c=$('msgs');c.innerHTML='<div class="sys">Начало чата</div>';
+  if(_rcJob){clearTimeout(_rcJob);_rcJob=null;}
+  const c=$('msgs');c.innerHTML='';
   c.dataset.lastMsgTs='0'; // сброс для date-separator
-  const hist=id.startsWith('g_')?grpHist[id]:chatHist[id];
-  if(hist?.length)hist.forEach(m=>appendMsg(m,c));
+  const hist=(id.startsWith('g_')?grpHist[id]:chatHist[id])||[];
+  let start=Math.max(0,hist.length-50);
+  const part=(from,to)=>{
+    const f=document.createElement('div');       // собираем вне страницы — одна вставка вместо сотен
+    if(from===0)f.insertAdjacentHTML('beforeend','<div class="sys">Начало чата</div>');
+    for(let i=from;i<to;i++)if(hist[i])appendMsg(hist[i],f);
+    return f;
+  };
+  const first=part(start,hist.length);
+  c.append(...first.childNodes);
+  c.dataset.lastMsgTs=first.dataset.lastMsgTs||'0';
   scrollDown();
   _updatePinnedBar();
   _sendRead(id);
+  _rcMore=()=>{
+    _rcJob=null;
+    if(activeChat!==id||!start)return false;
+    const end=start;start=Math.max(0,start-150);
+    const f=part(start,end);
+    // на стыке порций один и тот же день — второй разделитель даты не нужен
+    const seps=f.querySelectorAll('.date-separator'),lastNew=seps[seps.length-1],firstOld=c.querySelector('.date-separator');
+    if(lastNew&&firstOld&&firstOld.textContent===lastNew.textContent)firstOld.remove();
+    const h0=c.scrollHeight,t0=c.scrollTop;
+    c.prepend(...f.childNodes);
+    c.scrollTop=t0+(c.scrollHeight-h0);
+    if(start)_rcJob=setTimeout(_rcMore,80);
+    return true;
+  };
+  if(start)_rcJob=setTimeout(_rcMore,300);
 }
+// дорисовать всю историю сразу (переход к старому сообщению по ответу)
+function _rcFlush(){while(_rcJob){clearTimeout(_rcJob);if(!_rcMore())break;}}
 
 // «Прочитано» собеседнику: чат открыт и виден на экране. Шлём «всё до последнего
 // входящего» (upto) — надёжно, даже если какое-то отдельное подтверждение потерялось.

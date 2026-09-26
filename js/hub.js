@@ -12,9 +12,35 @@ function _hubSend(o){
   if(!_hubUp||!_hubWs||_hubWs.readyState!==1)return false;
   try{_hubWs.send(JSON.stringify(o));return true;}catch(e){return false;}
 }
+// ── «Обновление…» сверху списка чатов: пока догоняем пропущенное (как Updating… в Telegram) ──
+let _updOn=false,_updT=null,_updSince=0;
+function _updShow(on){
+  const el=document.getElementById('sbUpd');if(!el)return;
+  clearTimeout(_updT);
+  if(on){
+    if(_updOn)return;
+    _updT=setTimeout(()=>{_updOn=true;_updSince=Date.now();el.classList.remove('done');el.classList.add('on');},350);   // быстро догнали — не мигаем
+  }else{
+    if(!_updOn)return;
+    _updT=setTimeout(()=>{
+      _updOn=false;el.classList.add('done');                // галочка, потом плавно сворачивается
+      _updT=setTimeout(()=>{el.classList.remove('on');setTimeout(()=>el.classList.remove('done'),450);},550);
+    },Math.max(0,700-(Date.now()-_updSince)));
+  }
+}
+// ── Пачка из журнала — сохраняем один раз в конце, а не после каждого сообщения ──
+let _hubHold=0,_hubHoldDirty=false;
+const _hubSave0=saveAll;
+saveAll=function(){if(_hubHold){_hubHoldDirty=true;return;}return _hubSave0.apply(this,arguments);};
+async function _hubBatch(fn){
+  _hubHold++;
+  try{await fn();}
+  finally{if(!--_hubHold&&_hubHoldDirty){_hubHoldDirty=false;_hubSave0();}}
+}
 function _hubConnect(){
   if(!myUsername||typeof _apiToken!=='function'||!_apiToken())return;
   if(_hubWs&&(_hubWs.readyState===0||_hubWs.readyState===1)&&_hubUser===myUsername)return;
+  _updShow(true);
   try{_hubWs?.close();}catch(e){}
   _hubUser=myUsername;
   const ls=(typeof myPrivacy!=='undefined'&&myPrivacy.lastSeen==='nobody')?'0':'1';
@@ -48,7 +74,7 @@ function _hubMlUpd(upd){if(upd>+(localStorage.getItem(_hubMlKey())||0))try{local
 async function _hubDispatch(m){
   switch(m.t){
     case 'data':_handleIncoming(m.from,m.payload);break;
-    case 'batch':for(const i of m.items||[])_handleIncoming(i.from,i.payload);break;
+    case 'batch':await _hubBatch(async()=>{for(const i of m.items||[])_handleIncoming(i.from,i.payload);});break;
     case 'self':{
       const p=m.payload||{};
       if(p.type==='profile_sync'){if(typeof _psRemote==='function')_psRemote(p);}
@@ -59,15 +85,20 @@ async function _hubDispatch(m){
       else await _mlOnAdd(m.key,m.rec);
       _hubMlUpd(m.upd);break;
     case 'ml_batch':
-      for(const it of m.items||[]){
-        if(it.rec?.del||it.rec?.gone)_mlOnChange(it.key,it.rec);
-        else{await _mlOnAdd(it.key,it.rec);_mlOnChange(it.key,it.rec);}
-        _hubMlUpd(it.upd);
-      }
+      await _hubBatch(async()=>{
+        for(const it of m.items||[]){
+          if(it.rec?.del||it.rec?.gone)_mlOnChange(it.key,it.rec);
+          else{await _mlOnAdd(it.key,it.rec);_mlOnChange(it.key,it.rec);}
+          _hubMlUpd(it.upd);
+        }
+      });
+      // сервер отдаёт до 1000 записей — если упёрлись, догоняем дальше
+      if(!m.full&&(m.items||[]).length>=1000){_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});break;}
+      _updShow(false);
       break;
     case 'vault':await _e2eOnVault([m]);break;
     case 'vault_batch':
-      await _e2eOnVault(m.items);
+      await _hubBatch(()=>_e2eOnVault(m.items));
       if(m.more){_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});break;}
       if(_hubAwaitVault){_hubAwaitVault=false;_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});}
       break;

@@ -904,9 +904,11 @@ function _spCustomize(){
   _spUpdateCustPrev();
 }
 function _spPickGrad(c){_spDraft.color=c;_spUpdateCustPrev(true);}
+let _spCcRaf=0;
 function _spCustomColors(){
   if(!myPremium){toast('⭐ Свои цвета — в SLON Premium');return;}
-  _spDraft.color=$('spC1').value+'|'+$('spC2').value;_spUpdateCustPrev(true);
+  if(_spCcRaf)return;                                  // тянут ползунок — перерисовываем не чаще раза в кадр
+  _spCcRaf=requestAnimationFrame(()=>{_spCcRaf=0;_spDraft.color=$('spC1').value+'|'+$('spC2').value;_spUpdateCustPrev(true);});
 }
 function _spPickPattern(p){
   if(p&&!myPremium){toast('⭐ Узоры — в SLON Premium');return;}

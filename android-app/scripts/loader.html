@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{margin:0;height:100%;background:#0d1520}</style>
+</head><body>
+<script>
+// Загрузчик SLON: интерфейс приходит с сайта (обновления без RuStore/стора — сразу после публикации на сайте).
+// Страница остаётся на своём адресе приложения (https://localhost) — поэтому вход, ключи шифрования и
+// история, сохранённые на устройстве, никуда не деваются. Скрипты и стили берутся с сайта через <base>.
+// Нет сети / сайт недоступен — открываем встроенную в APK копию (app.html).
+(function(){
+  var SITE='https://hocokkk228.github.io/slonmessenger/';
+  var done=false;
+  function show(html,base){
+    if(done)return;done=true;clearTimeout(t);
+    if(base)html=html.replace(/<head([^>]*)>/i,'<head$1><base href="'+base+'">');
+    document.open();document.write(html);document.close();
+  }
+  function local(){
+    if(done)return;
+    fetch('app.html').then(function(r){return r.text();}).then(function(h){show(h,'');})
+      .catch(function(){location.replace('app.html');});
+  }
+  var t=setTimeout(local,5000);
+  fetch(SITE+'index.html',{cache:'no-cache'})
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.text();})
+    .then(function(h){if(h.indexOf('js/core.js')<0)throw new Error('bad');show(h,SITE);})
+    .catch(local);
+})();
+</script>
+</body></html>

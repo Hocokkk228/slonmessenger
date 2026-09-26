@@ -2590,3 +2590,33 @@ body.perf-noanim .el,body.perf-noanim .el *{animation:none!important;}
 .es-ico .cx-el{width:1.45em;height:1.45em;vertical-align:-.35em;}
 
 
+
+/* ── «Обновление…» сверху списка чатов ── */
+.sb-upd{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .35s cubic-bezier(.2,.8,.2,1),opacity .25s ease;flex-shrink:0;}
+.sb-upd.on{grid-template-rows:1fr;opacity:1;}
+.sb-upd-in{overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;min-height:0;font-size:13.5px;font-weight:600;color:var(--accent);}
+.sb-upd.on .sb-upd-in{padding:10px 0 2px;}
+.sb-upd-in{transition:padding .35s cubic-bezier(.2,.8,.2,1);}
+.sb-upd-ico{position:relative;width:16px;height:16px;flex-shrink:0;}
+.sb-upd-ico svg{position:absolute;inset:0;width:16px;height:16px;fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round;transition:opacity .25s,transform .35s cubic-bezier(.3,1.6,.5,1);}
+.sb-upd-spin{stroke-dasharray:42 60;animation:sbUpdSpin .9s linear infinite;}
+.sb-upd-ok{opacity:0;transform:scale(.3);stroke-dasharray:22;stroke-dashoffset:22;}
+.sb-upd.done .sb-upd-spin{opacity:0;transform:scale(.4);}
+.sb-upd.done .sb-upd-ok{opacity:1;transform:none;animation:sbUpdTick .4s .05s ease forwards;}
+.sb-upd.done .sb-upd-dots{opacity:0;}
+@keyframes sbUpdSpin{to{transform:rotate(360deg)}}
+@keyframes sbUpdTick{to{stroke-dashoffset:0}}
+.sb-upd-txt{display:inline-flex;align-items:baseline;}
+.sb-upd-dots{display:inline-flex;transition:opacity .2s;}
+.sb-upd-dots i{font-style:normal;animation:sbUpdDot 1.2s ease-in-out infinite;}
+.sb-upd-dots i:nth-child(2){animation-delay:.15s}.sb-upd-dots i:nth-child(3){animation-delay:.3s}
+@keyframes sbUpdDot{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+/* внизу списка чатов больше нет полоски с точкой и юзернеймом */
+.net-bar{display:none!important;}
+
+/* панель реакций: невидимые разделы не рисуются; раскрытие — маской, без пересчёта раскладки */
+.rx-sec{content-visibility:auto;}
+.rx-box.rx-clip{transition:clip-path .34s cubic-bezier(.2,.85,.25,1),opacity .18s ease,transform .26s cubic-bezier(.32,1.3,.5,1);}
+.rx-box.full .rx-quick{transition:opacity .16s ease;}
+/* в списках выбора (узоры) слоники стоят — анимация только там, где на них смотрят */
+.sp-pat .el,.sp-pat .el *,.admin-row .el,.admin-row .el *,.sp-pick .el,.sp-pick .el *{animation:none!important;}

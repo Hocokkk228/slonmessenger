@@ -272,20 +272,36 @@ function _rxFullHtmlStatus(){
     <div class="rx-scroll"><div class="rx-res" hidden></div><div class="rx-secs">${h}</div></div>`;
 }
 // Полная панель: паки сверху, поиск, сетка с разделами
+const _rxSegMemo=new Map();
+function _rxSegC(s){let v=_rxSegMemo.get(s);if(!v){v=_rxSeg(s);_rxSegMemo.set(s,v);}return v;}
+const _rxSecMemo={};
+// высота раздела заранее — чтобы невидимые разделы не рисовались (content-visibility), а прокрутка не прыгала
+const _rxSecH=n=>Math.ceil(n/8)*42+34;
+function _rxSecHtml(id,title,list,memo){
+  if(memo&&_rxSecMemo[id])return _rxSecMemo[id];
+  const h=`<div class="rx-sec" data-s="${id}" style="contain-intrinsic-size:auto ${_rxSecH(list.length)}px"><div class="rx-sec-h">${title}</div><div class="rx-grid">${list.map(e=>`<button class="rx-i" data-e="${esc(e)}">${rxHtml(e)}</button>`).join('')}</div></div>`;
+  if(memo)_rxSecMemo[id]=h;
+  return h;
+}
+const _rxCatsHtml=()=>_rxSecMemo.__cats||(_rxSecMemo.__cats=RX_CATS.map(c=>_rxSecHtml(c[0],c[1],_rxSegC(c[3]),true)).join(''));
+// остальные категории — дорисовываем после анимации раскрытия
+function _rxFullRest(b){
+  const secs=b?.querySelector('.rx-secs');if(!secs||secs.dataset.rest)return;
+  secs.dataset.rest='1';secs.insertAdjacentHTML('beforeend',_rxCatsHtml());
+}
 function _rxFullHtml(){
   const rec=_rxRecent();
   const st=_rxCtx?.mode==='status';
   if(st)return _rxFullHtmlStatus();
   const tabs=[['recent','<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z"/></svg>','Недавние'],
     ['slon',rxHtml('c:w'),'SLON'],['elephants',rxHtml('e:smile'),'Слоники'],['popular',rxHtml('❤️'),'Популярные'],...RX_CATS.map(c=>[c[0],rxHtml(c[2]),c[1]])];
-  const sec=(id,title,list)=>`<div class="rx-sec" data-s="${id}"><div class="rx-sec-h">${title}</div><div class="rx-grid">${list.map(e=>`<button class="rx-i" data-e="${esc(e)}">${rxHtml(e)}</button>`).join('')}</div></div>`;
+  const sec=(id,title,list,memo)=>_rxSecHtml(id,title,list,memo);
   let h='';
   if(_rxCtx?.mode==='status'&&_esGet())h+=`<button class="rx-clear">Убрать эмодзи-статус</button>`;
   if(rec.length)h+=sec('recent','Недавние',rec);
-  h+=sec('slon','SLON',Object.keys(RX_CUSTOM).filter(k=>k.startsWith('c:')));
-  h+=sec('elephants','Слоники',RX_ELS);
-  h+=sec('popular','Популярные',_rxSeg(RX_POPULAR));
-  for(const c of RX_CATS)h+=sec(c[0],c[1],_rxSeg(c[3]));
+  h+=sec('slon','SLON',Object.keys(RX_CUSTOM).filter(k=>k.startsWith('c:')),true);
+  h+=sec('elephants','Слоники',RX_ELS,true);
+  h+=sec('popular','Популярные',_rxSegC(RX_POPULAR),true);
   const filt=[['сердце','❤️'],['лайк','👍'],['дизлайк','👎'],['праздник','🎉'],['смех','😂']];
   return `<div class="rx-tabs">${tabs.filter(t=>t[0]!=='recent'||rec.length).map(t=>`<button class="rx-tab" data-s="${t[0]}" title="${t[2]}">${t[1]}</button>`).join('')}<span class="rx-tab-ind"></span></div>
     <div class="rx-search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -312,6 +328,7 @@ function _rxWireFull(b){
   let lock=0;
   tabs.forEach(t=>t.onclick=ev=>{
     ev.stopPropagation();
+    if(!scroll.querySelector('.rx-sec[data-s="'+t.dataset.s+'"]'))_rxFullRest(b);
     const s=scroll.querySelector('.rx-sec[data-s="'+t.dataset.s+'"]');if(!s)return;
     lock=Date.now();moveInd(t);
     scroll.scrollTo({top:s.offsetTop-4,behavior:'smooth'});
@@ -355,13 +372,18 @@ function _rxExpand(){
   const b=$('rxBox');if(!b||b.classList.contains('full'))return;
   const r=b.getBoundingClientRect(),{w,h}=_rxFullSize();
   $('chatCtxMenu')?.classList.remove('show');
-  b.style.width=r.width+'px';b.style.height=r.height+'px';
-  b.querySelector('.rx-full').innerHTML=_rxFullHtml();
-  _rxWireFull(b);
-  b.classList.add('full','rx-grow');
   const left=Math.max(8,Math.min(r.left,window.innerWidth-w-8));
   const top=Math.max(8,Math.min(r.top,window.innerHeight-h-8));
-  void b.offsetWidth;b.style.left=left+'px';b.style.top=top+'px';b.style.width=w+'px';b.style.height=h+'px';
+  const q=b.querySelector('.rx-quick');
+  b.querySelector('.rx-full').innerHTML=_rxFullHtml();
+  b.classList.add('full');
+  Object.assign(b.style,{left:left+'px',top:top+'px',width:w+'px',height:h+'px'});
+  q.style.left=(r.left-left)+'px';q.style.top=(r.top-top)+'px';
+  b.style.clipPath=`inset(${r.top-top}px ${left+w-r.right}px ${top+h-r.bottom}px ${r.left-left}px round 26px)`;
+  void b.offsetWidth;
+  b.classList.add('rx-clip');b.style.clipPath='inset(-40px round 0px)';
+  _rxWireFull(b);
+  setTimeout(()=>{_rxFullRest(b);b.classList.remove('rx-clip');b.style.clipPath='';},360);
 }
 // Сразу полная панель (выбор эмодзи-статуса) — вырастает из элемента
 function _rxOpenPicker(anchor,mode){
@@ -513,3 +535,10 @@ for(const [k,c] of Object.entries(RX_CUSTOM)){
   const id='pat_'+k.replace(':','_');
   if(!PREMIUM_BG_PATTERNS.some(p=>p.id===id))PREMIUM_BG_PATTERNS.push({id,emoji:rxHtml(k),label:c.el?'Слоник: '+c.label:c.label,txt:c.txt,el:c.el});
 }
+
+// прогрев в простое: разбор эмодзи и HTML разделов готовы до первого открытия панели
+setTimeout(()=>{
+  const idle=window.requestIdleCallback||(f=>setTimeout(f,50));
+  idle(()=>{_rxSegC(RX_POPULAR);RX_ELS.forEach(rxHtml);});
+  idle(()=>{_rxCatsHtml();});
+},2500);
