@@ -697,6 +697,67 @@ const routes = {
   },
   // ── Музыка профиля: свои треки. Лежат в pm/ — без автоудаления (правило 14 дней только для m/).
   // До PM_MAX треков по PM_SIZE на человека; обложка — отдельным файлом рядом.
+  // ── Стена профиля ──
+  // Посты владельца (и гостей, если владелец разрешил), одна картинка (wp/, без автоудаления), лайки.
+  async 'GET /wall'(r) {
+    const owner = String(r.qs.get('u') || '').toLowerCase(); if (!validUser(owner)) return E('bad', 'Неверный юзернейм');
+    const before = String(r.qs.get('before') || '~');
+    const [posts, cfg] = await qAll('SELECT id,author,text,photo,ts,likes FROM wall WHERE owner=$o AND id<$b ORDER BY id DESC LIMIT 20; SELECT who FROM wall_cfg WHERE owner=$o;', { o: owner, b: before });
+    let liked = new Set();
+    if (r.user && posts.length) {
+      const ids = posts.map(p => p.id);
+      const l = await q('SELECT id FROM wall_likes WHERE owner=$o AND u=$u AND id IN $ids;', { o: owner, u: r.user, ids });
+      liked = new Set(l.map(x => x.id));
+    }
+    return J({ ok: true, who: cfg[0]?.who || 'me', posts: posts.map(p => ({ ...p, liked: liked.has(p.id) })), more: posts.length === 20 });
+  },
+  async 'POST /wall/post'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const owner = String(d.owner || '').toLowerCase(); if (!validUser(owner)) return E('bad', 'Неверная стена');
+    if (owner !== u) { const c = await one('SELECT who FROM wall_cfg WHERE owner=$o;', { o: owner }); if ((c?.who || 'me') !== 'all') return E('forbidden', 'Писать на этой стене может только владелец', 403); }
+    const text = String(d.text || '').trim().slice(0, 2000);
+    let photo = String(d.photo || '');
+    if (photo && !photo.startsWith(`https://${S3_HOST}/${BUCKET}/wp/${u}/`)) photo = '';
+    if (!text && !photo) return E('bad', 'Пустой пост');
+    const t = now(), id = String(t).padStart(15, '0') + rnd(4);
+    await q('UPSERT INTO wall (owner,id,author,text,photo,ts,likes) VALUES ($o,$i,$a,$tx,$p,$t,0);', { o: owner, i: id, a: u, tx: text, p: photo, t });
+    if (owner !== u) await deliver(u, owner, { type: 'wall_new', id, from: u });
+    return J({ ok: true, post: { id, author: u, text, photo, ts: t, likes: 0, liked: false } });
+  },
+  async 'POST /wall/delete'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const owner = String(d.owner || '').toLowerCase(), id = String(d.id || '');
+    const p = await one('SELECT author FROM wall WHERE owner=$o AND id=$i;', { o: owner, i: id });
+    if (!p) return E('not_found', 'Пост не найден', 404);
+    if (p.author !== u && owner !== u) return E('forbidden', 'Удалить может автор или владелец стены', 403);
+    await q('DELETE FROM wall WHERE owner=$o AND id=$i;', { o: owner, i: id });
+    return J({ ok: true });
+  },
+  async 'POST /wall/like'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const owner = String(d.owner || '').toLowerCase(), id = String(d.id || '');
+    const p = await one('SELECT likes FROM wall WHERE owner=$o AND id=$i;', { o: owner, i: id });
+    if (!p) return E('not_found', 'Пост не найден', 404);
+    const had = await one('SELECT u FROM wall_likes WHERE owner=$o AND id=$i AND u=$u;', { o: owner, i: id, u });
+    const on = !!d.on;
+    let likes = p.likes || 0;
+    if (on && !had) { await q('UPSERT INTO wall_likes (owner,id,u,ts) VALUES ($o,$i,$u,$t);', { o: owner, i: id, u, t: now() }); likes++; }
+    if (!on && had) { await q('DELETE FROM wall_likes WHERE owner=$o AND id=$i AND u=$u;', { o: owner, i: id, u }); likes = Math.max(0, likes - 1); }
+    await q('UPDATE wall SET likes=$l WHERE owner=$o AND id=$i;', { l: likes, o: owner, i: id });
+    return J({ ok: true, likes, liked: on });
+  },
+  async 'POST /wall/cfg'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const who = d.who === 'all' ? 'all' : 'me';
+    await q('UPSERT INTO wall_cfg (owner,who) VALUES ($o,$w);', { o: u, w: who });
+    return J({ ok: true, who });
+  },
+  async 'POST /wall/presign'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    if (!(+d.size > 0) || +d.size > 6 * 1024 * 1024) return E('too_large', 'Картинка больше 6 МБ', 413);
+    const key = 'wp/' + u + '/' + rnd(12) + '.jpg';
+    return J({ ok: true, put: presign('PUT', key), url: `https://${S3_HOST}/${BUCKET}/${key}` });
+  },
   // ── Кошелёк мини-слоников ──
   async 'GET /wallet'(r) {
     const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);

@@ -3233,3 +3233,48 @@ video.mv-media{cursor:default;}
 /* подарок: при прыжке и покачивании уши не срезаются */
 .gift-svg{overflow:visible!important;}
 .gift-cell,.gift-pcell,.gift-bub,.gift-hd,.gift-conf{overflow:visible!important;}
+
+/* ════════ Стена профиля ════════ */
+.wall{display:flex;flex-direction:column;gap:10px;padding:4px 0 6px;}
+.wall-av{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.wall-av img,.wall-av .av-l{width:100%;height:100%;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;}
+.wall-new{background:var(--bg2);border-radius:14px;padding:10px 12px 8px;}
+.wall-new-row{display:flex;gap:10px;align-items:flex-start;}
+.wall-in{flex:1;min-height:38px;max-height:240px;resize:none;border:none;outline:none;background:transparent;color:var(--text1);font:inherit;font-size:15px;line-height:1.4;padding:9px 0 4px;}
+.wall-in::placeholder{color:var(--text2);}
+.wall-new-ph{position:relative;margin:8px 0 0 48px;width:fit-content;}
+.wall-new-ph img{max-width:180px;max-height:140px;border-radius:10px;display:block;}
+.wall-new-ph button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.wall-new-ph button svg{width:14px;height:14px;fill:currentColor;}
+.wall-new-bar{display:flex;align-items:center;gap:8px;margin-top:6px;padding-left:44px;}
+.wall-ib{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;}
+.wall-ib:hover{background:var(--hover);color:var(--accent);}
+.wall-ib .ico{width:21px;height:21px;}
+.wall-who{border:none;background:none;color:var(--text2);font-size:12.5px;cursor:pointer;padding:6px 8px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.wall-who:hover{background:var(--hover);color:var(--text1);}
+.wall-send{margin-left:auto;width:38px;height:38px;border-radius:50%;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .15s,opacity .15s;}
+.wall-send svg{width:19px;height:19px;fill:currentColor;margin-left:2px;}
+.wall-send:active{transform:scale(.92);}.wall-send.busy{opacity:.5;pointer-events:none;}
+.wall-post{background:var(--bg2);border-radius:14px;padding:12px;}
+.wall-hd{display:flex;align-items:center;gap:10px;}
+.wall-hd-av{cursor:pointer;display:flex;}
+.wall-hd-t{flex:1;min-width:0;display:flex;flex-direction:column;}
+.wall-hd-t b{font-weight:600;color:var(--text1);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.wall-hd-t span{font-size:12.5px;color:var(--text2);}
+.wall-del{width:32px;height:32px;border-radius:50%;border:none;background:none;color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.6;}
+.wall-del:hover{opacity:1;background:var(--hover);color:#ff5b6b;}
+.wall-del svg{width:17px;height:17px;fill:currentColor;}
+.wall-tx{margin-top:9px;font-size:15px;line-height:1.45;color:var(--text1);white-space:pre-wrap;word-break:break-word;}
+.wall-tx a{color:var(--accent);}
+.wall-ph{display:block;margin-top:9px;max-width:100%;max-height:460px;border-radius:10px;cursor:zoom-in;object-fit:cover;}
+.wall-ft{display:flex;margin-top:8px;}
+.wall-like{display:inline-flex;align-items:center;gap:6px;border:none;background:var(--hover);color:var(--text2);border-radius:16px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;}
+.wall-like svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;}
+.wall-like span:empty{display:none;}
+.wall-like.on{color:#ff4d6d;background:rgba(255,77,109,.13);}
+.wall-like.on svg{fill:currentColor;stroke:currentColor;}
+.wall-like.pop svg{animation:wallPop .4s cubic-bezier(.3,1.6,.5,1);}
+@keyframes wallPop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.wall-view{position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;cursor:zoom-out;animation:wallFade .18s;}
+.wall-view img{max-width:96vw;max-height:92vh;border-radius:6px;}
+@keyframes wallFade{from{opacity:0}}

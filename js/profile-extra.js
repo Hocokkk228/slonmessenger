@@ -274,6 +274,7 @@ function _pxTab(btn){
   box.querySelectorAll('.px-tab').forEach(b=>b.classList.toggle('sel',b===btn));
   box.querySelectorAll('.px-tab-body').forEach(b=>b.hidden=b.dataset.t!==t);
   if(t==='posts')_pxLoadPosts(box.dataset.owner);
+  if(t==='wall'&&typeof _wallLoad==='function')_wallLoad(box.dataset.owner);
 }
 async function _pxLoadPosts(owner){
   const el=document.getElementById('pxPosts_'+owner);if(!el)return;

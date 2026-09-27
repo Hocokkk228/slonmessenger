@@ -197,12 +197,13 @@ async function _giftsOf(u){
 _pxGiftsBlock=function(owner){
   setTimeout(()=>_giftsFill(owner),0);
   return `<div class="px-gifts" data-owner="${esc(owner)}">
-    <div class="px-tabs"><button class="px-tab gift-tab" data-t="gifts" onclick="_pxTab(this)" hidden>Подарки</button><button class="px-tab sel" data-t="posts" onclick="_pxTab(this)">Публикации</button></div>
+    <div class="px-tabs"><button class="px-tab sel" data-t="wall" onclick="_pxTab(this)">Стена</button><button class="px-tab gift-tab" data-t="gifts" onclick="_pxTab(this)" hidden>Подарки</button><button class="px-tab" data-t="posts" onclick="_pxTab(this)">Публикации</button></div>
+    <div class="px-tab-body" data-t="wall"><div class="wall" id="pxWall_${esc(owner)}"></div></div>
     <div class="px-tab-body" data-t="gifts" hidden><div class="px-gift-grid gift-prof" id="pxGifts_${esc(owner)}"></div></div>
-    <div class="px-tab-body" data-t="posts"><div class="px-posts" id="pxPosts_${esc(owner)}"><div class="px-gift-hint">Загрузка…</div></div></div></div>`;
+    <div class="px-tab-body" data-t="posts" hidden><div class="px-posts" id="pxPosts_${esc(owner)}"><div class="px-gift-hint">Загрузка…</div></div></div></div>`;
 };
 async function _giftsFill(owner){
-  if(typeof _pxLoadPosts==='function')_pxLoadPosts(owner);
+  if(typeof _wallLoad==='function'){if(_wall[owner])_wall[owner].posts=[];_wallLoad(owner);}
   const list=await _giftsOf(owner);
   const box=document.querySelector(`.px-gifts[data-owner="${CSS.escape(owner)}"]`);if(!box)return;
   const shown=list.filter(g=>owner===myUsername||!g.hidden);
@@ -210,5 +211,4 @@ async function _giftsFill(owner){
   const tab=box.querySelector('.gift-tab');tab.hidden=false;tab.textContent='Подарки '+shown.length;
   const grid=box.querySelector('#pxGifts_'+CSS.escape(owner));
   grid.innerHTML=shown.map(g=>`<button class="gift-pcell${g.hidden?' hid':''}" onclick="_giftView(${esc(JSON.stringify({...g,to:owner,gid:g.id})).replace(/"/g,'&quot;')})">${_giftSvg(g.gift)}<span class="gift-pfrom">${esc(peerNames[g.from]||('@'+g.from))}</span></button>`).join('');
-  _pxTab(tab);
 }

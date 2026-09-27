@@ -29,3 +29,7 @@ CREATE TABLE pmusic       (u Utf8, id Utf8, size Int64, ts Int64, PRIMARY KEY (u
 CREATE TABLE wallet       (u Utf8, bal Int64, ts Int64, PRIMARY KEY (u));
 CREATE TABLE wallet_log   (u Utf8, id Utf8, delta Int64, kind Utf8, peer Utf8, note Utf8, ts Int64, PRIMARY KEY (u, id));
 CREATE TABLE gifts        (to_u Utf8, id Utf8, from_u Utf8, gift Utf8, text Utf8, price Int64, ts Int64, hidden Int64, PRIMARY KEY (to_u, id));
+-- стена профиля
+CREATE TABLE wall         (owner Utf8, id Utf8, author Utf8, text Utf8, photo Utf8, ts Int64, likes Int64, PRIMARY KEY (owner, id));
+CREATE TABLE wall_likes   (owner Utf8, id Utf8, u Utf8, ts Int64, PRIMARY KEY (owner, id, u));
+CREATE TABLE wall_cfg     (owner Utf8, who Utf8, PRIMARY KEY (owner));
