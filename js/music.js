@@ -929,11 +929,14 @@ async function _mmSyncAll(){
   try{
     try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
     const todo=_mm.list.filter(it=>!it.local&&it.url&&!it.friend);
-    let n=0;
-    for(const it of todo){
-      n++;_mmSay(todo.length>1?'Скачиваем музыку на устройство: '+n+' из '+todo.length:'');
-      await _mmCache(it);
-    }
+    if(!todo.length){_mmSyncBusy=false;return;}
+    toast('Скачиваем на устройство треков: '+todo.length);
+    let done=0,i=0;
+    const say=()=>_mmSay(done<todo.length?'Скачиваем музыку на устройство: '+done+' из '+todo.length:'');
+    say();
+    const worker=async()=>{while(i<todo.length){const it=todo[i++];await _mmCache(it);done++;say();}};
+    await Promise.all([worker(),worker(),worker()]);   // по 3 одновременно
+    if(done)toast('Музыка на устройстве: '+_mm.list.filter(x=>x.local).length+' из '+_mm.list.length);
     _mmSay('');
   }catch(e){}
   _mmSyncBusy=false;
