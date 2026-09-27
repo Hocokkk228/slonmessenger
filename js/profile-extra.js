@@ -160,7 +160,9 @@ async function _pxLyrics(tr){
   document.addEventListener('keydown',_pxKaraKey);
   const full=tr.src==='file';
   _kr={tr,lines:[],synced:false,raf:0,idx:-2,full};
-  $('pxKaraNote').textContent=full?'':'Отрывок 30 секунд — строки не синхронизируются';
+  _kr.key='sl_kofs_'+(tr.dz||tr.id);
+  try{const v=localStorage.getItem(_kr.key);_kr.off=full||v==null?null:+v;}catch(e){_kr.off=null;}
+  $('pxKaraNote').textContent=full?'':(_kr.off!=null?'Отрывок подстроен под текст · нажми строку, чтобы поправить':'Отрывок: нажми строку, которая сейчас звучит, — текст подстроится');
   try{
     // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
     const q=(ar)=>fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'')).then(r=>r.json()).catch(()=>[]);
@@ -172,7 +174,7 @@ async function _pxLyrics(tr){
     const body=$('pxKaraBody');if(!body)return;
     if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
     else if(hit.syncedLyrics){
-      _kr.lines=_lrcParse(hit.syncedLyrics);_kr.synced=full;
+      _kr.lines=_lrcParse(hit.syncedLyrics);_kr.synced=full||_kr.off!=null;
       body.innerHTML='<div class="px-kara-pad"></div>'+_kr.lines.map((l,i)=>`<div class="px-kl${l.text?'':' gap'}" data-i="${i}" onclick="_pxKaraLine(${i})">${l.text?esc(l.text):'♪'}</div>`).join('')+'<div class="px-kara-pad"></div>';
     }else{
       body.innerHTML='<div class="px-kara-pad s"></div>'+String(hit.plainLyrics).split('\n').map(l=>`<div class="px-kl plain">${esc(l)||'&nbsp;'}</div>`).join('')+'<div class="px-kara-pad s"></div>';
@@ -190,8 +192,9 @@ function _pxKaraTick(){
   const r=$('pxKaraR');if(r&&!r.matches(':active'))r.value=d?Math.round(t/d*1000):0;
   const tt=$('pxKaraT');if(tt)tt.textContent=_rcFmt(t*1000);const dd=$('pxKaraD');if(dd)dd.textContent=_rcFmt(d*1000);
   if(!_kr.synced||!_kr.lines.length)return;
+  const tl=t+(_kr.full?0:(_kr.off||0));   // время в песне (у отрывка — со сдвигом)
   const L=_kr.lines;let i=-1;
-  for(let k=0;k<L.length;k++){if(L[k].t<=t)i=k;else break;}
+  for(let k=0;k<L.length;k++){if(L[k].t<=tl)i=k;else break;}
   const body=$('pxKaraBody');if(!body)return;
   if(i!==_kr.idx){
     _kr.idx=i;
@@ -200,7 +203,7 @@ function _pxKaraTick(){
     if(cur&&!(_kr.userT&&Date.now()-_kr.userT<3000))body.scrollTo({top:cur.offsetTop-body.clientHeight*0.38,behavior:'smooth'});
   }
   // заливка текущей строки — доля времени до следующей
-  if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur){const nx=(L[i+1]?.t)??(L[i].t+4);const p=Math.max(0,Math.min(1,(t-L[i].t)/Math.max(.3,nx-L[i].t)));cur.style.setProperty('--kp',(p*100).toFixed(1)+'%');}}
+  if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur){const nx=(L[i+1]?.t)??(L[i].t+4);const p=Math.max(0,Math.min(1,(tl-L[i].t)/Math.max(.3,nx-L[i].t)));cur.style.setProperty('--kp',(p*100).toFixed(1)+'%');}}
 }
 async function _pxKaraToggle(){
   if(!_kr)return;
@@ -211,7 +214,16 @@ async function _pxKaraToggle(){
 function _pxKaraSeek(ds){if(_pxKaraAudioIs()&&_kr.full){_pxAudio.currentTime=Math.max(0,_pxAudio.currentTime+ds);_kr.idx=-2;}}
 function _pxKaraScrub(v){if(_pxKaraAudioIs()&&isFinite(_pxAudio.duration)){_pxAudio.currentTime=v/1000*_pxAudio.duration;_kr.idx=-2;}}
 async function _pxKaraLine(i){
-  if(!_kr||!_kr.synced)return;
+  if(!_kr||!_kr.lines.length)return;
+  if(!_kr.full){   // отрывок: строка, на которую нажали, звучит сейчас
+    if(!_pxKaraAudioIs()||!_pxAudio.src||_pxAudio.paused)await _pxPlay(_kr.tr,null);
+    if(!_pxKaraAudioIs())return;
+    _kr.off=_kr.lines[i].t-_pxAudio.currentTime;_kr.synced=true;_kr.idx=-2;
+    try{localStorage.setItem(_kr.key,String(_kr.off.toFixed(2)));}catch(e){}
+    const n=$('pxKaraNote');if(n)n.textContent='Отрывок подстроен под текст · нажми строку, чтобы поправить';
+    return;
+  }
+  if(!_kr.synced)return;
   if(!_pxKaraAudioIs()||!_pxAudio.src)await _pxPlay(_kr.tr,null);
   if(_pxKaraAudioIs()){_pxAudio.currentTime=_kr.lines[i].t;_kr.idx=-2;if(_pxAudio.paused)try{await _pxAudio.play();}catch(e){}}
 }
