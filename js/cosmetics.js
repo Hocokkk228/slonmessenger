@@ -256,9 +256,16 @@ function _cosSpiderBody(red){
     <circle cx="18.4" cy="14.6" r=".9" fill="#fff" opacity=".7"/><circle cx="21.6" cy="14.6" r=".9" fill="#fff" opacity=".7"/>`;
 }
 
+// ── Ранний доступ: у предмета beta:true — выбрать может только тестовый аккаунт zztest (аккаунт Claude),
+// остальные видят его у них в профиле и в выборе с пометкой «Скоро». К обновлению помету снимаем.
+const BETA_TESTERS=new Set(['zztest']);
+function _cosTester(){return BETA_TESTERS.has(myUsername);}
+const _cosBetaLocked=x=>!!(x&&x.beta&&!_cosTester());
+const _cosBetaMsg=()=>toast('Скоро в обновлении');
 // выбор рамки/контура — не теряем эффект и фон (они в том же поле)
 _spPickFrame=function(id){
   const f=AV_FRAME_MAP[id];if(!f)return;
+  if(_cosBetaLocked(f)){_cosBetaMsg();return;}
   if(f.prem&&!myPremium){toast('Эта рамка — в SLON Premium');return;}
   _cosSetDraft({id,color:''});
   document.querySelectorAll('.avf-grid .avf-cell').forEach(b=>b.classList.toggle('sel',b.dataset.f===id));
@@ -364,7 +371,7 @@ setInterval(()=>{if(document.visibilityState==='visible')for(const pid of Object
 function _cosPickSection(title,list,cur,kind,demo,hint){
   const cell=x=>{
     const locked=x.prem&&!myPremium;
-    return `<button class="cos-cell${cur===x.id?' sel':''}${locked?' locked':''}" data-${kind}="${x.id}" onclick="_cosPick('${kind}','${x.id}')">
+    return `<button class="cos-cell${cur===x.id?' sel':''}${locked?' locked':''}"${x.beta?' data-beta="1"':''} data-${kind}="${x.id}" onclick="_cosPick('${kind}','${x.id}')">
       <span class="cos-demo cos-demo-${kind}">${x.id?demo(x.id):'<span class="cos-none">Нет</span>'}</span>
       <span class="avf-cell-nm">${esc(x.name)}</span>${locked?'<span class="avf-lock">'+_ico('lock')+'</span>':''}</button>`;
   };
@@ -373,6 +380,7 @@ function _cosPickSection(title,list,cur,kind,demo,hint){
 }
 function _cosPick(kind,id){
   const list=kind==='fx'?PROFILE_FX:NAME_PLATES,x=list.find(v=>v.id===id);if(!x)return;
+  if(_cosBetaLocked(x)){_cosBetaMsg();return;}
   if(x.prem&&!myPremium){toast('Это — в SLON Premium');return;}
   _cosSetDraft({[kind]:id});
   document.querySelectorAll(`.cos-grid-${kind} .cos-cell`).forEach(b=>b.classList.toggle('sel',b.dataset[kind]===id));
@@ -382,9 +390,11 @@ function _cosPick(kind,id){
 const _spAvFramesSection0=_spAvFramesSection;
 _spAvFramesSection=function(){
   const c=_cosDraft();
+  let base=_spAvFramesSection0();
+  for(const f of AV_FRAMES)if(f.beta)base=base.split('data-f="'+f.id+'"').join('data-f="'+f.id+'" data-beta="1"');
   const nick=esc(_myFullName?.().trim()||myNick||('@'+myUsername));
   const av=myAvatar?`<img src="${myAvatar}" alt="">`:_avHtml(myUsername,myNick||myUsername);
-  return _spAvFramesSection0()
+  return base
     +_cosPickSection('Эффект профиля',PROFILE_FX,c.fx,'fx',id=>`<span class="cos-fx-mini pfx-host">${_fxInnerMini(id)}</span>`,'Анимация по краям окна профиля — её видят все, кто открывает твой профиль.')
     +_spSec('Фон в списке чатов')
     +`<div class="sp-card sp-pad"><div class="sb-item cos-np-prev" id="cosNpPrev"><div class="sb-av"><div class="sb-av-inner">${av}</div></div><div class="sb-info"><div class="sb-row1"><div class="sb-name">${nick}</div></div><div class="sb-prev">Привет!</div></div></div></div>`
