@@ -297,6 +297,12 @@ function _spApps(){
   // версия и размер — из version.json (обновляется вместе с релизом)
   fetch('version.json?'+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(v=>{
     const a=v.android;const el=$('apkInfo');if(a&&el)el.textContent='Приложение APK · версия '+a.version+(a.size?' · '+a.size:'');
+    // в приложении Android — какая версия стоит у тебя; старая → предложение обновиться
+    if(a&&el&&window.Capacitor?.isNativePlatform?.())fetch(location.origin+'/app-version.json').then(r=>r.json()).then(m=>{
+      const old=typeof _verNewer==='function'&&_verNewer(a.version,m.version);
+      el.textContent='У тебя '+m.version+' · новая '+a.version+(a.size?' · '+a.size:'')+(old?' — обнови':' — актуальная');
+      if(old&&typeof _offerUpdate==='function')_offerUpdate(a);
+    }).catch(()=>{});
     const w=v.windows;const ew=$('exeInfo');if(w&&ew)ew.textContent='Установщик · версия '+w.version+(w.size?' · '+w.size:'');
   }).catch(()=>{});
 }
