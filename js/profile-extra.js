@@ -162,9 +162,12 @@ async function _pxLyrics(tr){
   _kr={tr,lines:[],synced:false,raf:0,idx:-2,full};
   $('pxKaraNote').textContent=full?'':'Отрывок 30 секунд — строки не синхронизируются';
   try{
-    const r=await fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+'&artist_name='+encodeURIComponent(tr.artist));
-    const j=await r.json();
-    const hit=(j||[]).find(x=>x.syncedLyrics)||(j||[]).find(x=>x.plainLyrics)||null;
+    // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
+    const q=(ar)=>fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'')).then(r=>r.json()).catch(()=>[]);
+    const first=String(tr.artist||'').split(/s*(?:,|&|feat.?|ft.?|x|и)s*/i)[0];
+    let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
+    const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
+    const hit=byDur((j||[]).filter(x=>x.syncedLyrics))[0]||(j||[]).find(x=>x.plainLyrics)||null;
     if(!_kr||_kr.tr!==tr)return;
     const body=$('pxKaraBody');if(!body)return;
     if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
