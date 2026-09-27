@@ -71,34 +71,47 @@ function _venomSign(){
   return '<path fill="#fff" d="M0,-13C5,-13 6,-6 5,-1C4,4 5,9 0,16C-5,9 -4,4 -5,-1C-6,-6 -5,-13 0,-13Z"/>'
     +L.map(d=>leg(1,d)+leg(-1,d)).join('');
 }
-// ── Веном: эффект профиля на художественной картинке (img/fx/venom-head.webp) ──
-// Голова выезжает справа, «живёт» (жидкое искажение — язык и жижа шевелятся), потом трескается
-// на осколки — каждый осколок это кусок той же картинки — и они разлетаются влево. Капли сверху — отдельно.
+// ── Веном: эффект профиля на художественной картинке (img/fx/venom-head.webp) + векторная шея ──
+// Голова выезжает справа и «живёт» (жидкое шевеление), потом ТАЕТ: края проедаются неровными пятнами,
+// голова стекает вниз, с неё срываются и падают капли жижи. Капли по верхнему краю окна — отдельно.
 const VENOM_IMG='img/fx/venom-head.webp';
+let _vnSeq=0;
 function _cosSymbiote(){
-  const R=_cosRnd(13);
-  const X=60,Y=0,W=240,H=234;                        // картинка 480×468 → в координатах 300×240
-  const img=(extra)=>`<image href="${VENOM_IMG}" x="${X}" y="${Y}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"${extra||''}/>`;
-  // сетка 5×5 со сдвинутыми узлами → 50 треугольников, покрывающих всю голову
-  const N=5,pt=[];
-  for(let j=0;j<=N;j++){pt[j]=[];for(let i=0;i<=N;i++){const jx=(i>0&&i<N)?(R()-.5)*W/N*.6:0,jy=(j>0&&j<N)?(R()-.5)*H/N*.6:0;pt[j][i]=[X+i*W/N+jx,Y+j*H/N+jy];}}
-  let clips='',shards='',n=0;
-  const tri=(a,b,c)=>{const id='vsh'+(n++);const cx=(a[0]+b[0]+c[0])/3;
-    clips+=`<clipPath id="${id}"><path d="M${a.map(_cosF)}L${b.map(_cosF)}L${c.map(_cosF)}Z"/></clipPath>`;
-    const far=(cx-X)/W;                              // левые куски летят раньше и дальше
-    shards+=`<g class="sym-shard" style="--dx:${-(80+R()*160+(1-far)*60).toFixed(0)}px;--dy:${(-70+R()*60).toFixed(0)}px;--r:${(-160+R()*320).toFixed(0)}deg">${img(` clip-path="url(#${id})"`)}</g>`;};
-  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=pt[j][i],b=pt[j][i+1],c=pt[j+1][i],d=pt[j+1][i+1];if(R()>.5){tri(a,b,d);tri(a,d,c);}else{tri(a,b,c);tri(b,d,c);}}
+  const R=_cosRnd(13),u='_'+(++_vnSeq);   // свои id у каждого экземпляра: иначе фильтры берутся у первого
+  const X=92,Y=4,W=190,H=199;                         // картинка 170×178 → в координатах 300×240
+  // падающие капли при таянии
+  let drops='';for(let i=0;i<16;i++){const x=110+R()*170,y=60+R()*140,r=2+R()*5;
+    drops+=`<circle class="ven-drop" cx="${_cosF(x)}" cy="${_cosF(y)}" r="${_cosF(r)}" style="--dx:${(-10-R()*40).toFixed(0)}px;--dy:${(60+R()*110).toFixed(0)}px;animation-delay:${(R()*.25).toFixed(2)}s"/>`;}
   return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin meet" aria-hidden="true">
-    <defs>${clips}
-      <filter id="vnLiquid" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.03" numOctaves="2" seed="3" result="n">
+    <defs>
+      <linearGradient id="vnNeck${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b3448"/><stop offset=".4" stop-color="#0c0f16"/><stop offset="1" stop-color="#020203"/></linearGradient>
+      <filter id="vnLiquid${u}" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="3" result="n">
           <animate attributeName="seed" values="1;2;3;4;5;6;7;8" dur="0.55s" repeatCount="indefinite"/>
         </feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <!-- таяние: вытягивание вниз + неровное проедание по шуму -->
+      <filter id="vnMelt${u}" x="-10%" y="-10%" width="120%" height="150%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="3" seed="9" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="d">
+          <animate attributeName="scale" dur="5.6s" repeatCount="indefinite" keyTimes="0;0.36;0.56;1" values="0;0;46;46"/>
+        </feDisplacementMap>
+        <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="4" result="m"/>
+        <feColorMatrix in="m" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="ma"/>
+        <feComponentTransfer in="ma" result="mask"><feFuncA type="linear" slope="7" intercept="7">
+          <animate attributeName="intercept" dur="5.6s" repeatCount="indefinite" keyTimes="0;0.36;0.56;1" values="7;7;-7;-7"/>
+        </feFuncA></feComponentTransfer>
+        <feComposite in="d" in2="mask" operator="in"/>
       </filter>
     </defs>
-    <g class="sym-shards">${shards}</g>
-    <g class="sym"><g class="sym-head" filter="url(#vnLiquid)">${img()}</g></g>
+    <g class="sym"><g filter="url(#vnMelt${u})"><g class="sym-head">
+      <!-- шея: жижа от затылка уходит за правый край и вниз -->
+      <path d="M200,142C226,160 252,150 268,128C278,116 290,112 300,112V240H206C218,214 212,184 200,142Z" fill="url(#vnNeck${u})" stroke="#000" stroke-width="2.4"/>
+      <path d="M246,146C262,140 276,128 290,122M226,178C232,198 230,216 226,236" stroke="#8ea2c8" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".55"/>
+      <g filter="url(#vnLiquid${u})"><image href="${VENOM_IMG}" x="${X}" y="${Y}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"/></g>
+    </g></g></g>
+    <g class="ven-drops">${drops}</g>
   </svg>`;
 }
 PROFILE_FX.push({id:'symbiote',name:'Веном',prem:true});

@@ -3123,3 +3123,8 @@ video.mv-media{cursor:default;}
 /* Веном на картинке: покачивание головы */
 .pfx-symbiote .sym-head{animation:venBob 5.6s steps(84) infinite!important;transform-box:view-box;transform-origin:260px 60px;}
 @keyframes venBob{0%,100%{transform:rotate(0) translate(0,0)}10%{transform:rotate(-2deg) translate(-2px,1px)}18%{transform:rotate(1.5deg) translate(1px,-1px)}26%{transform:rotate(-1.5deg) translate(-1px,2px)}34%{transform:rotate(1deg) translate(0,0)}}
+/* Веном: тает, а не бьётся — виден до конца таяния, капли срываются и падают */
+@keyframes venSym{0%{opacity:0;transform:translate(26px,-14px) scale(.8)}5%{opacity:1;transform:translate(0,0) scale(1.03)}8%,56%{opacity:1;transform:translate(0,0) scale(1)}58%,100%{opacity:0;transform:translate(0,0) scale(1)}}
+.pfx-symbiote .ven-drop{fill:#050507;opacity:0;animation:venDrop 5.6s steps(84) infinite;}
+@keyframes venDrop{0%,38%{opacity:0;transform:translate(0,0)}42%{opacity:1;transform:translate(0,0)}60%{opacity:1;transform:translate(var(--dx),var(--dy))}64%,100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 20px))}}
+.pfx-symbiote .sym-svg{width:min(88%,330px)!important;}
