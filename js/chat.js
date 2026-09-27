@@ -72,7 +72,7 @@ function sendMsg(){
   // SLON-канал
   if(activeChat===SLON_CHANNEL_ID){
     if(CHANNEL_ADMINS.has(myUsername)){showChannelPublish();inp.value='';}
-    else{toast('📢 Это канал — сюда нельзя писать');inp.value='';}
+    else{toast('Это канал — сюда нельзя писать');inp.value='';}
     return;
   }
   // Пользовательский канал
@@ -87,7 +87,7 @@ function sendMsg(){
       }
       // Firebase onChildAdded сам добавит сообщение — не дублируем вручную
       inp.value='';resizeInp(inp);
-    }else{toast('📢 Только владелец может публиковать посты');inp.value='';}
+    }else{toast('Только владелец может публиковать посты');inp.value='';}
     return;
   }
   // Режим редактирования
@@ -123,9 +123,9 @@ function sendMsg(){
       const replyText=await aiReply(txt); // ждём реальный ответ от Hugging Face (с фолбэком)
       $('typing').classList.remove('show');
       const rts=Date.now();
-      const r={id:'m'+Date.now(),sender:'inc',name:'🐘 СЛОН',text:replyText,ts:rts,time:fmtTime(rts)};
+      const r={id:'m'+Date.now(),sender:'inc',name:'СЛОН',text:replyText,ts:rts,time:fmtTime(rts)};
       chatHist.ai.push(r);appendMsg(r);scrollDown();saveAll();
-      updatePreview('ai','🐘: '+r.text.slice(0,25));
+      updatePreview('ai',': '+r.text.slice(0,25));
     },delay);
   }else if(activeChat==='saved'){
     // Избранное — личный блокнот: только на свои устройства
@@ -198,7 +198,7 @@ function appendMsg(msg,container){
   const av=document.createElement('div');av.className='msg-av';
   if(isOut){
     if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}
-    else av.textContent='😎';
+    else av.innerHTML=_avHtml(myUsername,myNick||myUsername);
   }else{
     const src=msg.avatar||peerAvatars[msg.senderId]||null;
     if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}
@@ -209,8 +209,8 @@ function appendMsg(msg,container){
     const w=document.createElement('div');w.className='msg-who';
     const hasPrem=msg.senderId&&peerPremium[msg.senderId];
     // ⭐ значок Premium + верифицированный SLON канал
-    const badge=hasPrem?' <span style="font-size:10px;vertical-align:middle;opacity:.9" title="SLON Premium">⭐</span>':'';
-    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?' <span style="font-size:10px;vertical-align:middle;opacity:.85" title="Слонгалочка">🐘</span>':'';
+    const badge=hasPrem?_badge('prem'):'';
+    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?_badge('slon'):'';
     w.innerHTML=esc(msg.name)+elephantBadge+badge;
     body.appendChild(w);
   }
@@ -423,7 +423,7 @@ function closeMsgMenu(){$('chatCtxMenu')?.classList.remove('show');_msgMenuTarge
 // ── Ответ на сообщение (как в Telegram): над полем ввода плавно выезжает цитата ──
 let _replyTo=null;
 function _replySnippet(m){
-  return m.text||(m.photoId?'📷 Фото':m.voiceData?'🎙️ Голосовое':m.slonData?'🐘 Кружок':m.fileInfo?('📎 '+m.fileInfo.name):'Сообщение');
+  return m.text||(m.photoId?'Фото':m.voiceData?'Голосовое':m.slonData?'Кружок':m.fileInfo?(''+m.fileInfo.name):'Сообщение');
 }
 function _replyName(m){return m.sender==='me'?(myNick||'Вы'):(m.name||peerNames[m.senderId]||peerNames[activeChat]||'');}
 function startReply(m){
@@ -530,7 +530,7 @@ function startEditMsg(msg){
   inp.dataset.editId=msg.id;
   const hint=document.createElement('div');
   hint.id='editHint';hint.style.cssText='padding:4px 12px;font-size:12px;color:var(--text2);background:var(--bg2);border-top:1px solid var(--border);';
-  hint.innerHTML='✏️ Редактирование · <button onclick="cancelEdit()" style="background:none;border:none;color:var(--accent);cursor:pointer;">Отмена</button>';
+  hint.innerHTML='Редактирование · <button onclick="cancelEdit()" style="background:none;border:none;color:var(--accent);cursor:pointer;">Отмена</button>';
   const bar=$('editHint');if(bar)bar.remove();
   inp.parentNode.insertBefore(hint,inp);
 }
@@ -771,7 +771,7 @@ function pushMsg(msg){
   const h=activeChat.startsWith('g_')?grpHist:chatHist;
   if(!h[activeChat])h[activeChat]=[];
   h[activeChat].push(msg);appendMsg(msg);scrollDown();
-  updatePreview(activeChat,'Вы: 📎 '+(msg.fileName||'Файл').slice(0,20));saveAll();
+  updatePreview(activeChat,'Вы:'+(msg.fileName||'Файл').slice(0,20));saveAll();
 }
 
 async function sendFileTo(fid,name,mime,isImg,data,ts){
@@ -975,7 +975,7 @@ function showChatCtxMenu(e,id){
 function _ctxPreview(){
   $('chatCtxMenu').classList.remove('show');
   if(!ctxTargetId)return;
-  toast('Предпросмотр скоро появится 👁');
+  toast('Предпросмотр скоро появится');
 }
 
 function _ctxMarkUnread(){
@@ -1022,7 +1022,7 @@ function ctxPinToggle(){
     toast('Чат откреплён');
   }else{
     pinnedChats[id]=true;
-    toast('Чат закреплён 📌');
+    toast('Чат закреплён');
   }
   saveAll();
   rebuildSidebar(); // Перестраиваем сайдбар чтобы закреплённые были сверху
@@ -1049,8 +1049,8 @@ function _updateSbMuteIcon(id){
     if(!muteEl){
       muteEl=document.createElement('span');
       muteEl.className='sb-mute';
-      muteEl.textContent='🔕';
-      muteEl.style.cssText='font-size:10px;position:absolute;top:4px;right:4px;opacity:.6';
+      muteEl.innerHTML=_ico('bellOff');
+      muteEl.style.cssText='width:12px;height:12px;position:absolute;top:4px;right:4px;opacity:.6;color:var(--text2)';
       el.style.position='relative';
       el.appendChild(muteEl);
     }
@@ -1074,7 +1074,7 @@ function ctxArchiveToggle(){
     const el=$('si-'+ctxTargetId);
     if(el){el.classList.add('archived');$('archiveList').appendChild(el);}
     updateArchiveHeader();
-    toast('Чат перемещён в архив 📦');
+    toast('Чат перемещён в архив');
     if(activeChat===ctxTargetId)openChat('ai');
   }
   saveAll();

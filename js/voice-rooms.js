@@ -149,7 +149,7 @@ function _vrSyncButtons(){
 function showVoiceRooms(gid){
   _vrCurrentGid = gid;
   const g = groups[gid] || {};
-  $('voiceRoomsTitle').textContent = '🔊 ' + (g.name || 'Войсы');
+  $('voiceRoomsTitle').textContent = '' + (g.name || 'Войсы');
   $('voiceRoomsOverlay').style.display = 'flex';
   _renderVoiceRoomsList(gid);
   _listenVoiceRooms(gid);
@@ -228,7 +228,7 @@ function _listenVoiceRooms(gid){
 function showCreateVoiceRoom(){
   const gid = _vrCurrentGid; if(!gid) return;
   showModal(`
-    <div class="m-title">🔊 Создать войс</div>
+    <div class="m-title">Создать войс</div>
     <input class="m-inp" id="vrNameInp" placeholder="Название (Основной, Gaming, Музыка…)" maxlength="30">
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -248,7 +248,7 @@ async function doCreateVoiceRoom(){
   try{
     await window._fbSet(window._fbRef(window._fbDb,'voice_rooms/'+gid+'/'+roomId),
       {name, createdBy:myUsername, ts:Date.now(), online:{}});
-    toast('🔊 Войс «'+name+'» создан');
+    toast('Войс «'+name+'» создан');
     showVoiceRooms(gid);
   }catch(e){ toast('Ошибка: '+e.message); }
 }
@@ -554,10 +554,10 @@ function _handleVoiceMsg(pid, data){
       // Существующий участник = NON-initiator: джоинер сам пришлёт оффер
       _vrEnsurePeerTile(data.from);
       if(!_vr.pcs[data.from]) _vrCreatePc(data.from, false);
-      toast('🔊 '+(data.nick||('@'+data.from))+' зашёл в войс');
+      toast(''+(data.nick||('@'+data.from))+' зашёл в войс');
     }else if(!_vr){
       // Уведомление что кто-то в войсе (тост с приглашением)
-      toast('🔊 '+(data.nick||('@'+data.from))+' в войсе «'+(data.roomName||'')+'»');
+      toast(''+(data.nick||('@'+data.from))+' в войсе «'+(data.roomName||'')+'»');
     }
   }else if(type==='voice_leave'){
     if(_vr&&_vr.gid===gid&&_vr.roomId===roomId&&data.from!==myUsername){

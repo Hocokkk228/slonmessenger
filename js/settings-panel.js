@@ -205,8 +205,8 @@ function _spRender(quiet){
   if(typeof _avFrameApply==='function')_avFrameApply($('spAv'),myAvFrame||'');
   if(typeof _wallpaperApply==='function')_wallpaperApply($('spHeroWp'),myProfileWallpaper||'');
   $('spName').innerHTML=esc(displayName)
-    +(hasElephantBadge?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
-    +(myPremium?' <span class="sp-badge" title="SLON Premium">⭐</span>':'');
+    +(hasElephantBadge?_badge('slon'):'')
+    +(myPremium?_badge('prem'):'');
   $('spStatus').innerHTML=_fbMode
     ?'<span class="sp-dot on"></span>в сети'
     :'<span class="sp-dot"></span>подключение…';
@@ -271,7 +271,7 @@ function _spRender(quiet){
   if(myLinkedChannel)_spLoadChannelData(myLinkedChannel);
 }
 
-function _spSoon(){toast('Скоро 🐘');}
+function _spSoon(){toast('Скоро');}
 
 // ── Страница «Приложения SLON»: Windows / Android / iPhone ──
 const _APP_ICO={
@@ -303,12 +303,12 @@ function _spApps(){
 // Windows: ставим сайт как приложение (отдельное окно, ярлыки, уведомления)
 function _installWindows(){
   if(typeof _installEvt!=='undefined'&&_installEvt){const ev=_installEvt;_installEvt=null;ev.prompt();return;}
-  if(window.matchMedia('(display-mode: standalone)').matches){toast('SLON уже установлен и открыт как приложение ✅');return;}
+  if(window.matchMedia('(display-mode: standalone)').matches){toast('SLON уже установлен и открыт как приложение');return;}
   toast('Открой SLON в Chrome, Edge или Яндекс Браузере → значок «Установить» в адресной строке (или меню ⋮ → «Установить SLON»)',8000);
 }
 // iPhone: программно ярлык не добавить — показываем пошагово, как это сделать в Safari
 function _iosShortcutHelp(){
-  if(window.navigator.standalone){toast('SLON уже открыт с экрана «Домой» ✅');return;}
+  if(window.navigator.standalone){toast('SLON уже открыт с экрана «Домой»');return;}
   const share='<svg viewBox="0 0 24 24"><path d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7l4-4zm-7 8h3v2H7v7h10v-7h-1v-2h3v11H5V11z"/></svg>';
   const plus='<svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm6 3h2v3h3v2h-3v3h-2v-3H8v-2h3V8z"/></svg>';
   const el=document.createElement('div');el.className='ios-help';
@@ -368,7 +368,7 @@ function _spChannelCardInner(username){
   const name=meta.name||('@'+username);
   const hist=chatHist[id]||[];
   const last=hist[hist.length-1];
-  const preview=last?(last.text||(last.photoId?'🖼 Фото':last.fileInfo?'📎 Файл':'Пост')):(meta.desc||'Канал');
+  const preview=last?(last.text||(last.photoId?'Фото':last.fileInfo?'Файл':'Пост')):(meta.desc||'Канал');
   const time=last?.ts?_spShortDate(last.ts):'';
   return `<div class="sp-ch-row" onclick="_spOpenChannel('${esc(username)}')">
       ${_spAvatarHtml(meta.avatar||peerAvatars[id],name,'sp-ch-av')}
@@ -417,7 +417,7 @@ function _spPickChannel(){
   const mine=Object.entries(myChannels).filter(([,c])=>!c.owner||c.owner===myUsername);
   if(!mine.length){
     _spPush('Канал в профиле',
-      _spCard(`<div class="sp-empty">📢<div>У тебя пока нет своего канала.<br>Создай его — и он появится в профиле.</div>
+      _spCard(`<div class="sp-empty">${_ico('megaphone','sp-empty-ico')}<div>У тебя пока нет своего канала.<br>Создай его — и он появится в профиле.</div>
         <button class="sp-btn" onclick="closeMyProfilePanel();openWizard('channel')">Создать канал</button></div>`));
     return;
   }
@@ -439,7 +439,7 @@ function _spSetLinkedChannel(u){
   saveAll();
   if(_fbMode)_publishMyProfile();
   _spPop();
-  toast(u?'Канал добавлен в профиль 📢':'Канал убран из профиля');
+  toast(u?'Канал добавлен в профиль':'Канал убран из профиля');
 }
 
 // ════════════════════════════════════════
@@ -472,7 +472,7 @@ function _spEditProfile(){
         oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'');_epDirty()"><span>Юзернейм</span></label>
       <div class="m-err" id="newUsernameErr" style="display:none"></div>
     </div>
-    ${_spHint('По юзернейму тебя найдут в SLON через «➕ Контакт».<br><br>Можно использовать <b>a–z</b>, <b>0–9</b> и подчёркивание. Минимум 3 символа.')}
+    ${_spHint('По юзернейму тебя найдут в SLON через «Контакт».<br><br>Можно использовать <b>a–z</b>, <b>0–9</b> и подчёркивание. Минимум 3 символа.')}
     <div class="sp-card">${_spRow({ico:'clock',color:'orange',title:'Часы работы',sub:myBusinessHours?.enabled?'Показываются в профиле':'Выключены',onclick:'_bhEditor()'})}</div>
     <div style="height:70px"></div>`,
     {fab:`<button class="sp-fab" id="epSave" onclick="_epSave()" title="Сохранить">${_spSvg('check')}</button>`});
@@ -725,7 +725,7 @@ async function _spDoChangePassword(){
 function _spPasscode(){
   if(!myPasscode){
     _spPush('Код-пароль',
-      `<div class="sp-empty-top">🔒</div>`
+      `<div class="sp-empty-top">${_ico('lock')}</div>`
       +_spHint('Код-пароль блокирует SLON на этом устройстве: при запуске нужно будет его ввести. Код хранится только здесь.')
       +_spCard(`<label class="sp-field"><input id="pcNew" type="password" inputmode="numeric" maxlength="12" placeholder=" "><span>Новый код (от 4 цифр)</span></label>
         <label class="sp-field"><input id="pcRep" type="password" inputmode="numeric" maxlength="12" placeholder=" "><span>Повтори код</span></label>
@@ -744,7 +744,7 @@ async function _pcEnable(){
   if(!/^\d{4,12}$/.test(a)){err.textContent='Код — от 4 до 12 цифр';err.style.display='block';return;}
   if(a!==b){err.textContent='Коды не совпадают';err.style.display='block';return;}
   myPasscode=await hashPassword('pc:'+a);saveAll();
-  _spPop();toast('Код-пароль включён 🔒');
+  _spPop();toast('Код-пароль включён');
 }
 function _pcDisable(){myPasscode='';saveAll();_spPop();toast('Код-пароль выключен');}
 
@@ -850,15 +850,15 @@ function _spDataStorage(){
 
 function _spGeneral(){
   const wp=Object.entries(CHAT_WALLPAPERS).map(([id,w])=>`<div class="sp-pick${myChatWallpaper===id?' sel':''}" onclick="_spSetWallpaper('${id}',this)">
-      <div class="sp-pick-av sp-wp-ico">${w.emoji||'⬜'}</div><div class="sp-pick-txt">${esc(w.label)}</div><div class="sp-pick-radio"></div></div>`).join('');
+      <div class="sp-pick-av sp-wp-ico">${w.emoji||''}</div><div class="sp-pick-txt">${esc(w.label)}</div><div class="sp-pick-radio"></div></div>`).join('');
   _spPush('Общие настройки',
     _spSec('Тема оформления')+`<div class="sp-card sp-pad"><div class="tp-grid-wrap" id="profThemeGrid"></div></div>`
     +_spCard(_spRow({ico:'brush',color:'purple',title:'Кастомизация профиля',sub:'Фон, градиент и узор',onclick:'_spCustomize()'}))
-    +_spSec('Обои чатов'+(myPremium?'':' <span class="sp-lock">⭐ Premium</span>'))+_spCard(wp,'sp-pad'));
+    +_spSec('Обои чатов'+(myPremium?'':' <span class="sp-lock">Premium</span>'))+_spCard(wp,'sp-pad'));
   buildThemeGrids();
 }
 function _spSetWallpaper(id,el){
-  if(!myPremium){toast('⭐ Обои — в SLON Premium');return;}
+  if(!myPremium){toast('Обои — в SLON Premium');return;}
   myChatWallpaper=id;saveAll();_applyChatWallpaper();
   el.parentElement.querySelectorAll('.sp-pick').forEach(x=>x.classList.toggle('sel',x===el));
 }
@@ -870,7 +870,7 @@ function _spCustomize(){
   _spCloseMenu();
   _spDraft={bg:myProfileBg||'bg0',color:myProfileBgColor||'',pattern:myProfilePattern||'',avFrame:myAvFrame||'',profileWallpaper:myProfileWallpaper||'',profileTheme:myProfileTheme||''};
   const cur=(_spDraft.color&&_spDraft.color.includes('|'))?_spDraft.color.split('|'):['#7cb8ff','#3b6fe0'];
-  const lock=myPremium?'':' <span class="sp-lock">⭐ Premium</span>';
+  const lock=myPremium?'':' <span class="sp-lock">Premium</span>';
   _spPush('Кастомизация профиля',`
     <div class="sp-cust-box" id="spCustThemeBox">
     <div class="sp-cust-prev" id="spCustPrev">
@@ -908,12 +908,12 @@ function _spCustomize(){
 function _spPickGrad(c){_spDraft.color=c;_spUpdateCustPrev(true);}
 let _spCcRaf=0;
 function _spCustomColors(){
-  if(!myPremium){toast('⭐ Свои цвета — в SLON Premium');return;}
+  if(!myPremium){toast('Свои цвета — в SLON Premium');return;}
   if(_spCcRaf)return;                                  // тянут ползунок — перерисовываем не чаще раза в кадр
   _spCcRaf=requestAnimationFrame(()=>{_spCcRaf=0;_spDraft.color=$('spC1').value+'|'+$('spC2').value;_spUpdateCustPrev(true);});
 }
 function _spPickPattern(p){
-  if(p&&!myPremium){toast('⭐ Узоры — в SLON Premium');return;}
+  if(p&&!myPremium){toast('Узоры — в SLON Premium');return;}
   _spDraft.pattern=p;_spUpdateCustPrev(true);
 }
 function _spUpdateCustPrev(dirty){
@@ -934,7 +934,7 @@ function _spSaveCustom(){
   if(_fbMode)_publishMyProfile();
   if(_fbMode&&typeof _broadcastHello==='function')_broadcastHello();
   _spPop();
-  toast('Профиль обновлён 🎨');
+  toast('Профиль обновлён');
 }
 
 // ════════════════════════════════════════
@@ -1035,14 +1035,14 @@ function _ppRender(pid){
   // Окно профиля — в теме, которую выбрал сам собеседник
   if(typeof _profThemeApply==='function')_profThemeApply($('peerProfOverlay'),peerProfileThemes[pid]||'');
   $('peerProfAv').onclick=av?()=>{$('photoImg').src=av;$('photoView').classList.add('show');}:null;
-  $('peerProfName').innerHTML=(isBanned?'❄️ ':'')+esc(name)
-    +(hasElephant?' <span class="sp-badge" title="Слонгалочка">🐘</span>':'')
-    +(hasPrem?` <span class="sp-badge" title="SLON Premium" style="cursor:pointer" onclick="toast('У ${esc(name).replace(/'/g,'')} подписка SLON Premium ⭐')">⭐</span>`:'');
+  $('peerProfName').innerHTML=(isBanned?_ico('snow','ico-ban')+' ':'')+esc(name)
+    +(hasElephant?_badge('slon'):'')
+    +(hasPrem?_badge('prem',` style="cursor:pointer" onclick="toast('У ${esc(name).replace(/'/g,'')} подписка SLON Premium')"`):'');
   const st=$('peerProfStatus');
-  if(isBlocked)st.innerHTML='<span class="pp-st-bad">🚫 Заблокирован(а) тобой</span>';
+  if(isBlocked)st.innerHTML='<span class="pp-st-bad">'+_ico('block')+' Заблокирован(а) тобой</span>';
   else if(isBanned){
     const u=bannedUsers[pid].until===9999999999999?'навсегда':new Date(bannedUsers[pid].until).toLocaleDateString('ru');
-    st.textContent='❄️ Заморожен(а) до '+u;
+    st.innerHTML=_ico('snow','ico-ban')+' Заморожен(а) до '+esc(u);
   }else{
     const t=_lastSeenText(pid);
     st.innerHTML=t==='в сети'?'<span class="pp-online">в сети</span>':esc(t);
@@ -1114,7 +1114,7 @@ function showChannelInfo(id){
   const meta=isSlon?{}:(_spChannelMeta(username)||{});
   const name=meta.name||(peerNames[id]||'').replace(/^📢\s*/,'')||(isSlon?'SLON':'@'+username);
   const avatar=meta.avatar||peerAvatars[id]||null;
-  const desc=isSlon?'Официальный канал SLON — новости и обновления 🐘':(meta.desc||'');
+  const desc=isSlon?'Официальный канал SLON — новости и обновления':(meta.desc||'');
   const isOwner=!isSlon&&myChannels[id]&&(!myChannels[id].owner||myChannels[id].owner===myUsername);
   const subs=_spChSubsCache[username];
 

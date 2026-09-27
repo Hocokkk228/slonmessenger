@@ -48,7 +48,7 @@ function _openProfileLegacy(){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   showChatElements(false);$('profilePage').style.display='flex';
   const chAvEl=$('chAv');chAvEl.innerHTML='';
-  if(myAvatar){const i=document.createElement('img');i.src=myAvatar;chAvEl.appendChild(i);}else chAvEl.innerHTML='👤';
+  if(myAvatar){const i=document.createElement('img');i.src=myAvatar;chAvEl.appendChild(i);}else chAvEl.innerHTML=_avHtml(myUsername,myNick||myUsername);
   $('chName').textContent='Мой профиль';$('chStatus').textContent='Настройки';
   $('chStatus').className='ch-status';
   // НЕ трогаем innerHTML chActs — это уничтожит search/call/dropdown/post/settings
@@ -158,13 +158,13 @@ function _applyChatWallpaper(){
 }
 
 function showWallpaperPicker(){
-  if(!myPremium){toast('⭐ Нужна подписка SLON PREMIUM');return;}
+  if(!myPremium){toast('Нужна подписка SLON PREMIUM');return;}
   const opts=Object.entries(CHAT_WALLPAPERS).map(([id,w])=>
     `<button class="admin-row${myChatWallpaper===id?' sel':''}" onclick="setChatWallpaper('${id}')">
-      <span style="font-size:22px">${w.emoji||'⬜'}</span> ${w.label}
+      <span style="font-size:22px">${w.emoji||''}</span> ${w.label}
     </button>`
   ).join('');
-  showModal(`<div class="m-title">🖼 Обои чата</div><div style="display:flex;flex-direction:column;gap:8px">${opts}</div>
+  showModal(`<div class="m-title">Обои чата</div><div style="display:flex;flex-direction:column;gap:8px">${opts}</div>
     <div class="m-btns"><button class="btn-cancel" onclick="closeModal()">Закрыть</button></div>`);
 }
 
@@ -173,9 +173,9 @@ function setChatWallpaper(id){
 }
 
 function showRgbProfilePicker(){
-  if(!myPremium){toast('⭐ Нужна подписка SLON PREMIUM');return;}
+  if(!myPremium){toast('Нужна подписка SLON PREMIUM');return;}
   showModal(`
-    <div class="m-title">🎨 Цвет профиля</div>
+    <div class="m-title">Цвет профиля</div>
     <input type="color" id="rgbPicker" value="${myProfileBgColor||'#1d4ed8'}"
       style="width:100%;height:60px;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px">
     <div id="rgbPreview" style="height:60px;border-radius:12px;margin-bottom:8px;background:${myProfileBgColor||'linear-gradient(135deg,#1d4ed8,#7c3aed)'}"></div>
@@ -205,7 +205,7 @@ function applyRgbProfile(){
   myProfileBgColor=$('rgbPicker')?.value||'';
   saveAll();closeModal();updateProfileDisplay();
   _publishMyProfile();
-  toast('Цвет профиля обновлён 🎨');
+  toast('Цвет профиля обновлён');
 }
 
 // Значки узора кольцами вокруг аватарки: ближе — крупнее и заметнее, дальше — меньше и бледнее.
@@ -255,7 +255,7 @@ function _getProfileBgStyle(bgId,bgColor,pattern){
 
 function setMyLabel(){
   const el=$('myIdLabel');
-  if(el)el.textContent=(myNick?myNick+' · ':'')+'@'+myUsername+(hasElephantBadge?' 🐘':'');
+  if(el)el.innerHTML=esc((myNick?myNick+' · ':'')+'@'+myUsername)+(hasElephantBadge?_badge('slon'):'');
 }
 
 function updateProfileDisplay(){
@@ -274,7 +274,7 @@ function updateProfileDisplay(){
   if(nameEl){
     nameEl.innerHTML='';
     nameEl.textContent=myNick||('@'+myUsername);
-    if(hasElephantBadge){const sp=document.createElement('span');sp.className='elephant-badge earned';sp.textContent='🐘';nameEl.appendChild(sp);}
+    if(hasElephantBadge)nameEl.appendChild(_badgeEl('slon'));
   }
   const bioEl=$('profBioEl');
   if(bioEl){bioEl.textContent=myBio||'';bioEl.style.display=myBio?'':'none';}
@@ -299,8 +299,8 @@ function updateProfileDisplay(){
   const nameEl2=$('profNameEl');
   if(nameEl2){
     nameEl2.innerHTML='';nameEl2.textContent=myNick||('@'+myUsername);
-    if(hasElephantBadge){const sp=document.createElement('span');sp.className='elephant-badge earned';sp.textContent='🐘';nameEl2.appendChild(sp);}
-    if(myPremium){const sp2=document.createElement('span');sp2.style.cssText='cursor:default;margin-left:2px';sp2.textContent='⭐';sp2.title='SLON Premium';nameEl2.appendChild(sp2);}
+    if(hasElephantBadge)nameEl2.appendChild(_badgeEl('slon'));
+    if(myPremium)nameEl2.appendChild(_badgeEl('prem'));
   }
   // Profile button
   const btn2=$('profBtn');
@@ -322,12 +322,12 @@ function updateProfileDisplay(){
       rgbBtn.title='RGB цвет (Premium)';rgbBtn.onclick=()=>showRgbProfilePicker();pc.appendChild(rgbBtn);
       const wallBtn=document.createElement('div');
       wallBtn.className='prof-color';
-      wallBtn.style.cssText='background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:18px';
-      wallBtn.textContent='🖼';wallBtn.title='Обои чата';wallBtn.onclick=()=>showWallpaperPicker();pc.appendChild(wallBtn);
+      wallBtn.style.cssText='background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text2)';
+      wallBtn.innerHTML=_ico('image');wallBtn.title='Обои чата';wallBtn.onclick=()=>showWallpaperPicker();pc.appendChild(wallBtn);
     }else{
       const lockEl=document.createElement('div');
       lockEl.style.cssText='font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;padding:4px 0';
-      lockEl.innerHTML='🔒 Кастомизация профиля — <b style="color:#fbbf24">SLON Premium</b>';
+      lockEl.innerHTML=_ico('lock')+' Кастомизация профиля — <b style="color:#fbbf24">SLON Premium</b>';
       pc.appendChild(lockEl);
     }
   }
@@ -343,7 +343,7 @@ function setProfileBg(id){
 
 function editNick(){
   showModal(`
-    <div class="m-title">✏️ Изменить имя</div>
+    <div class="m-title">Изменить имя</div>
     <input class="m-inp" id="nickInp" placeholder="Твоё имя" maxlength="32" value="${esc(myNick)}" onkeydown="if(event.key==='Enter')saveNick()">
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -362,7 +362,7 @@ function saveNick(){
 
 function editBio(){
   showModal(`
-    <div class="m-title">📝 Биография</div>
+    <div class="m-title">Биография</div>
     <textarea class="m-ta" id="bioInp" placeholder="Расскажи о себе…" maxlength="200">${esc(myBio)}</textarea>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -402,8 +402,8 @@ function removeAvatar(){
 function showMyId(){
   if(!myUsername){toast('Сначала выбери юзернейм');return;}
   showModal(`
-    <div class="m-title">🐘 Мой юзернейм</div>
-    <div class="m-info">Поделись этим юзернеймом с друзьями — они найдут тебя через «➕ Контакт»</div>
+    <div class="m-title">Мой юзернейм</div>
+    <div class="m-info">Поделись этим юзернеймом с друзьями — они найдут тебя через «Контакт»</div>
     <div class="m-idbox">
       <div class="m-id">@${esc(myUsername)}</div>
       <button class="btn-copy" onclick="copyMyId()">Копировать</button>

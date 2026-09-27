@@ -133,7 +133,7 @@ function _avFrameReveal(host){
 function _spAvFramesSection(){
   const raw=(typeof _spDraft==='object'&&_spDraft)?(_spDraft.avFrame||''):(myAvFrame||'');
   const cur=_avFrameParse(raw);
-  const face=esc(((myNick||myUsername)[0]||'🐘').toUpperCase());
+  const face=esc(((myNick||myUsername)[0]||'S').toUpperCase());
   const cell=f=>{
     const locked=f.prem&&!myPremium;
     const demoVal=f.id==='contour'?('contour|'+(cur.color||AV_CONTOUR_DEFAULT)):f.id;
@@ -144,10 +144,10 @@ function _spAvFramesSection(){
         <span class="avf-demo-face">${face}</span>${inner}
       </span>
       <span class="avf-cell-nm">${f.id?esc(f.name):'Нет'}</span>
-      ${locked?'<span class="avf-lock">🔒</span>':''}
+      ${locked?'<span class="avf-lock">'+_ico('lock')+'</span>':''}
     </button>`;
   };
-  return _spSec('Рамка аватара'+(myPremium?'':' <span class="sp-lock">часть ⭐ Premium</span>'))
+  return _spSec('Рамка аватара'+(myPremium?'':' <span class="sp-lock">часть Premium</span>'))
     +`<div class="sp-card sp-pad"><div class="avf-grid">${AV_FRAMES.map(cell).join('')}</div>
       <div class="avf-colorrow" id="avfColorRow" style="display:${cur.id==='contour'?'flex':'none'}">
         <span>Цвет контура</span>
@@ -157,7 +157,7 @@ function _spAvFramesSection(){
 }
 function _spPickFrame(id){
   const f=AV_FRAME_MAP[id];if(!f)return;
-  if(f.prem&&!myPremium){toast('⭐ Эта рамка — в SLON Premium');return;}
+  if(f.prem&&!myPremium){toast('Эта рамка — в SLON Premium');return;}
   const color=($('avfColor')&&$('avfColor').value)||AV_CONTOUR_DEFAULT;
   const val=id==='contour'?('contour|'+color):id;
   if(_spDraft)_spDraft.avFrame=val;
@@ -222,16 +222,16 @@ function _spWallpaperSection(){
     return `<button class="wp-cell${cur===w.id?' sel':''}${locked?' locked':''}" data-w="${w.id}" onclick="_spPickWallpaper('${w.id}')" title="${esc(w.name)}${locked?' · Premium':''}">
       <span class="wp-demo${w.id?' active wp-bg-'+w.id:''}">${w.id?_wallpaperInner(w.id):''}</span>
       <span class="wp-cell-nm">${w.id?esc(w.name):'Нет'}</span>
-      ${locked?'<span class="avf-lock">🔒</span>':''}
+      ${locked?'<span class="avf-lock">'+_ico('lock')+'</span>':''}
     </button>`;
   };
-  return _spSec('Обои профиля'+(myPremium?'':' <span class="sp-lock">часть ⭐ Premium</span>'))
+  return _spSec('Обои профиля'+(myPremium?'':' <span class="sp-lock">часть Premium</span>'))
     +`<div class="sp-card sp-pad"><div class="wp-grid">${PROFILE_WALLPAPERS.map(cell).join('')}</div></div>`
     +_spHint('Большой анимированный фон за аватаркой — его видят все, кто открывает твой профиль.');
 }
 function _spPickWallpaper(id){
   const w=PROFILE_WALLPAPER_MAP[id];if(!w)return;
-  if(w.prem&&!myPremium){toast('⭐ Эти обои — в SLON Premium');return;}
+  if(w.prem&&!myPremium){toast('Эти обои — в SLON Premium');return;}
   if(_spDraft)_spDraft.profileWallpaper=id;
   document.querySelectorAll('.wp-grid .wp-cell').forEach(b=>b.classList.toggle('sel',b.dataset.w===id));
   _wallpaperApply($('spCustPrevWp'),id);
@@ -260,17 +260,17 @@ function _spProfThemeSection(){
     return `<button class="pth-cell${cur===id?' sel':''}${locked?' locked':''}" data-t="${id}" onclick="_spPickProfTheme('${id}')">
       <span class="pth-demo"${id?` data-theme="${id}"`:''}>${id?'<i class="pth-top"></i><i class="pth-av"></i><i class="pth-l1"></i><i class="pth-l2"></i><i class="pth-btn"></i>':'<span class="pth-none">Как у<br>смотрящего</span>'}</span>
       <span class="wp-cell-nm">${t?esc(t.lbl):'Нет'}</span>
-      ${locked?'<span class="avf-lock">🔒</span>':''}
+      ${locked?'<span class="avf-lock">'+_ico('lock')+'</span>':''}
     </button>`;
   };
-  return _spSec('Тема окна профиля'+(myPremium?'':' <span class="sp-lock">часть ⭐ Premium</span>'))
+  return _spSec('Тема окна профиля'+(myPremium?'':' <span class="sp-lock">часть Premium</span>'))
     +`<div class="sp-card sp-pad"><div class="wp-grid pth-grid">${cell(null)}${THEMES.map(cell).join('')}</div></div>`
     +_spHint('Окно твоего профиля (описание, юзернейм, кнопки) будет в этой теме у всех, кто его откроет — независимо от их темы приложения.');
 }
 function _spPickProfTheme(id){
   const t=id&&THEMES.find(x=>x.id===id);
   if(id&&!t)return;
-  if(t&&t.premium&&!myPremium){toast('⭐ Эта тема — в SLON Premium');return;}
+  if(t&&t.premium&&!myPremium){toast('Эта тема — в SLON Premium');return;}
   if(_spDraft)_spDraft.profileTheme=id;
   document.querySelectorAll('.pth-grid .pth-cell').forEach(b=>b.classList.toggle('sel',b.dataset.t===id));
   _profThemeApply($('spCustThemeBox'),id);

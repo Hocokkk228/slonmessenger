@@ -9,8 +9,8 @@ function _saveMsgToSaved(msg){
   chatHist.saved.push(copy);
   saveAll();
   if(activeChat==='saved'){appendMsg(copy);scrollDown();}
-  updatePreview('saved',copy.text?copy.text.slice(0,28):'📎 Медиа',copy.ts);
-  toast('⭐ Сохранено в Избранном');
+  updatePreview('saved',copy.text?copy.text.slice(0,28):'Медиа',copy.ts);
+  toast('Сохранено в Избранном');
 }
 
 function _clearSavedChat(){

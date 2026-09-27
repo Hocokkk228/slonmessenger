@@ -48,9 +48,9 @@ function _closeCallNotif(){
 function _updateNotifRow(){
   const el=$('notifRowVal');if(!el)return;
   const p=Notification.permission;
-  if(p==='granted'){el.textContent='Уведомления включены ✅';}
-  else if(p==='denied'){el.textContent='Уведомления заблокированы ❌';}
-  else{el.textContent='Включить уведомления 🔔';}
+  if(p==='granted'){el.textContent='Уведомления включены';}
+  else if(p==='denied'){el.textContent='Уведомления заблокированы';}
+  else{el.textContent='Включить уведомления';}
 }
 
 function initDesktopNotif(){
@@ -67,7 +67,7 @@ function requestNotifPermission(){
   Notification.requestPermission().then(p=>{
     _notifPermission=p;
     _updateNotifRow();
-    toast(p==='granted'?'Уведомления включены 🔔':p==='denied'?'Уведомления заблокированы — разреши в настройках браузера':'Уведомления не разрешены');
+    toast(p==='granted'?'Уведомления включены':p==='denied'?'Уведомления заблокированы — разреши в настройках браузера':'Уведомления не разрешены');
   });
 }
 
@@ -76,7 +76,7 @@ function showDesktopNotif(title, body, iconUrl, tag, extra){
   // Настройки → Уведомления: веб-уведомления выключены (звонки показываем всегда)
   if(myNotif.web===false&&tag!=='call')return;
   const _doShow=()=>{
-    const iconSvg='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%221em%22 font-size=%2256%22>🐘</text></svg>';
+    const iconSvg='icons/icon-192.png';
     const icon=iconUrl||iconSvg;
     const notifTitle='SLON · '+title;
 
@@ -136,7 +136,7 @@ function exportData(){
 
 function confirmClearAll(){
   showModal(`
-    <div class="m-title">⚠️ Очистить всё?</div>
+    <div class="m-title">Очистить всё?</div>
     <div class="m-info">Будут удалены все сообщения, контакты, юзернейм и настройки. Это действие необратимо!</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>

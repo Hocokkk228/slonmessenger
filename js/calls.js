@@ -371,7 +371,7 @@ function _callSyncApply(key,d){
       $('incoming').classList.remove('show');
       pendingCall=null;_lastIncomingCallId=null;
       if(typeof _closeCallNotif==='function')_closeCallNotif();
-      toast(d.action==='answered'?'📱 Звонок принят на другом устройстве':'Звонок отклонён на другом устройстве');
+      toast(d.action==='answered'?'Звонок принят на другом устройстве':'Звонок отклонён на другом устройстве');
     }
 }
 
@@ -1013,7 +1013,7 @@ async function toggleScreenShare(){
     isScreenSharing=true;updateScreenShareBtn();
     if(!_vr)_updateRemoteVideoUI();
     screenTrack.onended=()=>stopScreenShare();
-    toast('🖥 Экран'+(screenAudioTracks.length>0?' + звук':''));
+    toast('Экран'+(screenAudioTracks.length>0?' + звук':''));
   }catch(e){
     screenShareStream?.getTracks().forEach(t=>t.stop());screenShareStream=null;
     if(e.name==='NotAllowedError')toast('Доступ к экрану запрещён');
@@ -1341,5 +1341,5 @@ async function flipCamera(){
   // Локальное превью
   const lv=$('localVideo');lv.srcObject=localStream;lv.play().catch(()=>{});
 
-  toast(_camFacing==='environment'?'📷 Задняя камера':'🤳 Фронтальная камера');
+  toast(_camFacing==='environment'?'Задняя камера':'Фронтальная камера');
 }

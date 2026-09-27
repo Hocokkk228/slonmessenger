@@ -65,13 +65,13 @@ function _pushMsg(to,text){
   _pushSend(to,{kind:'msg',title:_pushMyName(),body:String(text||'').slice(0,120),chat:myUsername,tag:'msg:'+myUsername,icon:null});
 }
 function _pushCall(to,callId,isVideo){
-  _pushSend(to,{kind:'call',title:_pushMyName(),body:isVideo?'📹 Входящий видеозвонок':'📞 Входящий звонок',
+  _pushSend(to,{kind:'call',title:_pushMyName(),body:isVideo?'Входящий видеозвонок':'Входящий звонок',
     callId:callId||'',peerId:myUsername,isVideo:!!isVideo,tag:'call'});
 }
 // Звонок отменили — уведомление о звонке заменяется «пропущенным» (как в Telegram).
 // Пустой пуш без уведомления Chrome наказывает системным «сайт обновлён в фоне».
 function _pushCallGone(to,isVideo){
-  _pushSend(to,{kind:'missed',title:_pushMyName(),body:isVideo?'📹 Пропущенный видеозвонок':'📞 Пропущенный звонок',peerId:myUsername,chat:myUsername,tag:'call'});
+  _pushSend(to,{kind:'missed',title:_pushMyName(),body:isVideo?'Пропущенный видеозвонок':'Пропущенный звонок',peerId:myUsername,chat:myUsername,tag:'call'});
 }
 
 // Один раз на устройстве просим разрешить уведомления — плашкой с кнопкой
@@ -91,7 +91,7 @@ function _notifAskOnce(){
     done();
     Notification.requestPermission().then(p=>{
       _notifPermission=p;try{_updateNotifRow();}catch(e){}
-      if(p==='granted'){toast('Уведомления включены 🔔');_pushSubscribe();}
+      if(p==='granted'){toast('Уведомления включены');_pushSubscribe();}
     }).catch(()=>{});
   };
   document.body.appendChild(el);
@@ -102,7 +102,7 @@ function _notifAskOnce(){
 // со своими настройками батареи/уведомлений; с ним пуши доходят надёжнее)
 let _installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_installEvt=e;});
-window.addEventListener('appinstalled',()=>{_installEvt=null;$('installAsk')?.remove();toast('SLON установлен 🐘');});
+window.addEventListener('appinstalled',()=>{_installEvt=null;$('installAsk')?.remove();toast('SLON установлен');});
 function _installAskOnce(){
   if(!_installEvt||!myUsername||$('installAsk')||$('notifAsk'))return;
   try{if(localStorage.getItem('sl_install_asked'))return;}catch(e){}

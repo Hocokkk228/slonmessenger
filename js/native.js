@@ -52,7 +52,7 @@ async function _nativeSave(msg,kind,name){
       const albumIdentifier=await _nativeAlbum();
       if(kind==='photo')await _NP.Media.savePhoto({path:data,albumIdentifier,fileName:'slon_'+msg.id});
       else await _NP.Media.saveVideo({path:data,albumIdentifier,fileName:'slon_'+msg.id});
-      toast('Сохранено в галерею 🖼');
+      toast('Сохранено в галерею');
     }else{
       const fname=name||(kind+'_'+msg.id+'.'+_extOf(b.type,'bin'));
       await _NP.Filesystem.writeFile({path:'SLON/'+fname,data:data.split(',')[1],directory:'DOCUMENTS',recursive:true});
@@ -90,7 +90,7 @@ if(IS_NATIVE){
   const _chatNid={};   // одно уведомление на чат — новые заменяют старые
   LN.requestPermissions().catch(()=>{});
   LN.registerActionTypes({types:[
-    {id:'CALL',actions:[{id:'answer',title:'📞 Ответить',foreground:true},{id:'decline',title:'❌ Отклонить',destructive:true,foreground:false}]},
+    {id:'CALL',actions:[{id:'answer',title:'Ответить',foreground:true},{id:'decline',title:'Отклонить',destructive:true,foreground:false}]},
     {id:'MSG',actions:[{id:'open',title:'Открыть',foreground:true}]},
   ]}).catch(()=>{});
   LN.createChannel?.({id:'calls',name:'Звонки',importance:5,visibility:1,vibration:true}).catch(()=>{});

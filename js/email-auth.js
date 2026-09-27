@@ -143,7 +143,7 @@ async function _emNewPass() {
       _authEnter(_em.user, d.token, false);
       if (typeof _e2eOnPassword === 'function') _e2eOnPassword(p);
       _em.token = ''; _em.rt = '';
-      toast('Пароль изменён 🔒');
+      toast('Пароль изменён');
     } catch (e) { _emErr('npError', e.message); }
   });
 }
@@ -168,14 +168,14 @@ async function _lmRender() {
     h += card(`<div class="sp-row-sub" style="margin-bottom:10px">Привяжи почту — если забудешь пароль, мы пришлём на неё код, и ты войдёшь в аккаунт. Ещё она нужна для двухэтапного входа.</div>
       <div id="lmBind"></div><button class="lm-btn primary" id="lmBindBtn" onclick="_lmBindStart(false)">Привязать почту</button>`);
   }
-  if (!st.mail) h += `<div class="sp-hint">⚠ Отправка писем на сервере ещё не настроена — коды пока не придут.</div>`;
+  if (!st.mail) h += `<div class="sp-hint">Отправка писем на сервере ещё не настроена — коды пока не придут.</div>`;
   box.innerHTML = h;
 }
 let _lmMail = '';
 function _lmBindStart(change) {
   const box = document.getElementById('lmBody');
   box.innerHTML = _spSec(change ? 'Новая почта' : 'Привязать почту') + `<div class="sp-card sp-pad em-box">
-    <div class="em-ico">✉️</div>
+    ${_envelopeHtml()}
     <div class="em-t">Введи адрес почты</div>
     <div class="sp-row-sub em-sub">Пришлём на неё код из 6 цифр</div>
     <input class="lm-inp" id="lmEmail" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="none" onkeydown="if(event.key==='Enter')_lmSend()">
@@ -196,7 +196,7 @@ async function _lmSend(again) {
     _lmMail = email;
     if (again) { toast('Код отправлен ещё раз'); _emTimer('lmResend'); return; }
     document.querySelector('#lmBody .em-box').innerHTML = `
-      <div class="em-ico">📩</div>
+      ${_envelopeHtml('env-sent')}
       <div class="em-t">Введи код из письма</div>
       <div class="sp-row-sub em-sub">Код отправлен на <b>${esc(d.hint || email)}</b>.<br>Не пришло — загляни в «Спам».</div>
       <input class="lm-inp lm-code-inp" id="lmCode" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6);if(this.value.length===6)_lmConfirm()">
@@ -215,7 +215,7 @@ async function _lmConfirm() {
   err.textContent = '';
   if (code.length !== 6) { err.textContent = 'Код — 6 цифр'; return; }
   if (go.disabled) return; go.disabled = true;
-  try { await api('/auth/email/confirm', { code }); toast('Почта привязана ✉️'); _lmRender(); }
+  try { await api('/auth/email/confirm', { code }); toast('Почта привязана'); _lmRender(); }
   catch (e) { err.textContent = e.message; go.disabled = false; }
 }
 async function _lm2fa(el) {

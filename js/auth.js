@@ -164,7 +164,7 @@ async function doRegister(){
     const d=await api('/auth/register',{u:raw,h:await hashPassword(pass),device:_apiDevice()},{token:''});
     _authEnter(raw,d.token,true);
     if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);
-    toast('Добро пожаловать в SLON, @'+raw+' 🐘');
+    toast('Добро пожаловать в SLON, @'+raw+'');
   }catch(e){
     errEl.textContent=e.message;errEl.style.display='block';
   }finally{
@@ -187,7 +187,7 @@ async function doSetPassword(){
     _resetRt=null;
     _authEnter(myUsername,d.token,false);
     if(typeof _e2eOnPassword==='function')_e2eOnPassword(pass);
-    toast('Пароль установлен 🔒');
+    toast('Пароль установлен');
   }catch(e){
     errEl.textContent=e.message;errEl.style.display='block';
     if(e.code==='expired'){_resetRt=null;setTimeout(()=>{showAuthLogin();const i=$('loginUsernameInp');if(i)i.value=myUsername;},1500);}
@@ -204,7 +204,7 @@ function skipSetPassword(){
 
 async function showChangePassword(){
   showModal(`
-    <div class="m-title">🔑 Сменить пароль</div>
+    <div class="m-title">Сменить пароль</div>
     <input class="m-inp" id="cpOldInp" type="password" placeholder="текущий пароль" autocomplete="current-password">
     <input class="m-inp" id="cpNewInp" type="password" placeholder="новый пароль (мин. 6 символов)" autocomplete="new-password" style="margin-top:8px">
     <input class="m-inp" id="cpConfInp" type="password" placeholder="повтори новый пароль" autocomplete="new-password" style="margin-top:8px">
@@ -227,7 +227,7 @@ async function doChangePassword(){
     const d=await api('/auth/change-password',{old:await hashPassword(old),h:await hashPassword(nw),device:_apiDevice()});
     _apiSetToken(myUsername,d.token);
     if(typeof _e2eOnPasswordChange==='function')await _e2eOnPasswordChange(nw);
-    closeModal();toast('Пароль изменён 🔒 — на других устройствах нужно войти заново');
+    closeModal();toast('Пароль изменён — на других устройствах нужно войти заново');
   }catch(e){errEl.textContent=e.message;errEl.style.display='block';}
 }
 

@@ -4,7 +4,7 @@ function closeModal(){$('modal').classList.remove('show');}
 
 function showAddContact(){
   showModal(`
-    <div class="m-title">➕ Добавить контакт</div>
+    <div class="m-title">Добавить контакт</div>
     <div class="m-info">Введи юзернейм собеседника (без @). Например: <b>ivan_petrov</b></div>
     <input class="m-inp" id="addPidInp" placeholder="юзернейм" maxlength="20"
       autocomplete="off" autocapitalize="none" spellcheck="false"

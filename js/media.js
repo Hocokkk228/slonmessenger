@@ -379,7 +379,7 @@ function sendVoiceMsg(dataUrl,dur,mimeType,wave){
   if(wave)msg.voiceWave=wave;
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
-  updatePreview(activeChat,'Вы: 🎙️ Голосовое');
+  updatePreview(activeChat,'Вы: Голосовое');
   if(activeChat.startsWith('g_')){
     // Группа: загружаем один раз, публикуем в grp_msgs
     _sendGrpMedia(activeChat,mid,'voice',dataUrl,dur,mimeType);
@@ -400,7 +400,7 @@ function sendSlonMsg(dataUrl,dur,mimeType,isBlobUrl=false){
   const msg={id:mid,sender:'me',ts,time:fmtTime(ts),slonData,slonDur:dur,isUrl:isBlobUrl};
   if(!chatHist[activeChat])chatHist[activeChat]=[];
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
-  updatePreview(activeChat,'Вы: 🐘 Слонкружок');
+  updatePreview(activeChat,'Вы: Слонкружок');
   if(activeChat.startsWith('g_')){
     // Группа
     if(isBlobUrl){
@@ -450,7 +450,7 @@ async function _sendGrpMedia(gid, mid, kind, dataUrl, dur, mimeType){
       id:mid,type:kind,gid,sid:myUsername,nick,avatar,dur:dur||0,
       totalChunks,ts
     });
-    toast(kind==='voice'?'🎙️ Голосовое отправлено':'🐘 Слонкружок отправлен');
+    toast(kind==='voice'?'Голосовое отправлено':'Слонкружок отправлен');
   }catch(e){toast('Ошибка отправки медиа: '+e.message);console.error('_sendGrpMedia:',e);}
 }
 
@@ -882,7 +882,7 @@ async function flipSlonCamera(){
     preview.srcObject=_slonStream||newStream;
     preview.play().catch(()=>{});
   }
-  toast(newFacing==='environment'?'📷 Задняя камера':'🤳 Фронтальная');
+  toast(newFacing==='environment'?'Задняя камера':'Фронтальная');
 }
 
 function icoSvgPlay(){return '<svg viewBox="0 0 24 24" style="width:1em;height:1em;fill:currentColor"><path d="M8 5v14l11-7z"/></svg>';}
@@ -898,15 +898,15 @@ appendMsg=function(msg,container){
     const isOut=msg.sender==='me';
     const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');wrap.dataset.msgId=msg.id;
     const av=document.createElement('div');av.className='msg-av';
-    if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
+    if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.innerHTML=_avHtml(myUsername,myNick||myUsername);}
     else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}
     const body=document.createElement('div');body.className='msg-body';
     if(!isOut&&msg.name){
     const w=document.createElement('div');w.className='msg-who';
     const hasPrem=msg.senderId&&peerPremium[msg.senderId];
     // ⭐ значок Premium + верифицированный SLON канал
-    const badge=hasPrem?' <span style="font-size:10px;vertical-align:middle;opacity:.9" title="SLON Premium">⭐</span>':'';
-    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?' <span style="font-size:10px;vertical-align:middle;opacity:.85" title="Слонгалочка">🐘</span>':'';
+    const badge=hasPrem?_badge('prem'):'';
+    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?_badge('slon'):'';
     w.innerHTML=esc(msg.name)+elephantBadge+badge;
     body.appendChild(w);
   }
@@ -921,15 +921,15 @@ appendMsg=function(msg,container){
     const isOut=msg.sender==='me';
     const wrap=document.createElement('div');wrap.className='msg '+(isOut?'out':'inc');wrap.dataset.msgId=msg.id;
     const av=document.createElement('div');av.className='msg-av';
-    if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.textContent='😎';}
+    if(isOut){if(myAvatar){const i=document.createElement('img');i.src=myAvatar;av.appendChild(i);}else av.innerHTML=_avHtml(myUsername,myNick||myUsername);}
     else{const src=msg.avatar||peerAvatars[msg.senderId]||null;if(src){const i=document.createElement('img');i.src=src;av.appendChild(i);}else av.innerHTML=_avHtml(msg.senderId||msg.name,msg.name||'?');}
     const body=document.createElement('div');body.className='msg-body';
     if(!isOut&&msg.name){
     const w=document.createElement('div');w.className='msg-who';
     const hasPrem=msg.senderId&&peerPremium[msg.senderId];
     // ⭐ значок Premium + верифицированный SLON канал
-    const badge=hasPrem?' <span style="font-size:10px;vertical-align:middle;opacity:.9" title="SLON Premium">⭐</span>':'';
-    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?' <span style="font-size:10px;vertical-align:middle;opacity:.85" title="Слонгалочка">🐘</span>':'';
+    const badge=hasPrem?_badge('prem'):'';
+    const elephantBadge=(msg.senderId&&peerElephantBadges[msg.senderId])?_badge('slon'):'';
     w.innerHTML=esc(msg.name)+elephantBadge+badge;
     body.appendChild(w);
   }

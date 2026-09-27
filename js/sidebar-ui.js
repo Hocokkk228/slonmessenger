@@ -56,7 +56,7 @@ function rebuildSidebar(){
     const hist=chatHist[id]=hist0.filter(m=>!(m&&m.sender==='system'&&/^(Подключение|Соединение установлено|Собеседник отключился)/.test(m.text||'')));
     if(!hist.length)continue;
     const last=hist[hist.length-1];
-    if(last)updatePreview(id,last.sender==='me'?'Вы: '+(last.text||'📎').slice(0,28):(last.text||'📎').slice(0,28));
+    if(last)updatePreview(id,last.sender==='me'?'Вы: '+(last.text||'').slice(0,28):(last.text||'').slice(0,28));
   }
   for(const[id,hist]of Object.entries(grpHist)){
     if(!hist?.length)continue;
@@ -144,12 +144,12 @@ function updateChatHeader(){
     $('chName').textContent='SLON Новости';
     const isAdmin=CHANNEL_ADMINS.has(myUsername);
     $('chStatus').innerHTML=isAdmin
-      ?'<span style="font-size:11px">📢 Ты редактор канала</span>'
-      :'<span style="font-size:11px">📢 Официальный канал</span>';
+      ?'<span style="font-size:11px">Ты редактор канала</span>'
+      :'<span style="font-size:11px">Официальный канал</span>';
     $('chStatus').className='ch-status';
     $('chSearchBtn').style.display='none';$('chCallBtn').style.display='none';
     const dd2=$('chDropdown');
-    if(dd2)dd2.innerHTML=isAdmin?`<button class="ch-dropdown-item" onclick="showChannelPublish();closeChatDropdown()"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg><span>📝 Опубликовать пост</span></button>`:'';
+    if(dd2)dd2.innerHTML=isAdmin?`<button class="ch-dropdown-item" onclick="showChannelPublish();closeChatDropdown()"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg><span>Опубликовать пост</span></button>`:'';
     if(isAdmin){_pb.innerHTML='<svg viewBox="0 0 24 24" class="pb-ico"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Пост';_pb.style.display='';_pb.onclick=()=>showChannelPublish();}
     _applyChannelInputLock(id,isAdmin);
     mob.style.display='none';
@@ -193,7 +193,7 @@ function updateChatHeader(){
       $('chAv').style.background='';
       $('chAv').innerHTML=_avHtml(id,peerNames[id]||id);
     }
-    $('chName').textContent=(peerNames[id]||('@'+id))+(peerElephantBadges[id]?' 🐘':'');
+    $('chName').innerHTML=esc(peerNames[id]||('@'+id))+(peerElephantBadges[id]?_badge('slon'):'');
     $('chStatus').innerHTML=ok
       ?`<div class="status-dot online" style="width:7px;height:7px"></div> в сети`
       :`<div class="status-dot offline" style="width:7px;height:7px"></div> ${esc(_lastSeenText(id))}`;
@@ -331,11 +331,11 @@ function setSbStatus(pid,ok){
 }
 
 function updateSbName(pid){
-  const badge=peerElephantBadges[pid]?' 🐘':'';
-  const name=(peerNames[pid]||('@'+pid))+badge;
-  const el=$('sbn-'+pid);if(el)el.textContent=name.slice(0,20);
+  const badge=peerElephantBadges[pid]?_badge('slon'):'';
+  const name=(peerNames[pid]||('@'+pid));
+  const el=$('sbn-'+pid);if(el)el.innerHTML=esc(name.slice(0,20))+badge;
   if(!peerAvatars[pid])updateSbAvatar(pid); // буквы на аватарке зависят от имени
-  if(activeChat===pid)$('chName').textContent=name;
+  if(activeChat===pid)$('chName').innerHTML=esc(name)+badge;
 }
 
 function updateSbAvatar(pid){
@@ -456,7 +456,7 @@ async function _runGlobalSearch(q){
     return;
   }
   body.innerHTML=results.map((r,i)=>{
-    const avHtml=r.avatar?`<img src="${r.avatar}">`:(r.type==='channel'?'📢':'👤');
+    const avHtml=r.avatar?`<img src="${r.avatar}">`:_avHtml(r.username||r.id||r.name,r.name||r.username||'?');
     const action=r.type==='user'
       ?`_globalSearchConnect('${r.id}')`
       :`_globalSearchSubscribe('${r.id}')`;
@@ -495,7 +495,7 @@ async function _globalSearchSubscribe(username){
     }
     _listenUserChannel(channelId,username);
     saveAll();
-    toast('✅ Подписались на @'+username);
+    toast('Подписались на @'+username);
     openChat(channelId);
   }catch(e){toast('Ошибка: '+e.message);}
 }
@@ -597,7 +597,7 @@ function _showContactsList(){
   }else{
     body.innerHTML=contacts.map((pid,i)=>{
       const av=peerAvatars[pid];
-      const badge=peerElephantBadges[pid]?' 🐘':'';
+      const badge=peerElephantBadges[pid]?_badge('slon'):'';
       return `<div class="wiz-member-row" style="animation:sbFadeIn .22s ease both;animation-delay:${i*0.02}s" onclick="closeContactsPanel();openChat('${pid}')">
         <div class="wiz-member-av">${av?`<img src="${av}">`:_avHtml(pid,peerNames[pid]||pid)}</div>
         <div class="wiz-member-info"><div class="wiz-member-name">${esc(peerNames[pid]||('@'+pid))}${badge}</div></div>

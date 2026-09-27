@@ -23,7 +23,7 @@ function _fbListenMyGroups(){
       if(!grpHist[gid])grpHist[gid]=[];
       if(!$('si-'+gid))addSbGroup(gid);
       saveAll();
-      toast('📥 Группа "'+d.name+'" синхронизирована');
+      toast('Группа "'+d.name+'" синхронизирована');
     }
   );
 }
@@ -104,7 +104,7 @@ function showCreateGroup(){
     </label>`;
   }).join('');
   showModal(`
-    <div class="m-title">👥 Создать группу</div>
+    <div class="m-title">Создать группу</div>
     <input class="m-inp" id="grpNameInp" placeholder="Название группы" maxlength="40">
     <div style="margin-top:12px;margin-bottom:4px;font-size:12px;color:var(--text2)">Участники — оффлайн получат приглашение при входе:</div>
     <div style="max-height:220px;overflow-y:auto;padding:4px 0">${checks}</div>
@@ -134,17 +134,17 @@ function showGroupInfo(gid){
     const hasInvite=g.canInvite&&g.canInvite[pid];
     const actions=isOwner&&pid!==myUsername?`
       <button onclick="grpKick('${gid}','${pid}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;padding:2px 6px" title="Удалить">✕</button>
-      <button onclick="grpToggleInvite('${gid}','${pid}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;padding:2px 6px" title="${hasInvite?'Убрать право приглашать':'Дать право приглашать'}">${hasInvite?'👥✓':'👥+'}</button>`:'';
+      <button onclick="grpToggleInvite('${gid}','${pid}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;padding:2px 6px" title="${hasInvite?'Убрать право приглашать':'Дать право приглашать'}">${hasInvite?_ico('personCheck'):_ico('personAdd')}</button>`:'';
     return `<div style="display:flex;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border)">
-      <span style="flex:1">${esc(peerNames[pid]||('@'+pid))} ${isAdmin?'👑':''} ${hasInvite&&!isAdmin?'<span style="font-size:10px;color:var(--accent)">+invite</span>':''} ${pid===myUsername?'<span style="opacity:.5">(ты)</span>':''}</span>
+      <span style="flex:1">${esc(peerNames[pid]||('@'+pid))} ${isAdmin?_ico('crown','ico-crown'):''} ${hasInvite&&!isAdmin?'<span style="font-size:10px;color:var(--accent)">+invite</span>':''} ${pid===myUsername?'<span style="opacity:.5">(ты)</span>':''}</span>
       <span style="display:flex;gap:2px">${actions}</span>
     </div>`;
   }).join('');
 
-  const addBtn=(isOwner||canInvite)?`<button class="btn-ok" style="margin-top:10px;width:100%" onclick="showAddGroupMember('${gid}')">➕ Добавить участника</button>`:'';
+  const addBtn=(isOwner||canInvite)?`<button class="btn-ok" style="margin-top:10px;width:100%" onclick="showAddGroupMember('${gid}')">Добавить участника</button>`:'';
 
   showModal(`
-    <div class="m-title">👥 ${esc(g.name)}</div>
+    <div class="m-title">${esc(g.name)}</div>
     <div style="color:var(--text2);font-size:12px;margin-bottom:8px">${g.members?.length||0} участников</div>
     <div style="max-height:280px;overflow-y:auto">${mems}</div>
     ${addBtn}
@@ -165,9 +165,9 @@ function showGroupProfile(gid){
   ov.id='grpProfOv';
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
   const av=g.avatar?`<img src="${g.avatar}" style="width:72px;height:72px;object-fit:cover;border-radius:50%">`
-    :`<div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:32px">👥</div>`;
+    :`<div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff">${_ico('group','ico-32')}</div>`;
   const memPrev=(g.members||[]).slice(0,4).map(pid=>`<span style="font-size:12px;background:rgba(255,255,255,.15);border-radius:20px;padding:2px 8px">${esc(peerNames[pid]||('@'+pid))}</span>`).join(' ');
-  const editBtn=isOwner?`<button onclick="showGroupProfileEdit('${gid}')" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:14px">✏️ Редактировать профиль</button>`:'';
+  const editBtn=isOwner?`<button onclick="showGroupProfileEdit('${gid}')" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:14px">Редактировать профиль</button>`:'';
   ov.innerHTML=`
     <div style="width:100%;max-width:480px;border-radius:20px 20px 0 0;overflow:hidden">
       <div style="height:130px;background:${bgStyle};display:flex;align-items:flex-end;padding:14px 18px;gap:14px">
@@ -192,24 +192,24 @@ function showGroupProfileEdit(gid){
   document.getElementById('grpProfOv')?.remove();
   const curColor=g.bgColor||'#1d4ed8';
   showModal(`
-    <div class="m-title">✏️ Профиль группы</div>
+    <div class="m-title">Профиль группы</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <div id="grpAvPrev" style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:26px">${g.avatar?`<img src="${g.avatar}" style="width:100%;height:100%;object-fit:cover">`:'👥'}</div>
+      <div id="grpAvPrev" style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:26px">${g.avatar?`<img src="${g.avatar}" style="width:100%;height:100%;object-fit:cover">`:_ico('group','ico-26')}</div>
       <div style="flex:1">
-        <button class="admin-row" style="width:100%" onclick="document.getElementById('grpAvFileInput').click()">📷 Аватарка группы</button>
+        <button class="admin-row" style="width:100%" onclick="document.getElementById('grpAvFileInput').click()">Аватарка группы</button>
         <input type="file" id="grpAvFileInput" accept="image/*" style="display:none" onchange="grpLoadAvatar('${gid}',this)">
       </div>
     </div>
     <input class="m-inp" id="grpEditName" placeholder="Название группы" maxlength="40" value="${esc(g.name||'')}">
     <textarea class="m-ta" id="grpEditDesc" placeholder="Описание группы (необязательно)" maxlength="300" style="min-height:60px">${esc(g.desc||'')}</textarea>
     ${myPremium?`
-    <div class="admin-console-title" style="margin:10px 0 6px">🎨 Фон профиля (Premium)</div>
+    <div class="admin-console-title" style="margin:10px 0 6px">Фон профиля (Premium)</div>
     <input type="color" id="grpColorPicker" value="${curColor}" style="width:100%;height:52px;border:none;border-radius:10px;cursor:pointer;margin-bottom:6px">
     <div id="grpColorPreview" style="height:44px;border-radius:10px;margin-bottom:8px;background:${curColor}"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       <button class="admin-row${!g.bgPattern?' sel':''}" style="padding:6px 10px" id="grpPat_">Нет</button>
       ${PREMIUM_BG_PATTERNS.map(p=>`<button class="admin-row${g.bgPattern===p.id?' sel':''}" style="padding:6px 10px" id="grpPat_${p.id}">${p.emoji} ${p.label}</button>`).join('')}
-    </div>`:'<div style="color:var(--text2);font-size:12px;margin:8px 0">⭐ SLON Premium — кастомный фон профиля</div>'}
+    </div>`:'<div style="color:var(--text2);font-size:12px;margin:8px 0">SLON Premium — кастомный фон профиля</div>'}
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-ok" onclick="saveGroupProfile('${gid}')">Сохранить</button>
@@ -264,7 +264,7 @@ function saveGroupProfile(gid){
   (g.members||[]).filter(m=>m!==myUsername).forEach(pid=>{
     _fbSend(pid,{type:'group_profile_update',gid,name,desc,avatar:g.avatar||null,bgColor,bgPattern});
   });
-  toast('✅ Профиль группы обновлён');
+  toast('Профиль группы обновлён');
 }
 
 function showAddGroupMember(gid){
@@ -283,7 +283,7 @@ function showAddGroupMember(gid){
       <span>${esc(peerNames[pid]||('@'+pid))}</span>
     </label>`).join('');
   showModal(`
-    <div class="m-title">➕ Добавить в группу</div>
+    <div class="m-title">Добавить в группу</div>
     <div style="max-height:260px;overflow-y:auto">${checks}</div>
     <div class="m-btns" style="margin-top:10px">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -307,7 +307,7 @@ function doAddGroupMembers(gid){
     });
   });
   saveAll();
-  toast('✅ Добавлено '+selected.length+' участн.');
+  toast('Добавлено '+selected.length+' участн.');
   // Обновляем header
   if(activeChat===gid)updateChatHeader();
 }
@@ -415,7 +415,7 @@ async function _recvGrpMedia(gid,d){
     }
     grpHist[gid].push(msg);
     if(activeChat===gid){appendMsg(msg);scrollDown();}
-    else{addUnread(gid);if(!mutedChats[gid]&&_notifOn('groups'))toast((groups[gid]?.name||'Группа')+': '+(d.type==='voice'?'🎙️ Голосовое':'🐘 Слонкружок'));}
+    else{addUnread(gid);if(!mutedChats[gid]&&_notifOn('groups'))toast((groups[gid]?.name||'Группа')+': '+(d.type==='voice'?'Голосовое':'Слонкружок'));}
     saveAll();
   }catch(e){console.warn('_recvGrpMedia error:',e);}
 }

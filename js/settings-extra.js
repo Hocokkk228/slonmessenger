@@ -47,7 +47,7 @@ const _PREM_FEATURES=[
   ['heart','Узоры на фоне профиля','Слоны, бегемоты, жирафы и орлы вокруг твоей аватарки'],
   ['layers','Цвет и узор групп','Оформи свои группы так же, как профиль'],
   ['image','Обои для чатов','Узорные фоны переписки в цвет темы'],
-  ['star','Значок ⭐ у имени','Все видят, что ты поддерживаешь SLON']
+  ['star','Значок у имени','Все видят, что ты поддерживаешь SLON']
 ];
 // Цвет иконок плавно идёт от оранжевого к фиолетовому, как в Telegram
 const _PREM_COLORS=['#ff9500','#ff7a2e','#f7594a','#ec4a6e','#d84a95','#b653c4','#8e5ef0'];
@@ -59,10 +59,10 @@ function _spPremiumInfo(){
   const page=_spPush('SLON Premium',`
     <div class="prem-stage" id="premStage">
       <canvas class="prem-sparks" id="premSparks"></canvas>
-      <div class="prem-3d" id="prem3d"><div class="prem-fallback">🐘</div></div>
-      <div class="prem-hint">Покрути слона 👆</div>
+      <div class="prem-3d" id="prem3d"><div class="prem-fallback">${_badge('prem')}</div></div>
+      <div class="prem-hint">Покрути слона</div>
     </div>
-    <div class="prem-title">${myPremium?'Ты с нами! 💜':'SLON Premium'}</div>
+    <div class="prem-title">${myPremium?'Ты с нами!':'SLON Premium'}</div>
     <div class="prem-sub">${myPremium?'Спасибо, что поддерживаешь <b>SLON</b>. Вот что тебе открыто:':'Больше возможностей для <b>SLON</b>. Вот что входит в подписку:'}</div>
     <div class="sp-card pf-card">${feats}</div>`);
   const stopSparks=_premSparks($('premSparks'));
@@ -275,8 +275,8 @@ function _renderFolderTabs(){
   sb.classList.toggle('folders-left',myFolderCfg.view==='left');
   if(!myFolders.some(f=>f.id===_activeFolder))_activeFolder='all';
   const tab=(id,name,emoji)=>`<button class="sb-ftab${_activeFolder===id?' sel':''}" data-f="${id}" onclick="_setFolder('${id}')">
-      ${myFolderCfg.view==='left'?`<span class="sb-ftab-ico">${emoji||'📁'}</span>`:''}<span class="sb-ftab-name">${esc(name)}</span></button>`;
-  bar.innerHTML=tab('all','Все чаты','💬')+myFolders.map(f=>tab(f.id,f.name,f.emoji)).join('')+'<span class="sb-ftab-ink"></span>';
+      ${myFolderCfg.view==='left'?`<span class="sb-ftab-ico">${emoji?(emoji.startsWith('<')?emoji:esc(emoji)):_ico('folder')}</span>`:''}<span class="sb-ftab-name">${esc(name)}</span></button>`;
+  bar.innerHTML=tab('all','Все чаты',_ico('chat'))+myFolders.map(f=>tab(f.id,f.name,f.emoji)).join('')+'<span class="sb-ftab-ink"></span>';
   requestAnimationFrame(_moveFolderInk);
 }
 function _moveFolderInk(){
@@ -355,8 +355,8 @@ function _spFolderCfg(k,row){myFolderCfg[k]=!myFolderCfg[k];row.querySelector('.
 function _spFolderView(v,el){myFolderCfg.view=v;el.parentElement.querySelectorAll('.sp-pick').forEach(x=>x.classList.toggle('sel',x===el));_foldersSave();}
 function _spAddRecFolder(k){
   const f=k==='unread'
-    ?{id:'f'+Date.now(),name:'Непрочитанные',emoji:'🔵',rec:'unread',types:{unread:true},chats:[],exclude:[]}
-    :{id:'f'+Date.now(),name:'Личные',emoji:'👤',rec:'personal',types:{contacts:true,nonContacts:true},chats:[],exclude:[]};
+    ?{id:'f'+Date.now(),name:'Непрочитанные',emoji:'',rec:'unread',types:{unread:true},chats:[],exclude:[]}
+    :{id:'f'+Date.now(),name:'Личные',emoji:'',rec:'personal',types:{contacts:true,nonContacts:true},chats:[],exclude:[]};
   myFolders.push(f);_foldersSave();_spPop(true);_spFolders();toast('Папка «'+f.name+'» добавлена');
 }
 function _spFolderMenu(id,btn){
@@ -377,7 +377,7 @@ function _spFolderDelete(id){
 let _fDraft=null;
 function _spFolderEdit(id){
   const src=myFolders.find(f=>f.id===id);
-  _fDraft=src?JSON.parse(JSON.stringify(src)):{id:'f'+Date.now(),name:'',emoji:'📁',types:{},chats:[],exclude:[]};
+  _fDraft=src?JSON.parse(JSON.stringify(src)):{id:'f'+Date.now(),name:'',emoji:'',types:{},chats:[],exclude:[]};
   const emojis=['📁','💼','👤','👥','📢','⭐','🔵','🎮','🎵','🐘','❤️','🔥'];
   const typeRows=_FOLDER_TYPES.map(([k,l,ico,c])=>`<div class="sp-row" onclick="_fdType('${k}',this)">${_spIco(c,ico)}
       <div class="sp-row-txt"><div class="sp-row-title">${l}</div></div><div class="sp-check${_fDraft.types[k]?' on':''}">${_spSvg('check')}</div></div>`).join('');
@@ -431,7 +431,7 @@ function _fdSave(){
   if(i>=0)myFolders[i]=_fDraft;else myFolders.push(_fDraft);
   _foldersSave();
   _spPop(true);_spPop(true);_spFolders();
-  toast('Папка сохранена 📁');
+  toast('Папка сохранена');
 }
 
 // ════════════════════════════════════════
@@ -535,7 +535,7 @@ async function _spAV(){
     const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop());
     devices=await navigator.mediaDevices.enumerateDevices();
   }catch(e){
-    page.querySelector('.sp-page-body').innerHTML=_spCard(`<div class="sp-empty">🎙<div>Нет доступа к микрофону.<br>Разреши его в настройках сайта.</div>
+    page.querySelector('.sp-page-body').innerHTML=_spCard(`<div class="sp-empty">${_ico('mic','sp-empty-ico')}<div>Нет доступа к микрофону.<br>Разреши его в настройках сайта.</div>
       <button class="sp-btn" onclick="_spPop(true);_spAV()">Попробовать снова</button></div>`);
     return;
   }
@@ -552,9 +552,9 @@ async function _spAV(){
     +_spHint('Скажи что-нибудь — полоски покажут громкость микрофона.')
     +_spSec('Динамики')
     +`<div class="sp-card sp-pad">${hasSink?`<div class="dev-list">${opts(spks,'spk',selSpk)||'<div class="ci-empty">Динамики не найдены</div>'}</div>`:'<div class="ci-empty">Браузер не умеет выбирать динамик — звук идёт в системный</div>'}
-       <button class="sp-btn av-test" onclick="_avTestSound(this)">🔊 Проверить звук</button></div>`
+       <button class="sp-btn av-test" onclick="_avTestSound(this)">Проверить звук</button></div>`
     +_spSec('Камера')
-    +`<div class="sp-card sp-pad">${cams.length?`<div class="av-cam"><video id="avCam" autoplay playsinline muted></video><div class="av-cam-ph">📷</div></div>
+    +`<div class="sp-card sp-pad">${cams.length?`<div class="av-cam"><video id="avCam" autoplay playsinline muted></video><div class="av-cam-ph">${_ico('camera')}</div></div>
        <div class="dev-list">${opts(cams,'cam',selCam)}</div>`:'<div class="ci-empty">Камеры не найдены</div>'}</div>`
     +(activeCall?_spHint('Идёт звонок — смена устройства применится сразу.'):'');
 
@@ -578,7 +578,7 @@ async function _spAV(){
       camStream=await navigator.mediaDevices.getUserMedia({video:selCam&&selCam!=='default'?{deviceId:{exact:selCam}}:true});
       if(!page.isConnected){camStream.getTracks().forEach(t=>t.stop());return;}
       v.srcObject=camStream;v.onloadeddata=()=>v.classList.add('on');
-    }catch(e){page.querySelector('.av-cam-ph').textContent='🚫';}
+    }catch(e){page.querySelector('.av-cam-ph').innerHTML=_ico('block');}
   };
   page._restartMic=startMic;page._restartCam=startCam;
   startMic();startCam();
@@ -610,7 +610,7 @@ let myStickerCfg={};
 function _spStickers(){
   const c=myStickerCfg;
   const packs=PREMIUM_BG_PATTERNS.map(p=>`<div class="sp-pick sp-row-static"><div class="sp-pick-av sp-wp-ico">${p.emoji}</div>
-      <div class="sp-pick-txt"><div>${esc(p.label)}</div><div class="sp-row-sub">Узор профиля${myPremium?'':' · ⭐ Premium'}</div></div></div>`).join('');
+      <div class="sp-pick-txt"><div>${esc(p.label)}</div><div class="sp-row-sub">Узор профиля${myPremium?'':' · Premium'}</div></div></div>`).join('');
   _spPush('Стикеры и эмодзи',
     _spCard(_spCheckRow(c.suggest!==false,'Подсказывать стикеры по эмодзи','',"_stkFlag('suggest',this)")
       +_spRow({ico:'smile',color:'orange',title:'Эмодзи-паки',val:PREMIUM_BG_PATTERNS.length,cls:'sp-row-static'}))
@@ -618,7 +618,7 @@ function _spStickers(){
     +_spCard(_spCheckRow(c.dynamic!==false,'Динамический порядок паков','',"_stkFlag('dynamic',this)"))
     +_spHint('Недавно использованные наборы будут показываться выше остальных.')
     +_spSec('Мои наборы')+_spCard(packs,'sp-pad')
-    +_spHint('Свои паки стикеров и эмодзи — слоны, бегемоты и другие — скоро появятся в SLON 🐘'));
+    +_spHint('Свои паки стикеров и эмодзи — слоны, бегемоты и другие — скоро появятся в SLON'));
 }
 function _stkFlag(k,row){
   myStickerCfg[k]=myStickerCfg[k]===false;LS.set(_getAccountPrefix(myUsername)+'stickerCfg',myStickerCfg);
@@ -700,7 +700,7 @@ function _ctxFolderMenu(id){
   const menu=$('chatCtxMenu');if(!menu)return;
   const check='<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
   const rows=myFolders.map(f=>`<div class="ctx-item ctx-folder${_folderHas(f,id)?' on':''}" onclick="event.stopPropagation();_ctxFolderToggle('${f.id}','${id}',this)">
-      <span class="ctx-f-emo">${f.emoji||'📁'}</span><span style="flex:1">${esc(f.name)}</span><span class="ctx-f-chk">${check}</span></div>`).join('');
+      <span class="ctx-f-emo">${f.emoji||''}</span><span style="flex:1">${esc(f.name)}</span><span class="ctx-f-chk">${check}</span></div>`).join('');
   menu.innerHTML=`<div class="ctx-item ctx-back" onclick="event.stopPropagation();showChatCtxMenuAgain()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg><span>Добавить в папку</span></div>
     <div class="ctx-sep"></div>${rows||'<div class="ctx-empty">Папок пока нет</div>'}
     <div class="ctx-sep"></div>

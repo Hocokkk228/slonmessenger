@@ -2730,3 +2730,55 @@ video.mv-media{cursor:default;}
 .em-resend:hover:not(:disabled){background:var(--hover);}
 .em-resend:disabled{color:var(--text3,#8a94a3);cursor:default;}
 #authCode .em-resend{display:block;margin:8px auto 0;}
+
+/* ── Значки вместо эмодзи ── */
+.ico{width:1em;height:1em;fill:currentColor;vertical-align:-.14em;flex-shrink:0;}
+.ico-22{width:22px;height:22px;}.ico-26{width:26px;height:26px;}.ico-32{width:32px;height:32px;}.ico-60{width:60px;height:60px;}
+.ico-ban{color:#5ab4f5;}
+.ico-crown{color:#f5b400;}
+.sp-empty .sp-empty-ico{width:44px;height:44px;color:var(--text3,#8a94a3);}
+.sp-empty-top .ico{width:56px;height:56px;color:var(--accent);}
+.av-cam-ph .ico{width:38px;height:38px;}
+.avf-lock .ico{width:12px;height:12px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.sb-ftab-ico .ico{width:22px;height:22px;}
+.pp-st-bad .ico{margin-right:3px;}
+/* слонгалочка и Premium у имени */
+.slb{display:inline-flex;align-items:center;justify-content:center;width:1.05em;height:1.05em;min-width:14px;min-height:14px;margin-left:4px;vertical-align:-.16em;flex-shrink:0;cursor:default;}
+.slb svg{width:100%;height:100%;overflow:visible;}
+.slb-slon .slb-bg{fill:#3d9df2;stroke:#3d9df2;stroke-width:.6;}
+.slb-slon .slb-fg{stroke:#fff;}
+.slb-prem .slb-bg{fill:#9b6bff;stroke:#9b6bff;stroke-width:1.2;}
+.msg-who .slb{width:12px;height:12px;min-width:12px;min-height:12px;margin-left:3px;}
+.prem-fallback .slb{width:110px;height:110px;margin:0;}
+.epic-elephant .slb-epic{width:120px;height:120px;fill:#3d9df2;}
+.msg-av .slon-mark{width:70%;height:70%;fill:#fff;}
+
+/* ── Конверт: открылся → письмо залетело → закрылся ── */
+.env3d{--ew:104px;--eh:70px;position:relative;width:var(--ew);height:calc(var(--eh) + 44px);margin:6px auto 4px;perspective:520px;}
+.env-body{position:absolute;left:0;bottom:10px;width:var(--ew);height:var(--eh);perspective:300px;transform:rotateX(14deg) rotateY(-16deg);animation:envFloat 2.6s ease-in-out 2.4s infinite;}
+.env-shadow{position:absolute;left:12%;right:12%;bottom:0;height:10px;border-radius:50%;background:rgba(0,0,0,.28);filter:blur(4px);}
+.env-back{position:absolute;inset:0;border-radius:7px;background:#2f6fbf;}
+.env-letter{position:absolute;left:9%;right:9%;top:6%;height:82%;border-radius:5px;background:#f4f7fb;box-shadow:0 2px 6px rgba(0,0,0,.18);padding:14% 12% 0;box-sizing:border-box;display:flex;flex-direction:column;gap:9%;
+  transform:translate(-46px,-120px) rotate(-22deg);opacity:0;animation:envLetter 2.2s cubic-bezier(.3,.7,.3,1) .15s forwards;}
+.env-letter i{display:block;height:9%;border-radius:4px;background:#c6d3e3;}
+.env-letter i:nth-child(1){width:58%;background:#4a9bf0;}
+.env-letter i:nth-child(3){width:74%;}
+.env-front{position:absolute;inset:0;border-radius:7px;background:#4089df;clip-path:polygon(0 0,50% 56%,100% 0,100% 100%,0 100%);z-index:3;}
+.env-front::after{content:'';position:absolute;inset:0;background:#3a7fd3;clip-path:polygon(0 100%,50% 50%,100% 100%);}
+.env-flap{position:absolute;left:0;right:0;top:0;height:62%;background:#5aa2ef;clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:50% 0;z-index:4;
+  animation:envFlap 2.2s ease-in-out .15s forwards;}
+@keyframes envFlap{0%{transform:rotateX(0);z-index:4;background:#5aa2ef}
+  22%{transform:rotateX(178deg);z-index:4;background:#2a64ad}
+  23%{z-index:1}
+  66%{transform:rotateX(178deg);z-index:1;background:#2a64ad}
+  67%{z-index:4}
+  86%{transform:rotateX(-8deg);z-index:4;background:#5aa2ef}
+  100%{transform:rotateX(0);z-index:4;background:#5aa2ef}}
+@keyframes envLetter{0%,20%{transform:translate(-46px,-120px) rotate(-22deg);opacity:0}
+  30%{opacity:1}
+  46%{transform:translate(6px,-78px) rotate(5deg);opacity:1}
+  64%,100%{transform:translate(0,6px) rotate(0);opacity:1}}
+@keyframes envFloat{0%,100%{transform:rotateX(14deg) rotateY(-16deg) translateY(0)}50%{transform:rotateX(10deg) rotateY(-8deg) translateY(-4px)}}
+.env3d.env-sent .env-body{animation:envPop .5s cubic-bezier(.3,1.6,.5,1) 2.1s both,envFloat 2.6s ease-in-out 2.7s infinite;}
+@keyframes envPop{0%{transform:rotateX(14deg) rotateY(-16deg) scale(1)}50%{transform:rotateX(14deg) rotateY(-16deg) scale(1.1)}100%{transform:rotateX(14deg) rotateY(-16deg) scale(1)}}
+@media (prefers-reduced-motion:reduce){.env-letter,.env-flap,.env-body{animation:none!important}.env-letter{opacity:1;transform:translate(0,6px)}}

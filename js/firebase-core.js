@@ -23,7 +23,7 @@ function initPeer(){
         if(!_fbMode)initFirebaseMode();
       }else if(attempts>80){ // 8 секунд
         clearInterval(poll);
-        setNet(false,'⚠ Нет интернета');
+        setNet(false,'Нет интернета');
       }
     },100);
   }
@@ -89,11 +89,11 @@ function _initSlonChannel(){
     const already=chatHist[SLON_CHANNEL_ID].some(m=>m.text&&m.text.includes('SLON v0.9'));
     if(!already){
       const cid='ch_'+Date.now();const ts=Date.now();
-      chatHist[SLON_CHANNEL_ID].push({id:cid,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:SLON_CHANGELOG});
+      chatHist[SLON_CHANNEL_ID].push({id:cid,sender:'inc',name:'SLON',ts,time:fmtTime(ts),text:SLON_CHANGELOG});
     }
     if(!$('si-'+SLON_CHANNEL_ID))addSbItem(SLON_CHANNEL_ID);
     saveAll();
-    toast('📢 Новости SLON — проверь канал!',4000);
+    toast('Новости SLON — проверь канал!',4000);
   }
   if(!window._fbDb)return;
   try{
@@ -104,7 +104,7 @@ function _initSlonChannel(){
       if(already)return;
       if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
       const ts=d.ts||Date.now();
-      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text,channelPostId:snap.key});
+      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'SLON',ts,time:fmtTime(ts),text:d.text,channelPostId:snap.key});
       if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
       else addUnread(SLON_CHANNEL_ID);
       saveAll();
@@ -140,7 +140,7 @@ function _initSlonChannel(){
       if(already)return;
       if(!chatHist[SLON_CHANNEL_ID])chatHist[SLON_CHANNEL_ID]=[];
       const ts=d.ts||Date.now();
-      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'🐘 SLON',ts,time:fmtTime(ts),text:d.text});
+      chatHist[SLON_CHANNEL_ID].push({id:d.id,sender:'inc',name:'SLON',ts,time:fmtTime(ts),text:d.text});
       if(activeChat===SLON_CHANNEL_ID){renderChat(SLON_CHANNEL_ID);scrollDown();}
       else addUnread(SLON_CHANNEL_ID);
       saveAll();
@@ -269,7 +269,7 @@ function _checkFirebaseRules(){
     .catch(e=>{
       console.error('Firebase RTDB rules error:',e);
       if(false)setTimeout(()=>{
-        toast('⚠ Firebase: нет прав на запись. Открой консоль Firebase → Realtime Database → Rules и установи: {"rules":{".read":true,".write":true}}',8000);
+        toast('Firebase: нет прав на запись. Открой консоль Firebase → Realtime Database → Rules и установи: {"rules":{".read":true,".write":true}}',8000);
       },1000);
     });
 }
@@ -632,7 +632,7 @@ function onData(pid,data){
       $('incoming').classList.add('show');startRingSound();
       // Уведомление с кнопками «Ответить»/«Отклонить» (когда приложение свёрнуто)
       if(document.visibilityState!=='visible')
-        showDesktopNotif(data.nick||peerNames[pid]||('@'+pid),data.isVideo?'📹 Входящий видеозвонок':'📞 Входящий звонок',peerAvatars[pid]||null,'call',
+        showDesktopNotif(data.nick||peerNames[pid]||('@'+pid),data.isVideo?'Входящий видеозвонок':'Входящий звонок',peerAvatars[pid]||null,'call',
           {kind:'call',callId:data.callId||'',peerId:pid,isVideo:!!data.isVideo});
       if(typeof _naTryAnswer==='function')_naTryAnswer(pid,data.callId);
       if(navigator.vibrate)navigator.vibrate([300,100,300,100,300]);}
@@ -687,14 +687,14 @@ function onData(pid,data){
       break;
     case 'system_admin_granted':
       CHANNEL_ADMINS.add(myUsername);
-      toast('🛡 Тебе выданы права администратора SLON!');
+      toast('Тебе выданы права администратора SLON!');
       const ar=$('adminConsoleRow');if(ar)ar.style.display='';
       break;
     case 'system_pass_reset':
       // Админ сбросил нам пароль — выкидываем на экран установки нового
       try{localStorage.removeItem('sl_pass_'+myUsername);}catch(e){}
       myPassword='';
-      toast('🔑 Твой пароль сброшен — задай новый',5000);
+      toast('Твой пароль сброшен — задай новый',5000);
       // сервер уже отозвал сессии — отправляем на вход, там предложат задать новый пароль
       setTimeout(()=>doLogout(),1500);
       break;
@@ -711,7 +711,7 @@ function onData(pid,data){
           $('incoming').classList.remove('show');
           pendingCall=null;
           _lastIncomingCallId=null;
-          if(data.action==='answered')toast('Отвечено на другом устройстве 📱');
+          if(data.action==='answered')toast('Отвечено на другом устройстве');
         }
       }
       break;
@@ -765,7 +765,7 @@ function onData(pid,data){
         saveAll();
         _fbListenGrpMsgsForNew(data.gid);
         if(activeChat===data.gid)updateChatHeader();
-        toast('👥 Тебя добавили в «'+(data.name||'группу')+'»');
+        toast('Тебя добавили в «'+(data.name||'группу')+'»');
       }
       break;
     case 'group_update':
@@ -795,7 +795,7 @@ function onData(pid,data){
         $('si-'+data.gid)?.remove();
         saveAll();
         if(activeChat===data.gid){openChat('ai');}
-        toast('👥 Тебя удалили из группы');
+        toast('Тебя удалили из группы');
       }
       break;
     case 'media_start':{
@@ -816,13 +816,13 @@ function onData(pid,data){
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(mv);
         if(activeChat===spid2){appendMsg(mv);scrollDown();}
         else addUnread(spid2);
-        updatePreview(spid2,'🎙️ Голосовое');
+        updatePreview(spid2,'Голосовое');
       }else if(data.kind==='slon'){
         const ms={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:data.url,slonDur:data.dur,isUrl:true};
         if(!chatHist[spid2])chatHist[spid2]=[];chatHist[spid2].push(ms);
         if(activeChat===spid2){appendMsg(ms);scrollDown();}
         else addUnread(spid2);
-        updatePreview(spid2,'🐘 Слонкружок');
+        updatePreview(spid2,'Слонкружок');
       }
       saveAll();break;}
     case 'media_rtdb':{
@@ -851,14 +851,14 @@ function onData(pid,data){
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else addUnread(spid);
-            updatePreview(spid,'🎙️ Голосовое');
+            updatePreview(spid,'Голосовое');
           }else if(data.kind==='slon'){
             const msg={id:data.id,sender:'inc',name:dn,avatar:dav,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:data.dur};
             await _saveMediaToIdb(data.id,'slon',fullData); // сначала в IDB, потом рендер — иначе «видео недоступно»
             if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg);
             if(activeChat===spid){appendMsg(msg);scrollDown();}
             else addUnread(spid);
-            updatePreview(spid,'🐘 Слонкружок');
+            updatePreview(spid,'Слонкружок');
           }
           saveAll();
         }catch(e){console.warn('media_rtdb recv error:',e);}
@@ -877,14 +877,14 @@ function onData(pid,data){
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg2);
         if(activeChat===spid){appendMsg(msg2);scrollDown();}
         else addUnread(spid);
-        updatePreview(spid,'🎙️ Голосовое');
+        updatePreview(spid,'Голосовое');
       }else if(buf.kind==='slon'){
         _saveMediaToIdb(data.id,'slon',fullData);
         const msg3={id:data.id,sender:'inc',name:buf.nick,avatar:buf.avatar,ts:mts,time:fmtTime(mts),slonData:'idb:'+data.id+':slon',slonDur:buf.dur};
         if(!chatHist[spid])chatHist[spid]=[];chatHist[spid].push(msg3);
         if(activeChat===spid){appendMsg(msg3);scrollDown();}
         else addUnread(spid);
-        updatePreview(spid,'🐘 Слонкружок');
+        updatePreview(spid,'Слонкружок');
       }
       saveAll();break;}
     case 'file_start':

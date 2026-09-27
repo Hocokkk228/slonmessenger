@@ -16,14 +16,14 @@ async function adminDeleteChannelPost(msg){
     }
     if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
     saveAll();
-    toast('✅ Пост удалён у всех');
+    toast('Пост удалён у всех');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
 function adminEditChannelPost(msg){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div class="m-title">✏️ Редактировать пост</div>
+    <div class="m-title">Редактировать пост</div>
     <textarea class="m-ta" id="editChPostTa" maxlength="4000" style="min-height:160px">${esc(msg.text)}</textarea>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -48,14 +48,14 @@ async function adminSaveChannelPost(msgId,postKey){
     if(m){m.text=text;m.edited=true;}
     if(activeChat===SLON_CHANNEL_ID)renderChat(SLON_CHANNEL_ID);
     saveAll();
-    toast('✅ Пост обновлён');
+    toast('Пост обновлён');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
 async function _doCreateChannelWizard(username,name,desc,avatar){
   const owned=Object.keys(myChannels).length;
   const maxOwned=myPremium?10:3;
-  if(owned>=maxOwned)return toast(myPremium?'Максимум 10 каналов':'Максимум 3 канала — с ⭐ Premium можно больше');
+  if(owned>=maxOwned)return toast(myPremium?'Максимум 10 каналов':'Максимум 3 канала — с Premium можно больше');
   if(!_fbReady()||!window._fbDb)return toast('Нет интернета');
   toast('Проверяем юзернейм…');
   try{
@@ -71,7 +71,7 @@ async function _doCreateChannelWizard(username,name,desc,avatar){
     _addChannelToSidebar(channelId,meta);
     _listenUserChannel(channelId,username);
     saveAll();
-    toast('📢 Канал @'+username+' создан!');
+    toast('Канал @'+username+' создан!');
     openChat(channelId);
   }catch(e){toast('Ошибка: '+e.message);}
 }
@@ -114,11 +114,11 @@ function _toggleChannelMute(){
 function showChannelPublish(){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div class="m-title">📝 Новый пост в канале</div>
-    <textarea class="m-ta" id="chPostTa" placeholder="Текст поста… Поддерживаются эмодзи 🐘" maxlength="4000" style="min-height:160px"></textarea>
+    <div class="m-title">Новый пост в канале</div>
+    <textarea class="m-ta" id="chPostTa" placeholder="Текст поста… Поддерживаются эмодзи" maxlength="4000" style="min-height:160px"></textarea>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-ok" onclick="publishChannelPost()">📢 Опубликовать</button>
+      <button class="btn-ok" onclick="publishChannelPost()">Опубликовать</button>
     </div>
   `);
   setTimeout(()=>$('chPostTa')?.focus(),100);
@@ -137,7 +137,7 @@ async function publishChannelPost(){
     await window._fbSet(postRef,{id:postId,text,ts,author:myUsername});
     // Тоже пишем в latest для обратной совместимости
     await window._fbSet(window._fbRef(window._fbDb,'slon_channel/latest'),{id:postId,text,ts,author:myUsername});
-    toast('✅ Пост опубликован!');
+    toast('Пост опубликован!');
   }catch(e){
     toast('Ошибка: '+e.message);
     console.error('publishChannelPost:',e);
@@ -145,11 +145,11 @@ async function publishChannelPost(){
 }
 
 function showCreateChannel(){
-  if(!myPremium)return toast('⭐ Нужна подписка SLON PREMIUM');
+  if(!myPremium)return toast('Нужна подписка SLON PREMIUM');
   const owned=Object.keys(myChannels).length;
   if(owned>=3)return toast('Максимум 3 канала на одном аккаунте');
   showModal(`
-    <div class="m-title">📢 Создать канал</div>
+    <div class="m-title">Создать канал</div>
     <input class="m-inp" id="chUsernameInp" placeholder="Юзернейм канала (без @, только a-z 0-9 _)"
       maxlength="20" autocapitalize="none" spellcheck="false"
       oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
@@ -190,7 +190,7 @@ async function doCreateChannel(){
     _addChannelToSidebar(channelId,meta);
     _listenUserChannel(channelId,username);
     saveAll();
-    toast('📢 Канал @'+username+' создан!');
+    toast('Канал @'+username+' создан!');
     // Открываем настройки канала
     setTimeout(()=>showChannelSettings(channelId),400);
   }catch(e){toast('Ошибка: '+e.message);}
@@ -201,19 +201,19 @@ function showChannelSettings(channelId){
   if(ch.owner!==myUsername)return;
   const curColor=ch.bgColor||'#1d4ed8';
   showModal(`
-    <div class="m-title">⚙️ Настройки @${esc(ch.username)}</div>
+    <div class="m-title">Настройки @${esc(ch.username)}</div>
     <input class="m-inp" id="chSetName" placeholder="Название" maxlength="40" value="${esc(ch.name||'')}">
     <textarea class="m-ta" id="chSetDesc" placeholder="Описание" maxlength="200" style="min-height:60px">${esc(ch.desc||'')}</textarea>
-    <div class="admin-console-title" style="margin:10px 0 6px">🖼 Аватарка канала</div>
+    <div class="admin-console-title" style="margin:10px 0 6px">Аватарка канала</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <div id="chAvPreview" style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:22px">${ch.avatar?`<img src="${ch.avatar}" style="width:100%;height:100%;object-fit:cover">`:'📢'}</div>
-      <button class="admin-row" onclick="document.getElementById('chAvInput').click()">📷 Загрузить</button>
+      <div id="chAvPreview" style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:22px">${ch.avatar?`<img src="${ch.avatar}" style="width:100%;height:100%;object-fit:cover">`:_ico('megaphone','ico-22')}</div>
+      <button class="admin-row" onclick="document.getElementById('chAvInput').click()">Загрузить</button>
       <input type="file" id="chAvInput" accept="image/*" style="display:none" onchange="chLoadAvatar('${channelId}',this)">
     </div>
-    <div class="admin-console-title" style="margin:10px 0 6px">🎨 Цвет фона профиля</div>
+    <div class="admin-console-title" style="margin:10px 0 6px">Цвет фона профиля</div>
     <input type="color" id="chColorPicker" value="${curColor}" style="width:100%;height:52px;border:none;border-radius:10px;cursor:pointer;margin-bottom:6px">
     <div id="chColorPreview" style="height:48px;border-radius:10px;margin-bottom:8px;background:${curColor}"></div>
-    <div class="admin-console-title" style="margin:8px 0 6px">📌 Паттерн</div>
+    <div class="admin-console-title" style="margin:8px 0 6px">Паттерн</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
       <button class="admin-row${!ch.bgPattern?' sel':''}" style="padding:6px 10px" id="chPat_">Нет</button>
       ${PREMIUM_BG_PATTERNS.map(p=>`<button class="admin-row${ch.bgPattern===p.id?' sel':''}" style="padding:6px 10px" id="chPat_${p.id}">${p.emoji} ${p.label}</button>`).join('')}
@@ -282,7 +282,7 @@ async function saveChannelSettings(channelId){
     updateSbName(channelId);updateSbAvatar(channelId);
     if(activeChat===channelId)updateChatHeader();
     saveAll();
-    toast('✅ Настройки сохранены');
+    toast('Настройки сохранены');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -290,11 +290,11 @@ function showUserChannelPublish(channelId){
   const ch=myChannels[channelId];
   if(!ch||ch.owner!==myUsername)return;
   showModal(`
-    <div class="m-title">📝 Пост в @${esc(ch.username)}</div>
+    <div class="m-title">Пост в @${esc(ch.username)}</div>
     <textarea class="m-ta" id="userChPostTa" placeholder="Текст поста…" maxlength="4000" style="min-height:160px"></textarea>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-ok" onclick="publishUserChannelPost('${channelId}')">📢 Опубликовать</button>
+      <button class="btn-ok" onclick="publishUserChannelPost('${channelId}')">Опубликовать</button>
     </div>
   `);
   setTimeout(()=>$('userChPostTa')?.focus(),100);
@@ -311,13 +311,13 @@ async function publishUserChannelPost(channelId){
     // Пишем в Firebase — onChildAdded сам добавит в UI (нет локального дублирования)
     await window._fbSet(window._fbRef(window._fbDb,'user_channels/'+ch.username+'/posts/'+postId),
       {id:postId,text,ts,author:myUsername});
-    toast('✅ Опубликовано');
+    toast('Опубликовано');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
 function showSubscribeChannel(){
   showModal(`
-    <div class="m-title">📢 Подписаться на канал</div>
+    <div class="m-title">Подписаться на канал</div>
     <div class="m-info">Введи юзернейм канала (без @)</div>
     <input class="m-inp" id="subChInp" placeholder="username_канала" maxlength="20"
       autocapitalize="none" spellcheck="false"
@@ -351,7 +351,7 @@ async function doSubscribeChannel(){
     }
     _listenUserChannel(channelId,username);
     saveAll();
-    toast('✅ Подписались на @'+username);
+    toast('Подписались на @'+username);
     openChat(channelId);
   }catch(e){toast('Ошибка: '+e.message);}
 }

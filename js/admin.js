@@ -19,7 +19,7 @@ function toggleBlockUser(pid){
 function doBlockUser(pid){
   blockedUsers[pid]=true;
   saveAll();closeModal();closePeerProfile();
-  toast('🚫 @'+pid+' заблокирован');
+  toast('@'+pid+' заблокирован');
 }
 
 async function _fetchPeerElephantBadges(){
@@ -38,13 +38,13 @@ async function _fetchPeerElephantBadges(){
 async function adminGrantBadge(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   const ok=await slonConfirm({title:'Выдать слонгалочку',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
-    text:'Выдать слонгалочку 🐘 пользователю @'+pid+'? Она будет видна всем рядом с именем.',
+    text:'Выдать слонгалочку пользователю @'+pid+'? Она будет видна всем рядом с именем.',
     buttons:[{label:'Выдать',value:true},{label:'Отмена',value:null}]});
   if(!ok)return;
   try{
     await window._fbSet(window._fbRef(window._fbDb,'elephant_badges/'+pid),true);
     peerElephantBadges[pid]=true;
-    toast('🐘 Слонгалочка выдана @'+pid);
+    toast('Слонгалочка выдана @'+pid);
     closePeerProfile();
   }catch(e){toast('Ошибка: '+e.message);}
 }
@@ -62,7 +62,7 @@ async function adminRevokeBadge(pid){
 async function adminBanUser(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div class="m-title">🔨 Забанить @${esc(pid)}</div>
+    <div class="m-title">Забанить @${esc(pid)}</div>
     <div class="m-info">Выбери срок блокировки:</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
       <button class="admin-row" onclick="doAdminBan('${pid}',1)">1 час</button>
@@ -83,7 +83,7 @@ async function doAdminBan(pid,hours){
     bannedUsers[pid]={until,by:myUsername};
     // Шлём уведомление о бане через inbox
     _fbSend(pid,{type:'system_ban',until,hours});
-    toast('🔨 @'+pid+' заблокирован'+(hours===-1?' навсегда':' на '+hours+'ч'));
+    toast('@'+pid+' заблокирован'+(hours===-1?' навсегда':' на '+hours+'ч'));
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -93,7 +93,7 @@ async function adminUnbanUser(pid){
     await window._fbRemove(window._fbRef(window._fbDb,'bans/'+pid));
     delete bannedUsers[pid];
     closePeerProfile();
-    toast('✅ @'+pid+' разбанен');
+    toast('@'+pid+' разбанен');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -108,7 +108,7 @@ async function _checkBanStatus(){
       document.body.innerHTML=`
         <div style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:24px">
           <div style="text-align:center;max-width:340px">
-            <div style="font-size:60px;margin-bottom:16px">🔨</div>
+            <div style="margin-bottom:16px;color:#fff">${_ico('hammer','ico-60')}</div>
             <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px">Аккаунт заблокирован</div>
             <div style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.5">Твой аккаунт <b>@${esc(myUsername)}</b> заблокирован до <b>${until}</b>.<br><br>Если считаешь это ошибкой — обратись к администраторам.</div>
           </div>
@@ -122,7 +122,7 @@ function _handleSystemBan(data){
   document.body.innerHTML=`
     <div style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:24px">
       <div style="text-align:center;max-width:340px">
-        <div style="font-size:60px;margin-bottom:16px">🔨</div>
+        <div style="margin-bottom:16px;color:#fff">${_ico('hammer','ico-60')}</div>
         <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px">Аккаунт заблокирован</div>
         <div style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.5">Твой аккаунт заблокирован до <b>${until}</b>.</div>
       </div>
@@ -156,18 +156,18 @@ async function _fetchPeerPremiums(){
 async function adminGrantPremium(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   const days=await slonConfirm({title:'Выдать Premium',avatar:(peerAvatars[pid]?'<img src="'+esc(peerAvatars[pid])+'" alt="">':''),
-    text:'На какой срок выдать SLON Premium ⭐ пользователю @'+pid+'?',
-    buttons:[{label:'30 дней',value:30},{label:'3 месяца',value:90},{label:'1 год',value:365},{label:'Навсегда ✨',value:-1},{label:'Отмена',value:null}]});
+    text:'На какой срок выдать SLON Premium пользователю @'+pid+'?',
+    buttons:[{label:'30 дней',value:30},{label:'3 месяца',value:90},{label:'1 год',value:365},{label:'Навсегда',value:-1},{label:'Отмена',value:null}]});
   if(days)return doAdminGrantPremium(pid,days);
   return;
   showModal(`
-    <div class="m-title">⭐ Выдать Premium @${esc(pid)}</div>
+    <div class="m-title">Выдать Premium @${esc(pid)}</div>
     <div class="m-info">Выбери срок подписки:</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
       <button class="admin-row" onclick="doAdminGrantPremium('${pid}',30)">30 дней</button>
       <button class="admin-row" onclick="doAdminGrantPremium('${pid}',90)">3 месяца</button>
       <button class="admin-row" onclick="doAdminGrantPremium('${pid}',365)">1 год</button>
-      <button class="admin-row" style="color:#fbbf24" onclick="doAdminGrantPremium('${pid}',-1)">Навсегда ✨</button>
+      <button class="admin-row" style="color:#fbbf24" onclick="doAdminGrantPremium('${pid}',-1)">Навсегда</button>
     </div>
     <div class="m-btns" style="margin-top:8px"><button class="btn-cancel" onclick="closeModal()">Отмена</button></div>
   `);
@@ -180,7 +180,7 @@ async function doAdminGrantPremium(pid,days){
     await window._fbSet(window._fbRef(window._fbDb,'premium/'+pid),{until,by:myUsername,ts:Date.now()});
     peerPremium[pid]=true;
     _fbSend(pid,{type:'system_premium',until});
-    toast('⭐ Premium выдан @'+pid+(days===-1?' навсегда':' на '+days+' дн'));
+    toast('Premium выдан @'+pid+(days===-1?' навсегда':' на '+days+' дн'));
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -230,7 +230,7 @@ async function adminGrantAdmin(pid){
   if(!ok)return;
   if(typeof doAdminGrantAdmin==='function')return doAdminGrantAdmin(pid);
   showModal(`
-    <div class="m-title">🛡 Выдать права администратора</div>
+    <div class="m-title">Выдать права администратора</div>
     <div class="m-info">@${esc(pid)} получит доступ к консоли администратора SLON. Это нельзя отменить без прав суперадмина.</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -245,14 +245,14 @@ async function doAdminGrantAdmin(pid){
     await window._fbSet(window._fbRef(window._fbDb,'admins/'+pid),true);
     CHANNEL_ADMINS.add(pid);
     _fbSend(pid,{type:'system_admin_granted',by:myUsername});
-    toast('🛡 @'+pid+' теперь администратор');
+    toast('@'+pid+' теперь администратор');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
 async function adminRevokeAdmin(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div class="m-title">🛡 Убрать права администратора</div>
+    <div class="m-title">Убрать права администратора</div>
     <div class="m-info">@${esc(pid)} потеряет доступ к консоли администратора.</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -266,7 +266,7 @@ async function doAdminRevokeAdmin(pid){
   try{
     await window._fbRemove(window._fbRef(window._fbDb,'admins/'+pid));
     CHANNEL_ADMINS.delete(pid);
-    toast('🛡 Права администратора у @'+pid+' отозваны');
+    toast('Права администратора у @'+pid+' отозваны');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -277,7 +277,7 @@ async function doAdminRevokeAdmin(pid){
 async function adminResetPassword(pid){
   if(!CHANNEL_ADMINS.has(myUsername))return;
   showModal(`
-    <div class="m-title">🔑 Сбросить пароль</div>
+    <div class="m-title">Сбросить пароль</div>
     <div class="m-info">У @${esc(pid)} будет удалён пароль. При следующем входе аккаунт попросит задать <b>новый</b> пароль — попроси владельца зайти и придумать его.<br><br>Права, премиум и кастом останутся. Отменить сброс нельзя.</div>
     <div class="m-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -291,7 +291,7 @@ async function doAdminResetPassword(pid){
   try{
     await api('/admin/reset-password',{u:pid});
     _fbSend?.(pid,{type:'system_pass_reset',by:myUsername});
-    toast('🔑 Пароль @'+pid+' сброшен — пусть зайдёт и задаст новый');
+    toast('Пароль @'+pid+' сброшен — пусть зайдёт и задаст новый');
   }catch(e){toast('Ошибка: '+e.message);}
 }
 
@@ -321,13 +321,13 @@ function checkSecretCode(){
     if(!hasElephantBadge){
       hasElephantBadge=true;saveAll();
       inp.value='';
-      if(st){st.textContent='✅ Значок активирован!';st.style.display='block';st.style.color='var(--online)';}
+      if(st){st.textContent='Значок активирован!';st.style.display='block';st.style.color='var(--online)';}
       showEpicOverlay();
     }else{
-      if(st){st.textContent='🐘 Значок уже активирован!';st.style.display='block';}
+      if(st){st.textContent='Значок уже активирован!';st.style.display='block';}
     }
   }else{
-    if(st){st.textContent='❌ Неверный код';st.style.display='block';st.style.color='var(--red)';}
+    if(st){st.textContent='Неверный код';st.style.display='block';st.style.color='var(--red)';}
     inp.classList.add('err');setTimeout(()=>inp.classList.remove('err'),800);
   }
 }
@@ -361,5 +361,5 @@ function showEpicOverlay(){
 function closeEpicOverlay(){
   $('epicOverlay').classList.remove('show');
   updateProfileDisplay();
-  toast('🐘 Ты теперь Легенда Слона!',5000);
+  toast('Ты теперь Легенда Слона!',5000);
 }

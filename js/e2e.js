@@ -185,7 +185,7 @@ async function _e2eSealNotif(x,text){
 function _e2ePreviewOf(p){
   const k=p.k||'text';
   if(k==='text')return p.text||'';
-  return {photo:'📷 Фото',voice:'🎙️ Голосовое сообщение',slon:'🐘 Слонкружок',file:'📎 '+(p.name||'Файл')}[k]||'Новое сообщение';
+  return {photo:'Фото',voice:'Голосовое сообщение',slon:'Слонкружок',file:''+(p.name||'Файл')}[k]||'Новое сообщение';
 }
 
 async function _e2eDevices(users){
@@ -288,7 +288,7 @@ function _e2eRepairPlaceholders(){
   if(_e2eRepairing)return;
   for(const k of Object.keys(_e2eWaiting))_e2eRetry(k);
   let has=false;
-  for(const hist of Object.values(chatHist))for(const m of hist||[])if(m&&(m._e2eWait||(typeof m.text==='string'&&m.text.startsWith('🔒 Зашифрованное сообщение'))))has=true;
+  for(const hist of Object.values(chatHist))for(const m of hist||[])if(m&&(m._e2eWait||(typeof m.text==='string'&&/^(🔒 )?Зашифрованное сообщение/u.test(m.text))))has=true;
   if(!has||typeof _hubUp==='undefined'||!_hubUp)return;
   _e2eRepairing=true;
   // заново забираем журнал — заглушки заменятся настоящими сообщениями (см. _mlOnAdd)
