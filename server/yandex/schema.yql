@@ -36,3 +36,7 @@ CREATE TABLE wall_cfg     (owner Utf8, who Utf8, PRIMARY KEY (owner));
 -- «Моя музыка» и полный плейлист профиля
 CREATE TABLE mymusic      (u Utf8, id Utf8, title Utf8, artist Utf8, album Utf8, dur Int64, size Int64, mime Utf8, cover Int64, ts Int64, PRIMARY KEY (u, id));
 CREATE TABLE plist        (u Utf8, data Utf8, ts Int64, PRIMARY KEY (u));
+-- семейный доступ к «Моей музыке» и принятие соглашения
+CREATE TABLE mm_share     (owner Utf8, friend Utf8, ts Int64, PRIMARY KEY (owner, friend));
+CREATE TABLE mm_share_rev (friend Utf8, owner Utf8, ts Int64, PRIMARY KEY (friend, owner));
+CREATE TABLE legal        (u Utf8, v Utf8, ts Int64, PRIMARY KEY (u));

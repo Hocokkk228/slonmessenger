@@ -69,7 +69,7 @@ function _mmItem(r){
   return {id:r.id,cid:r.cid||'',title:r.title,artist:r.artist,album:r.album||'',dur:r.dur||0,size:r.size||0,mime:r.mime,ts:r.ts,
     coverUrl:_mm.urls['c'+r.id]||r.coverUrl||'',url:r.url||'',local:!!r.audio,noCloud:!!r.noCloud};
 }
-const _mmFind=id=>_mm.list.find(x=>x.id===id||x.cid===id);
+const _mmFind=id=>_mm.list.find(x=>x.id===id||x.cid===id)||Object.values(_mmFam.of).flat().find(x=>x.id===id);
 
 // ── добавление файлов ──
 function _mmPick(){
@@ -116,7 +116,7 @@ async function _mmUpload(id){
 async function _mmSrc(it){
   const rec=await _mmGetRec(it.id).catch(()=>null);
   if(rec&&rec.audio){if(!_mm.urls['a'+it.id])_mm.urls['a'+it.id]=URL.createObjectURL(rec.audio);return _mm.urls['a'+it.id];}
-  if(it.url){_mmCache(it);return it.url;}
+  if(it.url){if(!it.friend)_mmCache(it);return it.url;}
   throw new Error('Трека нет ни на устройстве, ни в облаке');
 }
 const _mmCaching=new Set();
@@ -234,9 +234,13 @@ function _spMusic(){
     <input class="lm-inp mm-q" id="mmQ" placeholder="Поиск по моей музыке" oninput="_mm.q=this.value;_mmPaint()">
     <div class="mm-cloud" id="mmCloud"></div>
     <div class="sp-card mm-list" id="mmList"><div class="px-empty">Загрузка…</div></div>
-    <div class="sp-hint">Треки хранятся на устройстве и в твоём облаке — появятся на всех твоих устройствах. Другие люди их не видят: в профиле для гостей играет отрывок из каталога, а полный трек можно переслать другу в чате.</div>
+    <div class="sp-hint">Треки хранятся на устройстве и в твоём облаке — появятся на всех твоих устройствах. В профиле для гостей играет отрывок из каталога, а полный трек можно переслать другу в чате.</div>
+    <div class="sp-sec mm-fam-h">Семейный доступ</div>
+    <div class="sp-card sp-pad" id="mmFam"><div class="px-empty">Загрузка…</div></div>
+    <div class="sp-hint">До 5 доверенных друзей могут слушать всю твою музыку целиком. Убрать друга можно в любой момент.</div>
   </div>`);
   _mm.q='';
+  _mmFamLoad();
   _mmLoad(true).then(_mmPaint).catch(e=>{const l=$('mmList');if(l)l.innerHTML='<div class="px-empty">Не удалось открыть фонотеку</div>';});
   return page;
 }
@@ -521,3 +525,75 @@ async function _plImportGo(){
   if(btn)btn.disabled=false;
   if(!miss.length)setTimeout(_pxSheetClose,900);
 }
+
+// ════════ Семейный доступ: доверенные друзья слушают мою музыку ════════
+const _mmFam={mine:[],withMe:[],max:5,of:{}};
+async function _mmFamLoad(){
+  try{const d=await api('/mm/shares');_mmFam.mine=d.mine||[];_mmFam.withMe=d.withMe||[];_mmFam.max=d.max||5;}catch(e){}
+  _mmFamPaint();
+}
+const _mmAv=u=>peerAvatars[u]?`<img src="${esc(peerAvatars[u])}" alt="">`:_avHtml(u,peerNames[u]||u);
+function _mmFamPaint(){
+  const b=$('mmFam');if(!b)return;
+  const mine=_mmFam.mine,wm=_mmFam.withMe;
+  b.innerHTML=`<div class="mm-fam">${mine.map(u=>`<div class="mm-fam-p"><span class="mm-chat-av">${_mmAv(u)}</span><b>${esc(peerNames[u]||('@'+u))}</b>
+      <button class="px-mini" title="Закрыть доступ" onclick="_mmFamSet('${esc(u)}',false)">${_MM_ICO.x}</button></div>`).join('')}
+    ${mine.length<_mmFam.max?`<button class="mm-fam-add" onclick="_mmFamPick()">${_MM_ICO.plus} Добавить друга <span>${mine.length}/${_mmFam.max}</span></button>`:''}</div>
+    ${wm.length?`<div class="mm-fam-sub">Со мной поделились</div>${wm.map(u=>`<div class="mm-chat" onclick="_spMusicOf('${esc(u)}')"><span class="mm-chat-av">${_mmAv(u)}</span><b>Музыка ${esc(peerNames[u]||('@'+u))}</b></div>`).join('')}`:''}`;
+}
+function _mmFamPick(){
+  const peers=_mmChats().filter(c=>c!=='saved'&&!c.startsWith('g_')&&!_mmFam.mine.includes(c));
+  _pxSheet(`<div class="px-sh-t">Семейный доступ</div>
+    <div class="px-add"><input class="lm-inp" id="mmFamIn" placeholder="юзернейм друга" autocapitalize="none" onkeydown="if(event.key==='Enter')_mmFamSet(this.value,true)"><button class="lm-btn primary" onclick="_mmFamSet($('mmFamIn').value,true)">Добавить</button></div>
+    <div class="mm-chats">${peers.slice(0,50).map(c=>`<div class="mm-chat" onclick="_mmFamSet('${esc(c)}',true)"><span class="mm-chat-av">${_mmAv(c)}</span><b>${esc(_mmChatName(c))}</b></div>`).join('')}</div>`);
+}
+async function _mmFamSet(u,on){
+  u=String(u||'').trim().toLowerCase().replace(/^@/,'');if(!u)return;
+  if(on&&!confirm(`Дать @${u} доступ ко всей твоей музыке?`))return;
+  try{await api('/mm/share',{friend:u,on});_pxSheetClose();
+    if(on){if(!_mmFam.mine.includes(u))_mmFam.mine.push(u);toast('@'+u+' теперь слушает твою музыку');}
+    else{_mmFam.mine=_mmFam.mine.filter(x=>x!==u);toast('Доступ закрыт');}
+    _mmFamPaint();
+  }catch(e){toast(e.message||'Не получилось');}
+}
+// фонотека друга
+function _spMusicOf(owner){
+  _spPush('Музыка '+esc(peerNames[owner]||('@'+owner)),`<div class="mm-page">
+    <div class="mm-top"><button class="wal-btn" onclick="_mmOfPlayAll('${esc(owner)}',false)">${_MM_ICO.play} Слушать</button>
+      <button class="mm-ib" onclick="_mmOfPlayAll('${esc(owner)}',true)" title="Перемешать">${_MM_ICO.shuffle}</button></div>
+    <div class="sp-card mm-list" id="mmOfList"><div class="px-empty">Загрузка…</div></div></div>`);
+  api('/mm/of?u='+encodeURIComponent(owner)).then(d=>{
+    _mmFam.of[owner]=(d.tracks||[]).map(t=>({id:'f_'+t.id,cid:'',title:t.title,artist:t.artist,album:t.album,dur:t.dur,size:t.size,mime:t.mime,ts:t.ts,url:t.url,coverUrl:t.coverUrl,local:false,friend:owner}));
+    _mmOfPaint(owner);
+  }).catch(e=>{const l=$('mmOfList');if(l)l.innerHTML=`<div class="px-empty">${esc(e.message||'Не удалось загрузить')}</div>`;});
+}
+function _mmOfPaint(owner){
+  const box=$('mmOfList');if(!box)return;const l=_mmFam.of[owner]||[];
+  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}',_mmFam.of['${esc(owner)}'].map(x=>x.id))">
+      ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
+      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist||'Неизвестный исполнитель')}${it.dur?' · '+_rcFmt(it.dur*1000):''}</span></div>
+      <button class="px-mini" title="Ещё" onclick="event.stopPropagation();_mmOfMenu('${esc(it.id)}')">${_MM_ICO.more}</button></div>`).join('')
+    :'<div class="px-empty">Здесь пока пусто</div>';
+  _mmPaintPlay();
+}
+function _mmOfPlayAll(owner,shuf){
+  const ids=(_mmFam.of[owner]||[]).map(x=>x.id);if(!ids.length)return;
+  if(shuf)for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
+  _mmPlay(ids[0],ids);
+}
+function _mmOfMenu(id){
+  const it=_mmFind(id);if(!it)return;
+  _pxSheet(`<div class="mm-sh-hd">${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}<div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></div>
+    <div class="mm-acts"><button onclick="_pxSheetClose();_mmLyrics('${esc(id)}')">Текст песни</button>
+      <button onclick="_pxSheetClose();_mmOfCopy('${esc(id)}')">Добавить в мою музыку</button></div>`);
+}
+async function _mmOfCopy(id){
+  const it=_mmFind(id);if(!it)return;
+  try{toast('Добавляем…');const b=await (await fetch(it.url)).blob();await _mmLoad();await _mmAddBlob(new Blob([b],{type:it.mime||b.type}),(it.artist?it.artist+' - ':'')+it.title+'.mp3');toast('Трек в твоей музыке');}
+  catch(e){toast('Не удалось: '+(e.message||''));}
+}
+// друг открыл доступ — уведомление
+{const f=_handleIncoming;_handleIncoming=function(pid,payload){
+  if(payload&&payload.type==='mm_share'){toast((peerNames[pid]||('@'+pid))+' открыл(а) тебе свою музыку — Настройки → Моя музыка');if(!_mmFam.withMe.includes(pid))_mmFam.withMe.push(pid);_mmFamPaint();return;}
+  return f.apply(this,arguments);
+};}

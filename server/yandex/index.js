@@ -367,7 +367,7 @@ async function sendFcm(u, data, ttl = '3600s') {
 }
 
 // ════════ HTTP-маршруты ════════
-const MM_QUOTA = 5 * 1024 * 1024 * 1024, MM_SIZE = 60 * 1024 * 1024;
+const MM_QUOTA = 5 * 1024 * 1024 * 1024, MM_SIZE = 60 * 1024 * 1024, MM_FAM = 5;
 const routes = {
   async 'POST /auth/login'(r, d) {
     const u = String(d.u || '').toLowerCase();
@@ -731,6 +731,51 @@ const routes = {
       for (const k of ['mm/' + u + '/' + id, 'mm/' + u + '/' + id + '.jpg']) { try { await fetch(presign('DELETE', k), { method: 'DELETE' }); } catch (e) { } }
       await q('DELETE FROM mymusic WHERE u=$u AND id=$i;', { u, i: id });
     }
+    return J({ ok: true });
+  },
+  // ── Семейный доступ к «Моей музыке»: до MM_FAM доверенных друзей слушают фонотеку ──
+  async 'GET /mm/shares'(r) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const [mine, withMe] = await qAll('SELECT friend FROM mm_share WHERE owner=$u; SELECT owner FROM mm_share_rev WHERE friend=$u;', { u });
+    return J({ ok: true, mine: mine.map(x => x.friend), withMe: withMe.map(x => x.owner), max: MM_FAM });
+  },
+  async 'POST /mm/share'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const f = String(d.friend || '').toLowerCase().replace(/^@/, '');
+    if (!validUser(f) || f === u) return E('bad', 'Неверный юзернейм');
+    if (d.on) {
+      const have = await q('SELECT friend FROM mm_share WHERE owner=$u;', { u });
+      if (!have.some(x => x.friend === f)) {
+        if (have.length >= MM_FAM) return E('limit', 'В семейном доступе до ' + MM_FAM + ' друзей', 409);
+        if (!(await getUser(f)) && !(await fbGet('auth/' + f)) && !(await fbGet('profiles/' + f + '/username'))) return E('not_found', 'Пользователь не найден', 404);
+        const t = now();
+        await q('UPSERT INTO mm_share (owner,friend,ts) VALUES ($u,$f,$t); UPSERT INTO mm_share_rev (friend,owner,ts) VALUES ($f,$u,$t);', { u, f, t });
+        await deliver(u, f, { type: 'mm_share', from: u });
+      }
+    } else {
+      await q('DELETE FROM mm_share WHERE owner=$u AND friend=$f; DELETE FROM mm_share_rev WHERE friend=$f AND owner=$u;', { u, f });
+    }
+    return J({ ok: true });
+  },
+  async 'GET /mm/of'(r) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const o = String(r.qs.get('u') || '').toLowerCase(); if (!validUser(o)) return E('bad', 'Неверный юзернейм');
+    if (!(await one('SELECT owner FROM mm_share WHERE owner=$o AND friend=$u;', { o, u }))) return E('forbidden', 'Доступ к этой музыке закрыт', 403);
+    const rows = await q('SELECT id,title,artist,album,dur,size,mime,cover,ts FROM mymusic WHERE u=$o;', { o });
+    const base = `https://${S3_HOST}/${BUCKET}/mm/${o}/`;
+    const tracks = rows.map(x => ({ ...x, cover: !!x.cover, url: base + x.id, coverUrl: x.cover ? base + x.id + '.jpg' : '' })).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    return J({ ok: true, tracks });
+  },
+  // ── Соглашение и политика: кто какую версию принял ──
+  async 'GET /legal'(r) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const x = await one('SELECT v FROM legal WHERE u=$u;', { u });
+    return J({ ok: true, v: x ? x.v : '' });
+  },
+  async 'POST /legal/accept'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const v = String(d.v || '').slice(0, 20); if (!v) return E('bad', 'Нет версии');
+    await q('UPSERT INTO legal (u,v,ts) VALUES ($u,$v,$t);', { u, v, t: now() });
     return J({ ok: true });
   },
   // полный плейлист профиля (в самом профиле — только первые 10)
