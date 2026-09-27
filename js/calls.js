@@ -1013,7 +1013,11 @@ async function toggleScreenShare(){
   try{
     if(!navigator.mediaDevices?.getDisplayMedia){toast('Демонстрация экрана не поддерживается');return;}
     // systemAudio:'include' — в окне выбора сразу есть «Показать системный звук» (включён по умолчанию, где браузер позволяет)
-    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:_screenConstraints(),audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},systemAudio:'include',surfaceSwitching:'include'});
+    // Звук демки = всё, что играет на компьютере, в том числе голос собеседника из звонка —
+    // без мер он возвращается собеседнику эхом. Поэтому: restrictOwnAudio — не брать звук самого SLON
+    // (новые Chrome/Яндекс Браузер), echoCancellation — вычитать звук звонка (шумодав и автогромкость
+    // выключены, чтобы музыка в демке не портилась).
+    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:_screenConstraints(),audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false,restrictOwnAudio:true,suppressLocalAudioPlayback:false},systemAudio:'include',surfaceSwitching:'include'});
     const screenTrack=screenShareStream.getVideoTracks()[0];
     if(!screenTrack){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;toast('Нет видео экрана');return;}
     _hintTrack(screenTrack,true);
