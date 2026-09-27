@@ -106,10 +106,11 @@ async function _dzPreview(id){const d=await _dzJsonp('/track/'+encodeURIComponen
 let _pxAudio=null,_pxAudioId=null;
 async function _pxPlay(tr,btn){
   if(!tr)return;
+  if(tr.src==='sc'){_pxAudio?.pause();_pxScSheet(tr);return;}
   if(_pxAudio&&_pxAudioId===tr.id&&!_pxAudio.paused){_pxAudio.pause();_pxBtns();return;}
   try{
     if(!_pxAudio){_pxAudio=new Audio();_pxAudio.onended=_pxAudio.onpause=_pxAudio.onplay=_pxBtns;}
-    if(_pxAudioId!==tr.id){_pxAudioId=tr.id;btn?.classList.add('busy');_pxAudio.src=await _dzPreview(tr.id);}
+    if(_pxAudioId!==tr.id){_pxAudioId=tr.id;btn?.classList.add('busy');_pxAudio.src=tr.src==='file'?tr.url:await _dzPreview(tr.id);}
     await _pxAudio.play();
   }catch(e){toast('Не удалось включить отрывок');}
   finally{btn?.classList.remove('busy');_pxBtns();}
@@ -144,16 +145,18 @@ function _pxTrackPill(tr,list,owner){
   const more=(list||[]).length>1?`<button class="px-pl-more" onclick="event.stopPropagation();_pxPlaylist('${owner}')">${list.length} в плейлисте</button>`:'';
   return `<div class="px-track" onclick="_pxLyrics(_pxTr('${owner}'))" title="Текст песни">
     ${tr.cover?`<img class="px-cover" src="${esc(tr.cover)}" alt="">`:'<span class="px-cover px-cover-none"></span>'}
-    <div class="px-tr-t"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}</span></div>${more}
+    <div class="px-tr-t"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}${_pxSrcTag(tr)}</span></div>${more}${tr.src==='file'?`<button class="px-dl" title="Скачать" onclick="event.stopPropagation();_pxDownload(_pxTr('${owner}'))">${_PX_DL}</button>`:''}
     <button class="px-play" data-trplay="${esc(String(tr.id))}" onclick="event.stopPropagation();_pxPlay(_pxTr('${owner}'),this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`;
 }
+const _PX_DL='<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
+const _pxSrcTag=t=>t.src==='sc'?' · SoundCloud':t.src==='file'?'':' · отрывок';
 function _pxOf(owner){return owner===myUsername?_pxPublic():(peerPX[owner]||{});}
 function _pxTr(owner,i){const p=_pxOf(owner);return i==null?p.track:(p.playlist||[])[i];}
 function _pxPlaylist(owner){
   const p=_pxOf(owner),pl=p.playlist||[];
   _pxSheet(`<div class="px-sh-t">Плейлист</div><div class="px-pl">${pl.map((t,i)=>`<div class="px-pl-row">
       ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-      <div class="px-tr-t" onclick="_pxLyrics(_pxTr('${owner}',${i}))"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>
+      <div class="px-tr-t" onclick="_pxLyrics(_pxTr('${owner}',${i}))"><b>${esc(t.title)}</b><span>${esc(t.artist)}${_pxSrcTag(t)}</span></div>${t.src==='file'?`<button class="px-mini" title="Скачать" onclick="_pxDownload(_pxTr('${owner}',${i}))">${_PX_DL}</button>`:''}
       <button class="px-play" data-trplay="${esc(String(t.id))}" onclick="_pxPlay(_pxTr('${owner}',${i}),this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`).join('')}</div>`);
   _pxBtns();
 }
@@ -251,8 +254,11 @@ function _pxEditHtml(){
   const lock=myPremium?'':' <span class="sp-lock">часть Premium</span>';
   return _spSec('Цвет ника'+lock)+`<div class="sp-card sp-pad"><div class="nm-grid" id="pxNmGrid"></div></div>`
     +_spSec('Музыка в профиле')+`<div class="sp-card sp-pad"><div id="pxMusic"></div>
-      <div class="px-search"><input class="lm-inp" id="pxQ" placeholder="Найти песню или исполнителя" oninput="_pxSearchSoon()"><div class="px-res" id="pxRes"></div></div></div>`
-    +_spHint('Первая песня видна у тебя в профиле с обложкой, остальные — в плейлисте (до 10). Можно послушать отрывок и открыть текст.')
+      <div class="px-src-btns"><button class="lm-btn primary" onclick="_pxPickFile()">Загрузить свой трек</button></div>
+      <div class="px-up-st" id="pxUpSt" style="display:none"></div>
+      <div class="px-add"><input class="lm-inp" id="pxScIn" placeholder="Ссылка на трек SoundCloud" onkeydown="if(event.key==='Enter')_pxScAdd()"><button class="lm-btn" onclick="_pxScAdd()">Добавить</button></div>
+      <div class="px-search"><input class="lm-inp" id="pxQ" placeholder="Поиск в каталоге (30-секундные отрывки)" oninput="_pxSearchSoon()"><div class="px-res" id="pxRes"></div></div></div>`
+    +_spHint('Свой трек (mp3, m4a — до 15 МБ, до 5 штук) и SoundCloud играют целиком, свой трек можно скачать. Из каталога — 30-секундный отрывок. Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).')
     +_spSec('Ссылки')+`<div class="sp-card sp-pad"><div id="pxSocEd"></div>
       <div class="px-add"><input class="lm-inp" id="pxSocIn" placeholder="t.me/… · vk.com/… · tiktok.com/@…" onkeydown="if(event.key==='Enter')_pxSocAdd()"><button class="lm-btn primary" onclick="_pxSocAdd()">Добавить</button></div></div>`
     +_spHint('Значок соцсети определится сам. Без Premium — до 3 ссылок, с Premium — до 8.')
@@ -267,7 +273,7 @@ function _pxEditPaint(){
   const m=$('pxMusic'),pl=d.playlist||[];
   if(m)m.innerHTML=pl.length?`<div class="px-pl">${pl.map((t,i)=>`<div class="px-pl-row${i===0?' main':''}">
       ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}</span></div>
+      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}${t.src==='file'?' · свой файл':_pxSrcTag(t)}</span></div>
       ${i?`<button class="px-mini" title="Сделать главной" onclick="_pxMain(${i})"><svg viewBox="0 0 24 24"><path d="M12 17.3 18.2 21l-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7l-7.2.6 5.4 4.7-1.6 7z"/></svg></button>`:''}
       <button class="px-mini" title="Убрать" onclick="_pxDel(${i})"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>`).join('')}</div>`
     :'<div class="px-empty">Песни пока нет — найди её ниже.</div>';
@@ -340,3 +346,118 @@ async function _pxAlDel(i){
   if(!ok)return;
   try{await _pxAliasesSave(cur);}catch(e){toast(e.message||'Не удалось');}
 }
+
+// ════════ Полные песни: свои файлы (mp3/m4a…) и SoundCloud ════════
+// Свой трек: название, исполнитель и обложка берутся из тегов файла (ID3), файл лежит на нашем сервере
+// постоянно (до 5 штук по 15 МБ), его можно скачать. SoundCloud — официальный встраиваемый плеер, трек целиком.
+function _id3Read(buf){
+  const b=new Uint8Array(buf),out={};
+  if(b[0]!==0x49||b[1]!==0x44||b[2]!==0x33)return out;          // «ID3»
+  const ver=b[3],ss=i=>(b[i]<<21)|(b[i+1]<<14)|(b[i+2]<<7)|b[i+3];
+  const end=10+ss(6);let p=10;
+  if(b[5]&0x40)p+=ver===4?ss(10):((b[10]<<24)|(b[11]<<16)|(b[12]<<8)|b[13])+4;   // расширенный заголовок
+  const txt=(enc,a,z)=>{const s=b.subarray(a,z);
+    try{if(enc===0)return new TextDecoder('latin1').decode(s).replace(/\0+$/,'');
+      if(enc===3)return new TextDecoder('utf-8').decode(s).replace(/\0+$/,'');
+      return new TextDecoder(enc===1?'utf-16':'utf-16be').decode(s).replace(/\0+$/,'');}catch(e){return '';}};
+  while(p+10<=end&&p+10<=b.length){
+    const id=String.fromCharCode(b[p],b[p+1],b[p+2],b[p+3]);
+    const sz=ver===4?ss(p+4):((b[p+4]<<24)|(b[p+5]<<16)|(b[p+6]<<8)|b[p+7]);
+    if(!/^[A-Z0-9]{4}$/.test(id)||sz<=0)break;
+    const a=p+10,z=Math.min(a+sz,b.length);
+    if(id==='TIT2')out.title=txt(b[a],a+1,z).trim();
+    else if(id==='TPE1')out.artist=txt(b[a],a+1,z).trim();
+    else if(id==='APIC'&&!out.cover){
+      const enc=b[a];let i=a+1;while(i<z&&b[i])i++;const mime=new TextDecoder('latin1').decode(b.subarray(a+1,i))||'image/jpeg';
+      i+=2;                                                        // 0 + тип картинки
+      if(enc===1||enc===2){while(i+1<z&&(b[i]||b[i+1]))i+=2;i+=2;}else{while(i<z&&b[i])i++;i++;}
+      out.cover=new Blob([b.slice(i,z)],{type:/image\//.test(mime)?mime:'image/jpeg'});
+    }
+    p=a+sz;
+  }
+  return out;
+}
+// обложку уменьшаем до 300px jpeg — лёгкая и быстрая
+function _pxCoverJpeg(blob){
+  return new Promise(res=>{
+    const img=new Image(),u=URL.createObjectURL(blob);
+    img.onload=()=>{const k=Math.min(1,300/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');
+      c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u);c.toBlob(b=>res(b),'image/jpeg',.85);};
+    img.onerror=()=>{URL.revokeObjectURL(u);res(null);};img.src=u;
+  });
+}
+function _pxDur(file){return new Promise(res=>{const a=new Audio(),u=URL.createObjectURL(file);a.preload='metadata';
+  a.onloadedmetadata=()=>{const d=a.duration;URL.revokeObjectURL(u);res(isFinite(d)?Math.round(d):0);};a.onerror=()=>{URL.revokeObjectURL(u);res(0);};a.src=u;});}
+function _pxPut(url,blob,onProg){
+  return new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open('PUT',url);
+    if(blob.type)x.setRequestHeader('Content-Type',blob.type);
+    x.upload.onprogress=e=>{if(e.lengthComputable&&onProg)onProg(Math.round(e.loaded/e.total*100));};
+    x.onload=()=>x.status<300?res():rej(new Error('ошибка загрузки '+x.status));x.onerror=()=>rej(new Error('нет интернета'));x.send(blob);});
+}
+function _pxPickFile(){
+  const i=document.createElement('input');i.type='file';i.accept='audio/*,.mp3,.m4a,.ogg,.flac,.wav';
+  i.onchange=()=>{const f=i.files&&i.files[0];if(f)_pxUploadFile(f);};i.click();
+}
+async function _pxUploadFile(file){
+  const pl=_pxDraft.playlist=_pxDraft.playlist||[];
+  if(pl.length>=10){toast('В плейлисте до 10 песен');return;}
+  if(file.size>15*1024*1024){toast('Трек больше 15 МБ');return;}
+  const st=$('pxUpSt');const say=t=>{if(st){st.textContent=t;st.style.display=t?'':'none';}};
+  try{
+    say('Читаем теги…');
+    const tags=_id3Read(await file.slice(0,Math.min(file.size,2*1024*1024)).arrayBuffer());
+    const base=file.name.replace(/\.[^.]+$/,'');const m=base.split(/\s+[-–—]\s+/);
+    const title=(tags.title||(m[1]||base)).slice(0,120),artist=(tags.artist||(m[1]?m[0]:'')).slice(0,80);
+    const mime=file.type||(/\.m4a$/i.test(file.name)?'audio/mp4':/\.ogg$/i.test(file.name)?'audio/ogg':'audio/mpeg');
+    const d=await api('/pmusic/presign',{size:file.size,mime});
+    const dur=await _pxDur(file);
+    await _pxPut(d.put,file.type?file:new Blob([file],{type:mime}),p=>say('Загрузка '+p+'%'));
+    let cover='';
+    if(tags.cover){const c=await _pxCoverJpeg(tags.cover);if(c){try{await _pxPut(d.putCover,c);cover=d.cover;}catch(e){}}}
+    pl.push({src:'file',id:d.id,url:d.url,title,artist,cover,dur});_pxDraft.track=pl[0];
+    say('');_pxEditPaint();_pxDirty();toast(pl.length===1?'Трек в профиле':'Трек добавлен в плейлист');
+  }catch(e){say('');toast(e.message||'Не удалось загрузить');}
+}
+async function _pxScAdd(){
+  const raw=String($('pxScIn')?.value||'').trim();
+  if(!/soundcloud\.com\//i.test(raw)){toast('Вставь ссылку на трек SoundCloud');return;}
+  const url=_socNorm(raw).split('?')[0];
+  const pl=_pxDraft.playlist=_pxDraft.playlist||[];
+  if(pl.length>=10){toast('В плейлисте до 10 песен');return;}
+  try{
+    const r=await fetch('https://soundcloud.com/oembed?format=json&url='+encodeURIComponent(url));
+    if(!r.ok)throw new Error('Трек не найден или закрыт для встраивания');
+    const j=await r.json();
+    const artist=j.author_name||'',title=String(j.title||'').replace(new RegExp('\\s+by\\s+'+artist.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'$','i'),'');
+    if(pl.some(x=>x.url===url))return;
+    pl.push({src:'sc',id:'sc:'+url,url,title:title.slice(0,120),artist:artist.slice(0,80),cover:j.thumbnail_url||''});_pxDraft.track=pl[0];
+    $('pxScIn').value='';_pxEditPaint();_pxDirty();toast('Трек SoundCloud добавлен');
+  }catch(e){toast(e.message||'SoundCloud не отвечает');}
+}
+// SoundCloud играет в своём официальном плеере (целиком)
+let _pxSheetTr=null;
+function _pxScSheet(tr){
+  _pxSheetTr=tr;
+  _pxSheet(`<div class="px-sh-t">${esc(tr.title)}</div><iframe class="px-sc" allow="autoplay" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(tr.url)}&auto_play=true&visual=true&hide_related=true&show_comments=false"></iframe>
+    <button class="lm-btn" style="margin-top:10px" onclick="_pxLyrics(_pxSheetTr)">Текст песни</button>`);
+}
+async function _pxDownload(tr){
+  if(!tr||tr.src!=='file')return;
+  try{
+    toast('Скачивается…');
+    const b=await (await fetch(tr.url)).blob();
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download=((tr.artist?tr.artist+' - ':'')+tr.title).replace(/[\\/:*?"<>|]+/g,'_')+(/mp4/.test(b.type)?'.m4a':/ogg/.test(b.type)?'.ogg':'.mp3');
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  }catch(e){toast('Не удалось скачать');}
+}
+// при сохранении — свои треки, убранные из плейлиста, удаляем с сервера
+{const f=_spSaveCustom;_spSaveCustom=function(){
+  try{
+    const before=(_pxMe().playlist||[]).filter(t=>t.src==='file').map(t=>t.id);
+    const after=new Set(((_pxDraft&&_pxDraft.playlist)||[]).filter(t=>t.src==='file').map(t=>t.id));
+    for(const id of before)if(!after.has(id))api('/pmusic/delete',{id}).catch(()=>{});
+  }catch(e){}
+  return f.apply(this,arguments);
+};}

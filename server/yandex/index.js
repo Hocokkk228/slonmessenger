@@ -13,6 +13,7 @@ const { q, qAll, one, setToken } = require('./db');
 
 const BUILTIN_ADMINS = (process.env.ADMINS || 'mamedov,vadimslonik67').split(',').map(s => s.trim()).filter(Boolean);
 const MAX_FAILS = 10, LOCK_MS = 5 * 60 * 1000, RESET_TTL = 15 * 60 * 1000;
+const PM_MAX = 5, PM_SIZE = 15 * 1024 * 1024;
 const QUEUE_TTL = 7 * 24 * 3600e3, CONN_TTL = 61 * 60 * 1000;           // соединение шлюза живёт не дольше 60 минут
 const MEDIA_MAX = 100 * 1024 * 1024, WS_BUDGET = 90 * 1024;              // сообщение в сокет — до ~96 КБ
 const BUCKET = process.env.BUCKET || '';
@@ -688,6 +689,29 @@ const routes = {
     if (+d.size > MEDIA_MAX) return E('too_large', 'Файл больше 100 МБ', 413);
     const id = rnd(18);
     return J({ ok: true, id, put: presign('PUT', 'm/' + id), get: mediaUrl(id) });
+  },
+  // ── Музыка профиля: свои треки. Лежат в pm/ — без автоудаления (правило 14 дней только для m/).
+  // До PM_MAX треков по PM_SIZE на человека; обложка — отдельным файлом рядом.
+  async 'POST /pmusic/presign'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    if (!(+d.size > 0) || +d.size > PM_SIZE) return E('too_large', 'Трек больше 15 МБ', 413);
+    if (!/^audio\//.test(String(d.mime || ''))) return E('bad', 'Нужен аудиофайл (mp3, m4a, ogg…)');
+    const have = await q('SELECT id FROM pmusic WHERE u=$u;', { u });
+    if (have.length >= PM_MAX) return E('limit', 'Не больше ' + PM_MAX + ' своих треков — удали какой-нибудь', 409);
+    const id = rnd(14), key = 'pm/' + u + '/' + id;
+    await q('UPSERT INTO pmusic (u,id,size,ts) VALUES ($u,$i,$s,$t);', { u, i: id, s: +d.size, t: now() });
+    return J({ ok: true, id, put: presign('PUT', key), url: `https://${S3_HOST}/${BUCKET}/${key}`,
+      putCover: presign('PUT', key + '.jpg'), cover: `https://${S3_HOST}/${BUCKET}/${key}.jpg` });
+  },
+  async 'POST /pmusic/delete'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const id = String(d.id || ''); if (!/^[A-Za-z0-9_-]{8,30}$/.test(id)) return E('bad', 'Неверный трек');
+    const x = await one('SELECT id FROM pmusic WHERE u=$u AND id=$i;', { u, i: id });
+    if (x) {
+      for (const k of ['pm/' + u + '/' + id, 'pm/' + u + '/' + id + '.jpg']) { try { await fetch(presign('DELETE', k), { method: 'DELETE' }); } catch (e) { } }
+      await q('DELETE FROM pmusic WHERE u=$u AND id=$i;', { u, i: id });
+    }
+    return J({ ok: true });
   },
   async 'POST /admin/reset-password'(r, d) {
     const a = r.user; if (!a || !(await isAdmin(a))) return E('forbidden', 'Только для админов', 403);

@@ -23,3 +23,5 @@ CREATE TABLE email_owner  (email Utf8, username Utf8, PRIMARY KEY (email));
 CREATE TABLE email_codes  (k Utf8, code_hash Utf8, email Utf8, expires Int64, tries Int64, sent Int64, PRIMARY KEY (k));
 -- дополнительные юзернеймы: бронь «а также @…»
 CREATE TABLE aliases      (alias Utf8, u Utf8, ts Int64, PRIMARY KEY (alias), INDEX idx_u GLOBAL ON (u));
+-- свои треки в профиле (файлы в бакете: pm/{u}/{id})
+CREATE TABLE pmusic       (u Utf8, id Utf8, size Int64, ts Int64, PRIMARY KEY (u, id));

@@ -2998,3 +2998,9 @@ video.mv-media{cursor:default;}
 .px-lyr-hd b{display:block;font-size:17px;color:var(--text1);}
 .px-lyr-hd span{font-size:13px;color:var(--text2);}
 .px-lyr{white-space:pre-wrap;font-size:16px;line-height:1.55;color:var(--text1);}
+.px-dl{width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
+.px-dl svg{width:18px;height:18px;fill:currentColor;}
+.px-src-btns{display:flex;gap:8px;margin-top:10px;}
+.px-src-btns .lm-btn{flex:1;padding:11px 12px;}
+.px-up-st{font-size:13px;color:var(--accent);padding:6px 2px 0;}
+.px-sc{width:100%;height:360px;border:none;border-radius:14px;background:#111;}
