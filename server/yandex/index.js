@@ -122,7 +122,7 @@ async function codeCheck(k, code) {
   await q('DELETE FROM email_codes WHERE k=$k;', { k });
   return { ok: true, email: r.email };
 }
-const mailErr = e => e.code === 'mail_off' || e.code === 'wait' ? E(e.code, e.message, e.code === 'wait' ? 429 : 503) : E('mail_failed', 'Не удалось отправить письмо — проверь адрес', 502);
+const mailErr = e => e.code === 'mail_off' || e.code === 'wait' ? E(e.code, e.message, e.code === 'wait' ? 429 : 503) : (console.error('mail', e.code, e.responseCode, String(e.message).slice(0, 200)), E('mail_failed', 'Не удалось отправить письмо (' + (e.responseCode || e.code || 'ошибка') + ')', 502));
 
 // ════════ Хаб: соединения, доставка, журнал ════════
 // Кэш «кто онлайн» в памяти функции на 5 секунд: одно сообщение раньше читало это из базы 2–3 раза.
@@ -489,6 +489,12 @@ const routes = {
       if (ses?.device) await q('DELETE FROM fcm_tokens WHERE username=$u AND device=$d;', { u: ses.username, d: ses.device });
     }
     return J({ ok: true });
+  },
+  // проверка SMTP без отправки письма: только код ошибки, без секретов
+  async 'GET /mail/check'() {
+    const m = mailer(); if (!m) return J({ ok: false, err: 'mail_off' });
+    try { await Promise.race([m.verify(), new Promise((_, j) => setTimeout(() => j(Object.assign(new Error('timeout'), { code: 'TIMEOUT' })), 15000))]); return J({ ok: true }); }
+    catch (e) { return J({ ok: false, err: e.code || 'error', rc: e.responseCode || 0, msg: String(e.message).replace(/[w.+-]+@[w.-]+/g, '@').slice(0, 160) }); }
   },
   async 'GET /auth/exists'(r) {
     const u = String(r.qs.get('u') || '').toLowerCase();

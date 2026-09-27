@@ -25,8 +25,9 @@ const _em = { mode: '', email: '', user: '', pass: '', token: '', rt: '' };
       <div class="auth-glass auth-hello"><h1>Код из письма</h1><p id="codeHint">Мы отправили код на почту.</p></div>
       <label class="auth-field"><input class="username-inp auth-code-inp" id="codeInp" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6);if(this.value.length===6)_emCodeSubmit()"></label>
       <div class="username-error" id="codeError" style="display:none"></div>
-      <div class="auth-alt"><a href="#" class="auth-link" onclick="_emResend();return false">Отправить код ещё раз</a> · <a href="#" class="auth-link" onclick="_authGo('authLogin');return false">Отмена</a></div>
       <button class="username-btn" onclick="_emCodeSubmit()">Подтвердить</button>
+      <button class="em-resend" id="codeResend" onclick="_emResend()">Отправить код повторно</button>
+      <div class="auth-alt"><a href="#" class="auth-link" onclick="_authGo('authLogin');return false">Отмена</a></div>
     </div>
     <div id="authAsk" class="auth-sec" style="display:none">
       <div class="auth-ask-ico"><svg viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 16-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg></div>
@@ -80,7 +81,7 @@ async function _emRecStart() {
       Object.assign(_em, { mode: 'rec', email });
       document.getElementById('codeHint').textContent = 'Код отправлен на ' + (d.hint || email) + '. Проверь и папку «Спам».';
       document.getElementById('codeInp').value = ''; _emErr('codeError', '');
-      _authGo('authCode');
+      _authGo('authCode'); _emTimer('codeResend');
     } catch (e) { _emErr('recError', e.message); }
   });
 }
@@ -89,13 +90,21 @@ function _emLoginCode(user, pass, hint) {
   Object.assign(_em, { mode: 'login', user, pass });
   document.getElementById('codeHint').textContent = 'Двухэтапный вход: код отправлен на ' + (hint || 'твою почту') + '.';
   document.getElementById('codeInp').value = ''; _emErr('codeError', '');
-  _authGo('authCode');
+  _authGo('authCode'); _emTimer('codeResend');
+}
+function _emTimer(id, sec = 60) {
+  const b = document.getElementById(id); if (!b) return;
+  clearInterval(b._t); let left = sec;
+  const tick = () => { if (left <= 0) { clearInterval(b._t); b.disabled = false; b.textContent = 'Отправить код повторно'; return; }
+    b.disabled = true; b.textContent = 'Отправить повторно через 0:' + String(left--).padStart(2, '0'); };
+  tick(); b._t = setInterval(tick, 1000);
 }
 async function _emResend() {
+  if (document.getElementById('codeResend')?.disabled) return;
   try {
     if (_em.mode === 'rec') await api('/auth/recover/start', { email: _em.email }, { token: '' });
     else if (_em.mode === 'login') await api('/auth/login', { u: _em.user, h: await hashPassword(_em.pass), device: _apiDevice() }, { token: '' });
-    toast('Код отправлен ещё раз');
+    toast('Код отправлен ещё раз'); _emTimer('codeResend');
   } catch (e) { _emErr('codeError', e.message); }
 }
 async function _emCodeSubmit() {
@@ -162,34 +171,52 @@ async function _lmRender() {
   if (!st.mail) h += `<div class="sp-hint">⚠ Отправка писем на сервере ещё не настроена — коды пока не придут.</div>`;
   box.innerHTML = h;
 }
+let _lmMail = '';
 function _lmBindStart(change) {
   const box = document.getElementById('lmBody');
-  box.innerHTML = _spSec(change ? 'Новая почта' : 'Привязать почту') + `<div class="sp-card sp-pad">
-    <input class="lm-inp" id="lmEmail" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="none">
-    <div class="lm-code" id="lmCodeWrap" style="display:none"><div class="sp-row-sub" id="lmCodeHint"></div>
-      <input class="lm-inp lm-code-inp" id="lmCode" inputmode="numeric" maxlength="6" placeholder="Код из письма" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6)"></div>
+  box.innerHTML = _spSec(change ? 'Новая почта' : 'Привязать почту') + `<div class="sp-card sp-pad em-box">
+    <div class="em-ico">✉️</div>
+    <div class="em-t">Введи адрес почты</div>
+    <div class="sp-row-sub em-sub">Пришлём на неё код из 6 цифр</div>
+    <input class="lm-inp" id="lmEmail" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="none" onkeydown="if(event.key==='Enter')_lmSend()">
     <div class="lm-err" id="lmErr"></div>
-    <div class="lm-btns"><button class="lm-btn" onclick="_lmRender()">Отмена</button><button class="lm-btn primary" id="lmGo" onclick="_lmBindStep()">Отправить код</button></div></div>`;
+    <button class="lm-btn primary em-wide" id="lmGo" onclick="_lmSend()">Отправить код</button>
+    <button class="em-resend" onclick="_lmRender()">Отмена</button></div>`;
   setTimeout(() => document.getElementById('lmEmail')?.focus(), 200);
 }
-async function _lmBindStep() {
-  const err = document.getElementById('lmErr'), go = document.getElementById('lmGo');
+async function _lmSend(again) {
+  const go = document.getElementById(again ? 'lmResend' : 'lmGo'), err = document.getElementById('lmErr');
+  if (go?.disabled) return;
+  const email = again ? _lmMail : (document.getElementById('lmEmail')?.value || '').trim().toLowerCase();
   err.textContent = '';
-  const codeWrap = document.getElementById('lmCodeWrap');
+  if (!/^[^s@]+@[^s@]+.[^s@]{2,}$/.test(email)) { err.textContent = 'Проверь адрес почты'; return; }
+  const t = go.textContent; go.disabled = true; go.textContent = 'Отправляем…';
   try {
-    go.disabled = true;
-    if (codeWrap.style.display === 'none') {
-      const email = document.getElementById('lmEmail').value.trim().toLowerCase();
-      const d = await api('/auth/email/start', { email });
-      codeWrap.style.display = ''; document.getElementById('lmCodeHint').textContent = 'Код отправлен на ' + d.hint;
-      document.getElementById('lmEmail').disabled = true; go.textContent = 'Подтвердить';
-      setTimeout(() => document.getElementById('lmCode')?.focus(), 150);
-    } else {
-      await api('/auth/email/confirm', { code: document.getElementById('lmCode').value });
-      toast('Почта привязана ✉️'); _lmRender();
-    }
-  } catch (e) { err.textContent = e.message; }
-  finally { go.disabled = false; }
+    const d = await api('/auth/email/start', { email });
+    _lmMail = email;
+    if (again) { toast('Код отправлен ещё раз'); _emTimer('lmResend'); return; }
+    document.querySelector('#lmBody .em-box').innerHTML = `
+      <div class="em-ico">📩</div>
+      <div class="em-t">Введи код из письма</div>
+      <div class="sp-row-sub em-sub">Код отправлен на <b>${esc(d.hint || email)}</b>.<br>Не пришло — загляни в «Спам».</div>
+      <input class="lm-inp lm-code-inp" id="lmCode" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6);if(this.value.length===6)_lmConfirm()">
+      <div class="lm-err" id="lmErr"></div>
+      <button class="lm-btn primary em-wide" id="lmGo" onclick="_lmConfirm()">Подтвердить</button>
+      <button class="em-resend" id="lmResend" onclick="_lmSend(true)">Отправить код повторно</button>
+      <button class="em-resend" onclick="_lmBindStart()">Изменить почту</button>`;
+    _emTimer('lmResend');
+    setTimeout(() => document.getElementById('lmCode')?.focus(), 150);
+  } catch (e) { err.textContent = e.message; if (go) { go.disabled = false; go.textContent = t; } }
+  if (!again && go && document.body.contains(go)) { go.disabled = false; go.textContent = t; }
+}
+async function _lmConfirm() {
+  const go = document.getElementById('lmGo'), err = document.getElementById('lmErr');
+  const code = document.getElementById('lmCode')?.value || '';
+  err.textContent = '';
+  if (code.length !== 6) { err.textContent = 'Код — 6 цифр'; return; }
+  if (go.disabled) return; go.disabled = true;
+  try { await api('/auth/email/confirm', { code }); toast('Почта привязана ✉️'); _lmRender(); }
+  catch (e) { err.textContent = e.message; go.disabled = false; }
 }
 async function _lm2fa(el) {
   const on = !el.classList.contains('on');

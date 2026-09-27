@@ -2719,3 +2719,14 @@ video.mv-media{cursor:default;}
 .lm-code{margin-top:10px;}
 .lm-code-inp{margin-top:6px;text-align:center;letter-spacing:8px;font-size:20px;font-weight:700;}
 .lm-err{color:var(--red,#e53935);font-size:13px;min-height:16px;margin-top:6px;}
+
+/* окно кода на почту */
+.em-box{text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.em-ico{font-size:40px;line-height:1;margin:4px 0 2px;}
+.em-t{font-weight:700;font-size:17px;color:var(--text1);}
+.em-sub{margin-bottom:6px;line-height:1.4;}
+.em-wide{width:100%;padding:12px 14px;font-size:15px;}
+.em-resend{background:none;border:none;color:var(--accent);font-weight:600;font-size:14px;padding:8px;cursor:pointer;border-radius:10px;}
+.em-resend:hover:not(:disabled){background:var(--hover);}
+.em-resend:disabled{color:var(--text3,#8a94a3);cursor:default;}
+#authCode .em-resend{display:block;margin:8px auto 0;}
