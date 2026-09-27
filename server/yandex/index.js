@@ -13,6 +13,9 @@ const { q, qAll, one, setToken } = require('./db');
 
 const BUILTIN_ADMINS = (process.env.ADMINS || 'mamedov,vadimslonik67').split(',').map(s => s.trim()).filter(Boolean);
 const MAX_FAILS = 10, LOCK_MS = 5 * 60 * 1000, RESET_TTL = 15 * 60 * 1000;
+// ── Подарки и мини-слоники (внутренняя валюта: 100 мини-слоников = 20 ₽) ──
+// Цены — только на сервере: клиент не может подарить дешевле.
+const GIFTS = { plush: { price: 50, title: 'Плюшевый слоник' } };
 const PM_MAX = 5, PM_SIZE = 15 * 1024 * 1024;
 const QUEUE_TTL = 7 * 24 * 3600e3, CONN_TTL = 61 * 60 * 1000;           // соединение шлюза живёт не дольше 60 минут
 const MEDIA_MAX = 100 * 1024 * 1024, WS_BUDGET = 90 * 1024;              // сообщение в сокет — до ~96 КБ
@@ -694,6 +697,55 @@ const routes = {
   },
   // ── Музыка профиля: свои треки. Лежат в pm/ — без автоудаления (правило 14 дней только для m/).
   // До PM_MAX треков по PM_SIZE на человека; обложка — отдельным файлом рядом.
+  // ── Кошелёк мини-слоников ──
+  async 'GET /wallet'(r) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const [w, log] = await qAll('SELECT bal FROM wallet WHERE u=$u; SELECT id,delta,kind,peer,note,ts FROM wallet_log WHERE u=$u ORDER BY id DESC LIMIT 60;', { u });
+    return J({ ok: true, bal: w[0]?.bal || 0, log, gifts: GIFTS });
+  },
+  // Подарить: списываем мини-слоников, подарок появляется у получателя в профиле
+  async 'POST /gift/send'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const to = String(d.to || '').toLowerCase(), g = GIFTS[d.gift];
+    if (!validUser(to) || to === u) return E('bad', 'Неверный получатель');
+    if (!g) return E('bad', 'Такого подарка нет');
+    if (!(await getUser(to)) && !(await fbGet('auth/' + to))) return E('not_found', 'Пользователь не найден', 404);
+    const text = String(d.text || '').slice(0, 200);
+    const w = await one('SELECT bal FROM wallet WHERE u=$u;', { u });
+    const bal = w?.bal || 0;
+    if (bal < g.price) return E('no_money', 'Не хватает мини-слоников', 402);
+    const t = now(), id = String(t).padStart(15, '0') + rnd(4);
+    await q('UPSERT INTO wallet (u,bal,ts) VALUES ($u,$b,$t);', { u, b: bal - g.price, t });
+    await q('UPSERT INTO wallet_log (u,id,delta,kind,peer,note,ts) VALUES ($u,$i,$dl,$k,$p,$n,$t);', { u, i: id, dl: -g.price, k: 'gift_out', p: to, n: g.title, t });
+    await q('UPSERT INTO gifts (to_u,id,from_u,gift,text,price,ts,hidden) VALUES ($to,$i,$f,$g,$tx,$pr,$t,0);', { to, i: id, f: u, g: d.gift, tx: text, pr: g.price, t });
+    await deliver(u, to, { type: 'gift_new', id, gift: d.gift, from: u });
+    return J({ ok: true, id, bal: bal - g.price, price: g.price });
+  },
+  // Подарки человека — видны всем (кроме скрытых владельцем)
+  async 'GET /gifts'(r) {
+    const u = String(r.qs.get('u') || '').toLowerCase(); if (!validUser(u)) return E('bad', 'Неверный юзернейм');
+    const rows = await q('SELECT id,from_u,gift,text,price,ts,hidden FROM gifts WHERE to_u=$u ORDER BY id DESC LIMIT 100;', { u });
+    const mine = r.user === u;
+    return J({ ok: true, gifts: rows.filter(x => mine || !x.hidden).map(x => ({ id: x.id, from: x.from_u, gift: x.gift, text: x.text, price: x.price, ts: x.ts, hidden: !!x.hidden })) });
+  },
+  async 'POST /gift/hide'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const x = await one('SELECT id FROM gifts WHERE to_u=$u AND id=$i;', { u, i: String(d.id || '') });
+    if (!x) return E('not_found', 'Подарок не найден', 404);
+    await q('UPDATE gifts SET hidden=$h WHERE to_u=$u AND id=$i;', { h: d.hidden ? 1 : 0, u, i: x.id });
+    return J({ ok: true });
+  },
+  // Начислить мини-слоников (админ; пока нет оплаты)
+  async 'POST /admin/wallet'(r, d) {
+    const a = r.user; if (!a || !(await isAdmin(a))) return E('forbidden', 'Только для админов', 403);
+    const u = String(d.u || '').toLowerCase().replace(/^@/, ''), delta = Math.trunc(+d.delta || 0);
+    if (!validUser(u) || !delta || Math.abs(delta) > 1e6) return E('bad', 'Неверные данные');
+    const w = await one('SELECT bal FROM wallet WHERE u=$u;', { u }), t = now();
+    const bal = Math.max(0, (w?.bal || 0) + delta);
+    await q('UPSERT INTO wallet (u,bal,ts) VALUES ($u,$b,$t);', { u, b: bal, t });
+    await q('UPSERT INTO wallet_log (u,id,delta,kind,peer,note,ts) VALUES ($u,$i,$dl,$k,$p,$n,$t);', { u, i: String(t).padStart(15, '0') + rnd(4), dl: delta, k: 'admin', p: a, n: 'Начисление', t });
+    return J({ ok: true, bal });
+  },
   async 'POST /pmusic/presign'(r, d) {
     const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
     if (!(+d.size > 0) || +d.size > PM_SIZE) return E('too_large', 'Трек больше 15 МБ', 413);

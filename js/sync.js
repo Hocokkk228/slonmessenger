@@ -269,6 +269,7 @@ async function _mlMaterialize(key,r0){
   if(r.edited)base.edited=true;
   if(e2e){base._e2e=true;base._ev=r.ev||0;}
   const k=r.k||'text';
+  if(k==='gift')return {...base,gift:{id:r.gift,gid:r.gid||'',text:r.text||'',price:r.price||0}};
   if(k==='text')return {...base,text:r.text||'',...(r.reply&&r.reply.id?{reply:{id:String(r.reply.id),name:String(r.reply.name||''),text:String(r.reply.text||'').slice(0,120)}}:{})};
   const data=r.mk?await _e2eFetchMedia(r.m,r.mk,r.mime):r.m?await _srvDownload(r.m):await _msDownload(r.id);
   if(k==='photo'){
@@ -295,7 +296,7 @@ async function _mlMaterialize(key,r0){
   }catch(e){fileStore[fdid]=null;}
   return {...base,fileInfo:{name:r.name||'файл',size:r.size||''},fileDataId:fdid};
 }
-const ML_PREVIEW={text:null,photo:'Фото',file:'Файл',voice:'Голосовое',slon:'Слонкружок'};
+const ML_PREVIEW={text:null,photo:'Фото',file:'Файл',voice:'Голосовое',slon:'Слонкружок',gift:'Подарок'};
 
 async function _mlOnAdd(key,r){
   if(!r||!r.id||!r.chat||r.del||r.gone)return;
@@ -332,7 +333,7 @@ async function _mlOnAdd(key,r){
       if(isLast){appendMsg(msg);scrollDown();}else renderChat(chat);
       if(!out)setTimeout(()=>_sendRead(chat),50);
     }
-    const k=msg.text!=null?'text':msg.photoId?'photo':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
+    const k=msg.gift?'gift':msg.text!=null?'text':msg.photoId?'photo':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
     r={...r,text:msg.text};
     const pv=ML_PREVIEW[k]||(msg.text||'').slice(0,28);
     if(isLast)updatePreview(chat,(out?'Вы: ':'')+(k==='text'?(msg.text||'').slice(0,28):pv));

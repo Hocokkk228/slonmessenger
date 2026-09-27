@@ -418,7 +418,7 @@ async function _e2eResend(pid,key,dev){
 // payload — всё содержимое сообщения; снаружи остаются только id/время/тип «e2e»
 async function _e2ePost(chat,key,rec){
   const payload={};
-  for(const f of ['k','text','name','mime','size','dur','wave','m','mk','reply'])if(rec[f]!=null)payload[f]=rec[f];
+  for(const f of ['k','text','name','mime','size','dur','wave','m','mk','reply','gift','gid','price'])if(rec[f]!=null)payload[f]=rec[f];
   const sealed=await _e2eSeal(chat,payload).catch(e=>{console.warn('[e2e] seal',e);return null;});
   if(!sealed)return false;
   await _idb.put(_e2eK('p:'+key+':0'),payload);

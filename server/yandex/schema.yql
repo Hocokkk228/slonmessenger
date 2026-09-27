@@ -25,3 +25,7 @@ CREATE TABLE email_codes  (k Utf8, code_hash Utf8, email Utf8, expires Int64, tr
 CREATE TABLE aliases      (alias Utf8, u Utf8, ts Int64, PRIMARY KEY (alias), INDEX idx_u GLOBAL ON (u));
 -- свои треки в профиле (файлы в бакете: pm/{u}/{id})
 CREATE TABLE pmusic       (u Utf8, id Utf8, size Int64, ts Int64, PRIMARY KEY (u, id));
+-- мини-слоники и подарки
+CREATE TABLE wallet       (u Utf8, bal Int64, ts Int64, PRIMARY KEY (u));
+CREATE TABLE wallet_log   (u Utf8, id Utf8, delta Int64, kind Utf8, peer Utf8, note Utf8, ts Int64, PRIMARY KEY (u, id));
+CREATE TABLE gifts        (to_u Utf8, id Utf8, from_u Utf8, gift Utf8, text Utf8, price Int64, ts Int64, hidden Int64, PRIMARY KEY (to_u, id));
