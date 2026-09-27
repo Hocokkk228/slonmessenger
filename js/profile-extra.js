@@ -242,7 +242,7 @@ function _pxTrackPill(tr,list,owner){
     <button class="px-play" data-trplay="${esc(String(tr.id))}" onclick="event.stopPropagation();_pxPlay(_pxTr('${owner}'),this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`;
 }
 const _PX_DL='<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
-const _pxSrcTag=t=>t.src==='sc'?' · SoundCloud':t.src==='file'||t.src==='au'?'':' · отрывок';
+const _pxSrcTag=t=>t.src==='sc'?' · SoundCloud':t.src==='file'||t.src==='au'||t.lib||(t.src==='lib'&&typeof _plMine==='function'&&_plMine(t))?'':' · отрывок';
 const _pxCanDl=t=>t&&(t.src==='file'||(t.src==='au'&&t.dl));
 function _pxOf(owner){return owner===myUsername?_pxPublic():(peerPX[owner]||{});}
 function _pxTr(owner,i){const p=_pxOf(owner);return i==null?p.track:(p.playlist||[])[i];}
@@ -367,7 +367,7 @@ function _pxEditPaint(){
   const m=$('pxMusic'),pl=d.playlist||[];
   if(m)m.innerHTML=pl.length?`<div class="px-pl">${pl.map((t,i)=>`<div class="px-pl-row${i===0?' main':''}">
       ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}${t.src==='file'?' · свой файл':t.src==='au'?' · целиком':_pxSrcTag(t)}${t.start?' · с '+_rcFmt(t.start*1000):''}</span></div>
+      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}${t.src==='file'||t.lib?' · свой файл':t.src==='au'?' · целиком':_pxSrcTag(t)}${t.start?' · с '+_rcFmt(t.start*1000):''}</span></div>
       ${(t.src==='file'||t.src==='au')?`<button class="px-mini" title="С какого места играть" onclick="_pxSegOpen(${i})"><svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.96 8.96 0 0 0 12 4a9 9 0 1 0 9 9c0-2.12-.74-4.07-1.97-5.61zM12 20a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></button>`:''}${i?`<button class="px-mini" title="Сделать главной" onclick="_pxMain(${i})"><svg viewBox="0 0 24 24"><path d="M12 17.3 18.2 21l-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7l-7.2.6 5.4 4.7-1.6 7z"/></svg></button>`:''}
       <button class="px-mini" title="Убрать" onclick="_pxDel(${i})"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>`).join('')}</div>`
     :'<div class="px-empty">Песни пока нет — найди её ниже.</div>';
