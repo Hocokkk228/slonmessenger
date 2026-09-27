@@ -145,17 +145,48 @@ function _lrcDb(){return _lrcDbP||(_lrcDbP=new Promise((res,rej)=>{const r=index
 async function _lrcGet(k){try{const db=await _lrcDb();return await new Promise(res=>{const q=db.transaction('l').objectStore('l').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}}
 async function _lrcPut(k,v){try{const db=await _lrcDb();db.transaction('l','readwrite').objectStore('l').put(v,k);}catch(e){}}
 const _lrcKey=tr=>(String(tr.artist||'')+'|'+String(tr.title||'')).toLowerCase();
+// чистка названия от мусора (номер трека, «_», скобки, feat/prod, сайты, mp3)
+function _lrcClean(s){
+  return String(s||'').toLowerCase().replace(/[_]+/g,' ').replace(/\.(mp3|m4a|flac|ogg|wav)$/,'')
+    .replace(/\(.*?\)|\[.*?\]|\{.*?\}/g,' ').replace(/\b(feat|ft|prod|при уч|remix by)\b.*$/,' ')
+    .replace(/\b(hitmos|zaycev|zvuk|muzofond|mp3|official|audio|video|lyrics|текст)\b/g,' ')
+    .replace(/^\s*\d{1,3}\s*[.)\-–—]?\s+/,'').replace(/[^a-zа-яё0-9 ]+/gi,' ').replace(/\s+/g,' ').trim();
+}
+// похожесть «по слогам»: доля общих пар букв (коэффициент Дайса)
+function _lrcSim(a,b){
+  a=a.replace(/ /g,'');b=b.replace(/ /g,'');if(!a||!b)return 0;if(a===b)return 1;
+  const bg=s=>{const m=new Map();for(let i=0;i<s.length-1;i++){const k=s.slice(i,i+2);m.set(k,(m.get(k)||0)+1);}return m;};
+  const A=bg(a),B=bg(b);let n=0;for(const [k,v] of A)n+=Math.min(v,B.get(k)||0);
+  return 2*n/Math.max(1,(a.length-1)+(b.length-1));
+}
 async function _lrcFind(tr){
   const k=_lrcKey(tr),c=await _lrcGet(k);
   if(c&&(c.syncedLyrics||c.plainLyrics))return c;
-  const q=async(ar)=>{const u='https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'');
+  const get=async(params)=>{const u='https://lrclib.net/api/search?'+params;
     for(let a=0;a<3;a++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);return await r.json();}catch(e){}}return [];};
-  const first=String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0];
-  let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
-  const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
-  const syn=(j||[]).filter(x=>x.syncedLyrics);
-  const whole=syn.filter(x=>{const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);});
-  const hit=byDur(whole)[0]||byDur(syn)[0]||(j||[]).find(x=>x.plainLyrics)||null;
+  const E=encodeURIComponent;
+  let ct=_lrcClean(tr.title);const ca=_lrcClean(String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0]);
+  if(ca&&ct.startsWith(ca+' ')&&ct.length>ca.length+1)ct=ct.slice(ca.length+1).trim();   // «9mice 2017» из имени файла
+  const tries=[
+    'track_name='+E(tr.title)+(tr.artist?'&artist_name='+E(tr.artist):''),
+    ct&&('track_name='+E(ct)+(ca?'&artist_name='+E(ca):'')),
+    ct&&('q='+E((ca?ca+' ':'')+ct)),
+    ct&&('q='+E(ct)),
+    ct&&ct.split(' ').length>2&&('q='+E((ca?ca+' ':'')+ct.split(' ').slice(0,2).join(' ')))
+  ].filter(Boolean);
+  const seen=new Map();let good=null;
+  const score=x=>_lrcSim(_lrcClean(x.trackName||x.name),ct||_lrcClean(tr.title))*0.7+(ca?_lrcSim(_lrcClean(x.artistName),ca):0.5)*0.3;
+  const whole=x=>{if(!x.syncedLyrics)return false;const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);};
+  for(const t of tries){
+    for(const x of (await get(t))||[])if(!seen.has(x.id))seen.set(x.id,{...x,_s:score(x)});
+    const ok=[...seen.values()].filter(x=>x._s>=0.55&&(x.syncedLyrics||x.plainLyrics));
+    if(ok.some(x=>whole(x)&&x._s>=0.8)){good=ok;break;}   // уверенное совпадение — дальше не ищем
+    good=ok;
+  }
+  const dd=x=>tr.dur?Math.abs((x.duration||0)-tr.dur):0;
+  const rank=(l)=>l.slice().sort((x,y)=>(y._s-x._s)||(dd(x)-dd(y)));
+  const L=good||[];
+  const hit=rank(L.filter(whole))[0]||rank(L.filter(x=>x.syncedLyrics))[0]||rank(L.filter(x=>x.plainLyrics))[0]||null;
   if(hit)_lrcPut(k,{syncedLyrics:hit.syncedLyrics||'',plainLyrics:hit.plainLyrics||'',duration:hit.duration||0});
   return hit;
 }
