@@ -62,6 +62,7 @@ async function _mmLoad(force){
   }
   list.sort((a,b)=>(b.ts||0)-(a.ts||0));
   _mm.list=list;_mm.loaded=true;
+  setTimeout(_mmCovFill,500);
   try{_plRemap();}catch(e){}
   return list;
 }
@@ -732,6 +733,7 @@ function _mmPlPagePaint(id){
     <div class="mm-top"><button class="wal-btn" onclick="_mmPlPlay('${esc(id)}',false)">${_MM_ICO.play} Слушать</button>
       <button class="mm-ib" onclick="_mmPlPlay('${esc(id)}',true)" title="Перемешать">${_MM_ICO.shuffle}</button>
       <button class="mm-ib" onclick="_mmPlMenu('${esc(id)}')" title="Ещё">${_MM_ICO.more}</button></div>
+    <button class="mm-fam-add" onclick="_mmPlPickTracks('${esc(id)}')">${_MM_ICO.plus} Добавить треки</button>
     ${p.want&&p.want.length?`<button class="mm-fam-add" onclick="_mmPlRefill('${esc(id)}')">${_MM_ICO.plus} Дособрать из списка <span>ждут ${p.want.length}</span></button>`:''}
     <div class="sp-card mm-list">${l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}',_mmPlItems(_mmPlById('${esc(id)}')).map(x=>x.id))">
         ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
@@ -795,4 +797,49 @@ async function _mmPlRefill(id){
   for(const l of p.want){const it=_mmMatchLine(l);if(it){const k=it.cid||it.id;if(!p.tr.includes(k)){p.tr.push(k);n++;}}else still.push(l);}
   p.want=still;_mmPlSave();_mmPlPagePaint(id);_mmPlsPaint();
   toast(n?'Добавлено: '+n+(still.length?', ещё ждут '+still.length:''):'Новых совпадений нет — ждут '+still.length);
+}
+
+// добавить в плейлист сразу несколько треков из «Моей музыки»
+async function _mmPlPickTracks(pid){
+  const p=_mmPlById(pid);if(!p)return;
+  await _mmLoad();
+  const have=new Set(p.tr||[]);
+  if(!_mm.list.length){toast('В «Моей музыке» пока пусто');return;}
+  _pxSheet(`<div class="px-sh-t">Добавить в «${esc(p.name)}»</div>
+    <input class="lm-inp mm-q" placeholder="Поиск" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mm-pick .mm-tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none')">
+    <div class="mm-pick">${_mm.list.map(it=>{const on=have.has(it.cid)||have.has(it.id);return `<label class="mm-tr"><input type="checkbox" value="${esc(it.id)}"${on?' checked disabled':''}>
+      ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
+      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></label>`;}).join('')}</div>
+    <div class="mm-pick-bar"><button class="lm-btn" onclick="document.querySelectorAll('.mm-pick input:not(:disabled)').forEach(i=>{if(i.closest('.mm-tr').style.display!=='none')i.checked=true})">Выбрать все</button>
+      <button class="lm-btn primary" onclick="_mmPlPickGo('${esc(pid)}')">Добавить</button></div>`);
+}
+function _mmPlPickGo(pid){
+  const p=_mmPlById(pid);if(!p)return;
+  const ids=[...document.querySelectorAll('.mm-pick input:checked:not(:disabled)')].map(i=>i.value);
+  p.tr=p.tr||[];
+  for(const id of ids){const it=_mmFind(id);if(!it)continue;const k=it.cid||it.id;if(!p.tr.includes(k)&&!p.tr.includes(it.id))p.tr.push(k);}
+  _mmPlSave();_pxSheetClose();_mmPlPagePaint(pid);_mmPlsPaint();
+  if(ids.length)toast('Добавлено: '+ids.length);
+}
+// обложки для треков без обложки — из каталога по названию и исполнителю
+const _mmCovMap=(()=>{try{return JSON.parse(localStorage.getItem('sl_mmcov')||'{}')||{};}catch(e){return {};}})();
+let _mmCovBusy=false;
+async function _mmCovFill(){
+  if(_mmCovBusy)return;_mmCovBusy=true;
+  try{
+    let ch=false;
+    for(const it of _mm.list){
+      if(it.coverUrl)continue;
+      const k=(it.artist+'|'+it.title).toLowerCase();
+      if(_mmCovMap[k]===undefined){
+        const hit=await _plMatch(it.title,it.artist);
+        _mmCovMap[k]=hit&&hit.cover?hit.cover:'';
+        try{localStorage.setItem('sl_mmcov',JSON.stringify(_mmCovMap));}catch(e){}
+        await new Promise(r=>setTimeout(r,250));
+      }
+      if(_mmCovMap[k]){it.coverUrl=_mmCovMap[k];ch=true;}
+    }
+    if(ch){_mmPaint();const pp=$('mmPlPage');if(pp)_mmPlPagePaint(pp.dataset.pl);}
+  }catch(e){}
+  _mmCovBusy=false;
 }
