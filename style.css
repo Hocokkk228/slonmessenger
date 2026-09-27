@@ -3101,3 +3101,20 @@ video.mv-media{cursor:default;}
 .pfx-symbiote .sym-svg{height:min(250px,70%)!important;}
 /* Веном: в правом верхнем углу, примерно 70% ширины окна, не больше 300px */
 .pfx-symbiote .sym-svg{left:auto!important;right:0!important;top:0!important;width:min(72%,300px)!important;height:auto!important;aspect-ratio:300/240;}
+
+/* ═ Веном v3 — по видео-референсу: цикл 5,6 с, 15 кадров/с ═ */
+.pfx-symbiote .goo-top{position:absolute;left:0;top:0;width:100%;height:46px;}
+.pfx-symbiote .goo-drop{fill:#050507;animation:gooDrop 3s steps(20) infinite;}
+@keyframes gooDrop{0%{transform:translateY(-8px);opacity:0}20%{opacity:1}100%{transform:translateY(26px);opacity:0}}
+.pfx-symbiote .sym-svg{width:min(62%,260px)!important;top:6px!important;}
+.pfx-symbiote .sym{animation:venSym 5.6s steps(84) infinite!important;transform-box:view-box;transform-origin:250px 80px;}
+@keyframes venSym{0%{opacity:0;transform:translate(26px,-14px) scale(.8)}5%{opacity:1;transform:translate(0,0) scale(1.03)}8%,39%{opacity:1;transform:translate(0,0) scale(1)}40%,100%{opacity:0;transform:translate(0,0) scale(1)}}
+.pfx-symbiote .sym-jaw{animation:venJaw 5.6s steps(84) infinite!important;}
+@keyframes venJaw{0%,100%{transform:rotate(6deg)}10%{transform:rotate(0)}18%{transform:rotate(4deg)}24%{transform:rotate(-2deg)}30%{transform:rotate(3deg)}36%{transform:rotate(0)}}
+.pfx-symbiote .sym-tongue{animation:venTongue 5.6s steps(84) infinite!important;transform-origin:205px 145px;}
+@keyframes venTongue{0%,6%{transform:scaleX(.2) rotate(0)}10%{transform:scaleX(1) rotate(-28deg)}15%{transform:scaleX(1.05) rotate(18deg)}20%{transform:scaleX(.9) rotate(-12deg) skewY(8deg)}25%{transform:scaleX(1.08) rotate(26deg)}30%{transform:scaleX(.95) rotate(-20deg) skewY(-6deg)}35%{transform:scaleX(1) rotate(8deg)}39%{transform:scaleX(.6) rotate(0)}40%,100%{transform:scaleX(.6)}}
+.pfx-symbiote .sym-throat,.pfx-symbiote .sym-drool{animation:none!important;opacity:1;}
+.pfx-symbiote .sym-head{animation:none!important;}
+.pfx-symbiote .sym-shard{transform-box:fill-box;transform-origin:center;opacity:0;animation:venShard 5.6s steps(84) infinite;}
+@keyframes venShard{0%,38%{opacity:0;transform:translate(0,0) rotate(0)}40%{opacity:1;transform:translate(0,0) rotate(0)}52%{opacity:.9;transform:translate(calc(var(--dx)*.7),calc(var(--dy)*.7)) rotate(calc(var(--r)*.7))}58%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+.pfx-symbiote .goo-top{height:64px!important;}

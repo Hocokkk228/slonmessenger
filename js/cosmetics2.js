@@ -83,6 +83,9 @@ function _cosSymbiote(){
   for(let i=0;i<11;i++){const k=i/10,x=100+k*140,y=98+k*22+Math.sin(k*3)*3;const len=(i%2?16:26)*(1-k*.35)+R()*5;upT+=fang(x,y,len,4.2-k*1.2,1,-3-k*3);}
   // нижняя челюсть: от подбородка (118,178) к углу рта (246,132)
   for(let i=0;i<10;i++){const k=i/9,x=122+k*118,y=176-k*42;const len=(i%2?14:22)*(1-k*.35)+R()*4;loT+=fang(x,y,len,3.8-k,-1,2+k*3);}
+  // осколки: головa «бьётся как стекло» и куски улетают влево-вверх
+  let shards='';for(let i=0;i<26;i++){const x=110+R()*180,y=6+R()*170,sz=6+R()*16,pts=[];for(let k=0;k<3+Math.floor(R()*2);k++){const a=k*2.1+R();pts.push(_cosF(x+Math.cos(a)*sz*(.5+R()*.6))+','+_cosF(y+Math.sin(a)*sz*(.5+R()*.6)));}
+    shards+=`<path class="sym-shard" style="--dx:${-(90+R()*220).toFixed(0)}px;--dy:${(-60+R()*50).toFixed(0)}px;--r:${(-200+R()*400).toFixed(0)}deg" d="M${pts.join('L')}Z" fill="${R()>.8?'#e6ecff':R()>.5?'#1b2130':'#050507'}" stroke="#000" stroke-width="1"/>`;}
   let dots='';for(let i=0;i<150;i++){const x=110+R()*190,y=0+R()*120,r=.5+R()*1.1;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
   return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin meet" aria-hidden="true">
     <defs>
@@ -90,7 +93,7 @@ function _cosSymbiote(){
       <radialGradient id="symGloss" cx=".45" cy=".2" r=".75"><stop offset="0" stop-color="#4a5468"/><stop offset=".35" stop-color="#161a24"/><stop offset="1" stop-color="#020203"/></radialGradient>
       <radialGradient id="symMouth" cx=".6" cy=".4" r=".7"><stop offset="0" stop-color="#5a0018"/><stop offset="1" stop-color="#12000a"/></radialGradient>
     </defs>
-    <path class="sym-trail" d="M230,80C180,54 110,26 0,0" stroke="#050507" stroke-width="11" stroke-linecap="round" fill="none" opacity=".85"/>
+    <g class="sym-shards">${shards}</g>
     <g class="sym"><g class="sym-head">
       <!-- шея и тело уходят за правый край -->
       <path d="M300,0V240H236C250,200 262,160 258,128C290,120 300,60 300,0Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
@@ -117,7 +120,16 @@ function _cosSymbiote(){
     </g></g></svg>`;
 }
 PROFILE_FX.push({id:'symbiote',name:'Веном',prem:true});
-{const f=_fxInner;_fxInner=function(id){if(id==='symbiote')return _cosSymbiote();return f.apply(this,arguments);};}
+function _cosGooTop(){
+  const R=_cosRnd(71);let d='M0,0H400V6';let x=400;
+  while(x>0){const w=6+R()*18,len=R()<.35?10+R()*34:2+R()*8;const nx=Math.max(0,x-w);
+    d+=`L${_cosF(x-w*.25)},6Q${_cosF(x-w*.5)},${_cosF(6+len)} ${_cosF(x-w*.75)},6L${_cosF(nx)},${_cosF(4+R()*4)}`;x=nx;}
+  d+='V0Z';
+  let drops='';for(let i=0;i<7;i++){const cx=20+R()*360,cy=18+R()*30,r=1.4+R()*2;drops+=`<circle class="goo-drop" style="animation-delay:-${(R()*3).toFixed(2)}s" cx="${_cosF(cx)}" cy="${_cosF(cy)}" r="${_cosF(r)}"/>`;}
+  return `<svg class="goo-top" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="#050507"/>${drops}
+    <path d="M0,3H400" stroke="#8d98b8" stroke-width=".8" opacity=".5"/></svg>`;
+}
+{const f=_fxInner;_fxInner=function(id){if(id==='symbiote')return _cosGooTop()+_cosSymbiote();return f.apply(this,arguments);};}
 {const f=_fxInnerMini;_fxInnerMini=function(id){
   if(id==='symbiote')return '<svg viewBox="0 0 40 40" style="position:absolute;inset:4px;width:auto;height:auto"><path d="M40,6C30,4 22,12 20,18C18,24 22,30 40,34Z" fill="#050507"/><path d="M22,16L30,12L28,18Z M31,11L38,11L36,16Z" fill="#fff"/><path d="M22,24C16,28 8,26 4,30" stroke="#ff4d78" stroke-width="3" stroke-linecap="round" fill="none"/></svg>';
   return f.apply(this,arguments);};}
