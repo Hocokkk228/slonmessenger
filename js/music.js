@@ -62,6 +62,7 @@ async function _mmLoad(force){
   }
   list.sort((a,b)=>(b.ts||0)-(a.ts||0));
   _mm.list=list;_mm.loaded=true;
+  try{_plRemap();}catch(e){}
   return list;
 }
 function _mmItem(r){
@@ -106,6 +107,7 @@ async function _mmUpload(id){
     await _pxPut(d.put,rec.audio,p=>{_mm.up[id]=p;_mmRowUp(id);});
     if(rec.cover&&d.putCover){try{await _pxPut(d.putCover,rec.cover);}catch(e){}}
     rec.cid=d.id;await _mmPutRec(rec);
+    const it0=_mmFind(id);if(it0)it0.cid=d.id;try{_plRemap();}catch(e){}
     const it=_mmFind(id);if(it)it.cid=d.id;_mm.used+=rec.size;
   }catch(e){
     if(e.code==='quota'){rec.noCloud=true;await _mmPutRec(rec);const it=_mmFind(id);if(it)it.noCloud=true;toast(e.message);}
@@ -417,14 +419,21 @@ function _plStrip(list){return (list||[]).map(t=>{const x={...t};delete x.lib;de
   return f.apply(this,arguments);
 };}
 // свой трек из фонотеки для записи профиля (по id совпадает с опубликованной)
+const _plOwn=tr=>tr?(_pxMe().playlist||[]).find(x=>String(x.id)===String(tr.id)&&x.lib)||null:null;
 function _plMine(tr){
-  if(!tr)return null;
-  const own=(_pxMe().playlist||[]).find(x=>String(x.id)===String(tr.id)&&x.lib);
-  if(!own)return null;
-  const it=_mmFind(own.lib);return it||null;
+  const own=_plOwn(tr);if(!own)return null;
+  const n=v=>String(v||'').trim().toLowerCase();
+  return _mmFind(own.lib)||_mm.list.find(x=>n(x.title)===n(own.title)&&n(x.artist)===n(own.artist))||null;
+}
+// lib в плейлисте — локальный id (трек ещё не долетел в облако) → меняем на облачный, чтобы нашли другие устройства
+function _plRemap(){
+  const pl=_pxMe().playlist||[];let ch=false;
+  for(const e of pl){if(!e.lib)continue;const it=_mm.list.find(x=>x.id===e.lib&&x.cid);if(it){e.lib=it.cid;ch=true;}}
+  if(ch){_pxSave(true);_plPush();}
 }
 {const f=_pxPlay;_pxPlay=async function(tr,btn){
-  if(tr&&!tr.url&&(tr.src==='lib'||tr.lib||_plMine(tr))){
+  if(tr&&!tr.url&&(tr.src==='lib'||tr.lib||_plOwn(tr))){
+    try{await _mmLoad();if(_plOwn(tr)&&!_plMine(tr))await _mmLoad(true);}catch(e){}
     const it=_plMine(tr)||(tr.lib?_mmFind(tr.lib):null);
     if(it){try{const t2={...tr,src:'file',url:await _mmSrc(it)};return await f.call(this,t2,btn);}catch(e){}}
     if(tr.src==='lib'){
@@ -435,7 +444,7 @@ function _plMine(tr){
   return f.apply(this,arguments);
 };}
 {const f=_pxLyrics;_pxLyrics=async function(tr){
-  if(tr&&!tr.url&&tr.src!=='file'){const it=_plMine(tr);if(it){try{return await f.call(this,{...tr,src:'file',url:await _mmSrc(it)});}catch(e){}}}
+  if(tr&&!tr.url&&tr.src!=='file'&&_plOwn(tr)){try{await _mmLoad();if(!_plMine(tr))await _mmLoad(true);}catch(e){}const it=_plMine(tr);if(it){try{return await f.call(this,{...tr,src:'file',url:await _mmSrc(it)});}catch(e){}}}
   return f.apply(this,arguments);
 };}
 // запись плейлиста для трека из фонотеки: свой id (не сливается с отрывками), отрывок для гостей — dz
@@ -618,3 +627,6 @@ _pxPickFile=function(){
   };
   i.click();
 };
+
+// фонотеку подгружаем сама после входа — чтобы свои треки в профиле сразу играли целиком
+setTimeout(function _mmBoot(){if(!myUsername){setTimeout(_mmBoot,5000);return;}_mmLoad().catch(()=>{});},7000);
