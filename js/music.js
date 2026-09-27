@@ -237,7 +237,7 @@ function _spMusic(){
     <div class="sp-hint">Треки хранятся на устройстве и в твоём облаке — появятся на всех твоих устройствах. В профиле для гостей играет отрывок из каталога, а полный трек можно переслать другу в чате.</div>
     <div class="sp-sec mm-fam-h">Семейный доступ</div>
     <div class="sp-card sp-pad" id="mmFam"><div class="px-empty">Загрузка…</div></div>
-    <div class="sp-hint">До 5 доверенных друзей могут слушать всю твою музыку целиком. Убрать друга можно в любой момент.</div>
+    <div class="sp-hint">Близкие друзья (до 20 человек) могут слушать всю твою музыку целиком. Убрать друга можно в любой момент.</div>
   </div>`);
   _mm.q='';
   _mmFamLoad();
@@ -427,7 +427,10 @@ function _plMine(tr){
   if(tr&&!tr.url&&(tr.src==='lib'||tr.lib||_plMine(tr))){
     const it=_plMine(tr)||(tr.lib?_mmFind(tr.lib):null);
     if(it){try{const t2={...tr,src:'file',url:await _mmSrc(it)};return await f.call(this,t2,btn);}catch(e){}}
-    if(tr.src==='lib'){toast('Этого трека нет в каталоге — отрывок недоступен');return;}
+    if(tr.src==='lib'){
+      if(!tr.dz){toast('Этого трека нет в каталоге — отрывок недоступен');return;}
+      try{return await f.call(this,{...tr,src:'file',url:await _dzPreview(tr.dz)},btn);}catch(e){toast('Не удалось включить отрывок');return;}
+    }
   }
   return f.apply(this,arguments);
 };}
@@ -435,6 +438,8 @@ function _plMine(tr){
   if(tr&&!tr.url&&tr.src!=='file'){const it=_plMine(tr);if(it){try{return await f.call(this,{...tr,src:'file',url:await _mmSrc(it)});}catch(e){}}}
   return f.apply(this,arguments);
 };}
+// запись плейлиста для трека из фонотеки: свой id (не сливается с отрывками), отрывок для гостей — dz
+function _plEntry(it,hit,lib){return {id:'lib_'+Math.random().toString(36).slice(2,12),src:'lib',dz:hit?hit.id:null,title:it.title,artist:it.artist||(hit&&hit.artist)||'',cover:(hit&&hit.cover)||'',dur:it.dur||(hit&&hit.dur)||0,lib};}
 // найти трек в каталоге (для отрывка гостям и обложки)
 async function _plMatch(title,artist){
   const norm=s=>String(s||'').toLowerCase().replace(/\(.*?\)|\[.*?\]/g,'').replace(/[^a-zа-яё0-9]+/gi,' ').trim();
@@ -452,10 +457,8 @@ async function _mmToProfile(ids){
   for(const id of ids){
     const it=_mmFind(id);if(!it)continue;
     const lib=it.cid||it.id;
-    if(pl.some(x=>x.lib===lib))continue;
     const hit=await _plMatch(it.title,it.artist);
-    const ex=hit&&pl.find(x=>String(x.id)===String(hit.id));if(ex){ex.lib=lib;n++;continue;}
-    pl.push(hit?{...hit,title:it.title,artist:it.artist||hit.artist,lib}:{id:'mm'+Math.random().toString(36).slice(2,10),src:'lib',title:it.title,artist:it.artist,cover:'',dur:it.dur,lib});
+    pl.push(_plEntry(it,hit,lib));
     n++;
   }
   p.track=pl[0]||null;
@@ -496,8 +499,7 @@ async function _plFromLibGo(){
   for(const id of ids){
     const it=_mmFind(id);if(!it)continue;const lib=it.cid||it.id;let n=0;
     const hit=await _plMatch(it.title,it.artist);
-    const ex=hit&&pl.find(x=>String(x.id)===String(hit.id));if(ex){ex.lib=lib;n++;continue;}
-    pl.push(hit?{...hit,title:it.title,artist:it.artist||hit.artist,lib}:{id:'mm'+Math.random().toString(36).slice(2,10),src:'lib',title:it.title,artist:it.artist,cover:'',dur:it.dur,lib});
+    pl.push(_plEntry(it,hit,lib));
   }
   d.track=pl[0]||null;_pxEditPaint();_pxDirty();toast('Добавлено: '+ids.length);
 }
@@ -597,3 +599,22 @@ async function _mmOfCopy(id){
   if(payload&&payload.type==='mm_share'){toast((peerNames[pid]||('@'+pid))+' открыл(а) тебе свою музыку — Настройки → Моя музыка');if(!_mmFam.withMe.includes(pid))_mmFam.withMe.push(pid);_mmFamPaint();return;}
   return f.apply(this,arguments);
 };}
+
+// загрузка своих файлов в редакторе профиля — через «Мою музыку» (без лимита по числу)
+_pxPickFile=function(){
+  const i=document.createElement('input');i.type='file';i.multiple=true;i.accept='audio/*,.mp3,.m4a,.ogg,.flac,.wav,.opus';
+  i.onchange=async()=>{
+    const fs=[...(i.files||[])];if(!fs.length||!_pxDraft)return;
+    const st=$('pxUpSt');const say=t=>{if(st){st.textContent=t;st.style.display=t?'':'none';}};
+    await _mmLoad();
+    const pl=_pxDraft.playlist=_pxDraft.playlist||[];let n=0;
+    for(const f of fs){
+      say('Добавляем '+(n+1)+' из '+fs.length+'…');
+      try{const it=await _mmAddBlob(f,f.name);const hit=await _plMatch(it.title,it.artist);pl.push(_plEntry(it,hit,it.cid||it.id));n++;}
+      catch(e){toast(f.name+': '+(e.message||'не удалось'));}
+    }
+    say('');_pxDraft.track=pl[0]||null;_pxEditPaint();_pxDirty();
+    if(n)toast(n===1?'Трек добавлен — он же теперь в «Моей музыке»':'Добавлено треков: '+n);
+  };
+  i.click();
+};

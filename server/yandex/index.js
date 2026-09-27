@@ -367,7 +367,7 @@ async function sendFcm(u, data, ttl = '3600s') {
 }
 
 // ════════ HTTP-маршруты ════════
-const MM_QUOTA = 5 * 1024 * 1024 * 1024, MM_SIZE = 60 * 1024 * 1024, MM_FAM = 5;
+const MM_QUOTA = 5 * 1024 * 1024 * 1024, MM_SIZE = 60 * 1024 * 1024, MM_FAM = 20;
 const routes = {
   async 'POST /auth/login'(r, d) {
     const u = String(d.u || '').toLowerCase();
@@ -746,7 +746,7 @@ const routes = {
     if (d.on) {
       const have = await q('SELECT friend FROM mm_share WHERE owner=$u;', { u });
       if (!have.some(x => x.friend === f)) {
-        if (have.length >= MM_FAM) return E('limit', 'В семейном доступе до ' + MM_FAM + ' друзей', 409);
+        if (have.length >= MM_FAM) return E('limit', 'В семейном доступе до ' + MM_FAM + ' человек', 409);
         if (!(await getUser(f)) && !(await fbGet('auth/' + f)) && !(await fbGet('profiles/' + f + '/username'))) return E('not_found', 'Пользователь не найден', 404);
         const t = now();
         await q('UPSERT INTO mm_share (owner,friend,ts) VALUES ($u,$f,$t); UPSERT INTO mm_share_rev (friend,owner,ts) VALUES ($f,$u,$t);', { u, f, t });

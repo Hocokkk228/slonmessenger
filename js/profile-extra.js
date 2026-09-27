@@ -352,7 +352,7 @@ function _pxEditHtml(){
       <div class="px-src-btns"><button class="lm-btn primary" onclick="_pxPickFile()">Загрузить свой трек</button></div>
       <div class="px-up-st" id="pxUpSt" style="display:none"></div>
       <div class="px-search"><input class="lm-inp" id="pxQ" placeholder="Найти песню или исполнителя" oninput="_pxSearchSoon()"><div class="px-res" id="pxRes"></div></div></div>`
-    +_spHint('Свой трек (mp3/m4a до 15 МБ, до 5 штук) играет целиком, его можно скачать и выбрать, с какого места играть. В поиске — 30-секундные отрывки из каталога. Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).')
+    +_spHint('Свои файлы добавляются в «Мою музыку» без ограничения по числу — ты слышишь их целиком. В поиске — 30-секундные отрывки из каталога. Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).')
     +_spSec('Ссылки')+`<div class="sp-card sp-pad"><div id="pxSocEd"></div>
       <div class="px-add"><input class="lm-inp" id="pxSocIn" placeholder="t.me/… · vk.com/… · tiktok.com/@…" onkeydown="if(event.key==='Enter')_pxSocAdd()"><button class="lm-btn primary" onclick="_pxSocAdd()">Добавить</button></div></div>`
     +_spHint('Значок соцсети определится сам. Без Premium — до 3 ссылок, с Premium — до 8.')
