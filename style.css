@@ -3120,3 +3120,6 @@ video.mv-media{cursor:default;}
 .pfx-symbiote .goo-top{height:64px!important;}
 /* Веном: пасть раскрыта шире (минус — открыть), язык поверх нижних зубов */
 @keyframes venJaw{0%,100%{transform:rotate(-4deg)}10%{transform:rotate(-14deg)}18%{transform:rotate(-9deg)}24%{transform:rotate(-16deg)}30%{transform:rotate(-10deg)}36%{transform:rotate(-14deg)}}
+/* Веном на картинке: покачивание головы */
+.pfx-symbiote .sym-head{animation:venBob 5.6s steps(84) infinite!important;transform-box:view-box;transform-origin:260px 60px;}
+@keyframes venBob{0%,100%{transform:rotate(0) translate(0,0)}10%{transform:rotate(-2deg) translate(-2px,1px)}18%{transform:rotate(1.5deg) translate(1px,-1px)}26%{transform:rotate(-1.5deg) translate(-1px,2px)}34%{transform:rotate(1deg) translate(0,0)}}

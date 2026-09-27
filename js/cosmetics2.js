@@ -71,73 +71,35 @@ function _venomSign(){
   return '<path fill="#fff" d="M0,-13C5,-13 6,-6 5,-1C4,4 5,9 0,16C-5,9 -4,4 -5,-1C-6,-6 -5,-13 0,-13Z"/>'
     +L.map(d=>leg(1,d)+leg(-1,d)).join('');
 }
-// ── Веном: эффект профиля (иллюстрация слоями) ──
-// Голова в профиль из правого края: череп с синим отливом и комиксными бликами, ухмылка до затылка,
-// зубы-иглы цвета слоновой кости, толстый S-образный язык, слюна; затем голова бьётся на осколки.
+// ── Веном: эффект профиля на художественной картинке (img/fx/venom-head.webp) ──
+// Голова выезжает справа, «живёт» (жидкое искажение — язык и жижа шевелятся), потом трескается
+// на осколки — каждый осколок это кусок той же картинки — и они разлетаются влево. Капли сверху — отдельно.
+const VENOM_IMG='img/fx/venom-head.webp';
 function _cosSymbiote(){
   const R=_cosRnd(13);
-  const bz=(p0,p1,p2,p3,t)=>{const u=1-t;return [u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]];};
-  // зуб-игла: основание на губе, кончик — вдоль dir, лёгкий изгиб назад
-  const needle=(x,y,len,w,dir,bend)=>`M${_cosF(x-w)},${_cosF(y)}C${_cosF(x-w*.6)},${_cosF(y+dir*len*.45)} ${_cosF(x+bend*.6)},${_cosF(y+dir*len*.85)} ${_cosF(x+bend)},${_cosF(y+dir*len)}C${_cosF(x+w*.3+bend*.4)},${_cosF(y+dir*len*.6)} ${_cosF(x+w*.8)},${_cosF(y+dir*len*.3)} ${_cosF(x+w)},${_cosF(y)}Z`;
-  const UL=[[118,112],[160,122],[214,128],[262,128]], LL=[[126,150],[170,168],[222,160],[262,138]];
-  let upT='',loT='',upG='',loG='';
-  for(let i=0;i<14;i++){const t=.03+i*(.92/13),[x,y]=bz(...UL,t),k=t;const len=(i%3===1?34:i%3===2?24:28)*(1-k*.62)+R()*4;upT+=needle(x,y-1,len,3.6-k*1.6,1,4+k*6);}
-  for(let i=0;i<12;i++){const t=.05+i*(.88/11),[x,y]=bz(...LL,t),k=t;const len=(i%2?20:27)*(1-k*.6)+R()*4;loT+=needle(x,y+1,len,3.2-k*1.3,-1,3+k*5);}
-  upG=`M118,112C160,122 214,128 262,128L262,132C214,133 160,127 118,117Z`;
-  loG=`M126,150C170,168 222,160 262,138L262,143C222,165 170,173 126,155Z`;
-  // прожилки жижи на черепе
-  let veins='';for(let i=0;i<7;i++){const x=190+R()*100,y=10+R()*60;veins+=`M${_cosF(x)},${_cosF(y)}c${_cosF(-8-R()*14)},${_cosF(4+R()*8)} ${_cosF(-14-R()*18)},${_cosF(12+R()*10)} ${_cosF(-26-R()*20)},${_cosF(14+R()*16)}`;}
-  let dots='';for(let i=0;i<170;i++){const x=120+R()*180,y=0+R()*200,r=.5+R()*1.05;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
-  // осколки для «разбитого стекла»
-  let shards='';for(let i=0;i<28;i++){const x=120+R()*175,y=6+R()*190,sz=6+R()*17,pts=[];for(let k=0;k<3+Math.floor(R()*2);k++){const a=k*2.1+R();pts.push(_cosF(x+Math.cos(a)*sz*(.5+R()*.6))+','+_cosF(y+Math.sin(a)*sz*(.5+R()*.6)));}
-    shards+=`<path class="sym-shard" style="--dx:${-(90+R()*220).toFixed(0)}px;--dy:${(-60+R()*50).toFixed(0)}px;--r:${(-200+R()*400).toFixed(0)}deg" d="M${pts.join('L')}Z" fill="${R()>.82?'#e6ecff':R()>.5?'#1b2233':'#050507'}" stroke="#000" stroke-width="1"/>`;}
+  const X=60,Y=0,W=240,H=234;                        // картинка 480×468 → в координатах 300×240
+  const img=(extra)=>`<image href="${VENOM_IMG}" x="${X}" y="${Y}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"${extra||''}/>`;
+  // сетка 5×5 со сдвинутыми узлами → 50 треугольников, покрывающих всю голову
+  const N=5,pt=[];
+  for(let j=0;j<=N;j++){pt[j]=[];for(let i=0;i<=N;i++){const jx=(i>0&&i<N)?(R()-.5)*W/N*.6:0,jy=(j>0&&j<N)?(R()-.5)*H/N*.6:0;pt[j][i]=[X+i*W/N+jx,Y+j*H/N+jy];}}
+  let clips='',shards='',n=0;
+  const tri=(a,b,c)=>{const id='vsh'+(n++);const cx=(a[0]+b[0]+c[0])/3;
+    clips+=`<clipPath id="${id}"><path d="M${a.map(_cosF)}L${b.map(_cosF)}L${c.map(_cosF)}Z"/></clipPath>`;
+    const far=(cx-X)/W;                              // левые куски летят раньше и дальше
+    shards+=`<g class="sym-shard" style="--dx:${-(80+R()*160+(1-far)*60).toFixed(0)}px;--dy:${(-70+R()*60).toFixed(0)}px;--r:${(-160+R()*320).toFixed(0)}deg">${img(` clip-path="url(#${id})"`)}</g>`;};
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=pt[j][i],b=pt[j][i+1],c=pt[j+1][i],d=pt[j+1][i+1];if(R()>.5){tri(a,b,d);tri(a,d,c);}else{tri(a,b,c);tri(b,d,c);}}
   return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin meet" aria-hidden="true">
-    <defs>
-      <radialGradient id="vnSkin" cx="210" cy="40" r="170" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3b4a66"/><stop offset=".25" stop-color="#161c2a"/><stop offset=".6" stop-color="#07090e"/><stop offset="1" stop-color="#010102"/></radialGradient>
-      <radialGradient id="vnJaw" cx="200" cy="200" r="120" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a2233"/><stop offset=".6" stop-color="#06080c"/><stop offset="1" stop-color="#010102"/></radialGradient>
-      <linearGradient id="vnTooth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbe9"/><stop offset=".55" stop-color="#eed9a4"/><stop offset="1" stop-color="#b8904c"/></linearGradient>
-      <linearGradient id="vnToothLo" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fffbe9"/><stop offset=".55" stop-color="#eed9a4"/><stop offset="1" stop-color="#b8904c"/></linearGradient>
-      <radialGradient id="vnMouth" cx="190" cy="140" r="90" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6e0a1f"/><stop offset=".5" stop-color="#2c0410"/><stop offset="1" stop-color="#0a0105"/></radialGradient>
-      <linearGradient id="vnTongue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a97"/><stop offset=".45" stop-color="#e2294f"/><stop offset="1" stop-color="#7a0820"/></linearGradient>
-      <linearGradient id="vnEye" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef3fb"/><stop offset="1" stop-color="#c9d4e6"/></linearGradient>
+    <defs>${clips}
+      <filter id="vnLiquid" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.03" numOctaves="2" seed="3" result="n">
+          <animate attributeName="seed" values="1;2;3;4;5;6;7;8" dur="0.55s" repeatCount="indefinite"/>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
     </defs>
     <g class="sym-shards">${shards}</g>
-    <g class="sym"><g class="sym-head">
-      <!-- шея: жижа уходит вниз за край -->
-      <path d="M300,168V240H232C240,222 256,198 300,168Z" fill="url(#vnJaw)" stroke="#000" stroke-width="3"/>
-      <!-- пасть изнутри -->
-      <path class="sym-throat" d="M118,112C160,122 214,128 262,128L262,138C222,160 170,168 126,150C122,138 118,124 118,112Z" fill="url(#vnMouth)"/>
-      <!-- нижняя челюсть: дёсны и зубы -->
-      <g class="sym-jaw">
-        <path d="M126,150C170,168 222,160 262,138L300,132V176C262,196 200,204 160,194C140,188 128,172 126,150Z" fill="url(#vnJaw)" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
-        <path d="M156,192C196,200 244,188 292,162" stroke="#7d94c6" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".8"/>
-        <path d="${loG}" fill="#8e1830"/>
-        <path d="${loT}" fill="url(#vnToothLo)" stroke="#3a2408" stroke-width=".8"/>
-      </g>
-      <!-- язык: толстый, S-образный -->
-      <g class="sym-tongue">
-        <path d="M214,140C176,146 150,150 126,164C104,177 94,198 106,214C116,227 138,224 142,208C145,196 134,188 126,194C128,184 150,170 176,162C194,156 206,152 216,148Z" fill="url(#vnTongue)" stroke="#12000a" stroke-width="2.6" stroke-linejoin="round"/>
-        <path d="M196,148C172,152 150,158 132,170C116,181 106,196 112,208" stroke="#ffc2d1" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".85"/>
-        <path d="M188,152C170,156 156,162 142,172M168,158C156,163 146,170 138,178" stroke="#8a0c26" stroke-width="1.2" fill="none" opacity=".7"/>
-      </g>
-      <!-- слюна -->
-      <path class="sym-drool" d="M150,122C152,138 148,152 151,164M176,126C174,140 178,150 175,160M204,128C206,140 202,148 205,156M134,118C132,132 137,146 134,156" stroke="#e6f6ff" stroke-width="1.4" fill="none" opacity=".6"/>
-      <!-- череп и верхняя челюсть -->
-      <path d="M300,8C262,-6 206,0 172,22C146,38 128,62 122,84C119,96 116,104 118,112C160,122 214,128 262,128C276,122 290,108 300,96Z" fill="url(#vnSkin)" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
-      <path d="${veins}" stroke="#26324d" stroke-width="2" fill="none" stroke-linecap="round" opacity=".85"/>
-      <path d="${upG}" fill="#8e1830"/>
-      <path d="${upT}" fill="url(#vnTooth)" stroke="#3a2408" stroke-width=".8"/>
-      <!-- глаза -->
-      <path class="sym-eye" d="M176,56C196,34 240,24 278,32C272,52 248,68 218,72C198,74 184,68 176,56Z" fill="url(#vnEye)" stroke="#000" stroke-width="4" stroke-linejoin="round"/>
-      <path d="M190,54C210,40 240,34 262,36" stroke="#fff" stroke-width="2" fill="none" opacity=".9"/>
-      <path class="sym-eye" d="M138,86C144,72 156,62 170,60C166,72 156,82 144,88Z" fill="url(#vnEye)" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
-      <!-- комиксные блики -->
-      <path d="M204,8C232,0 266,2 294,12C270,8 240,8 214,14Z" fill="#dfe8ff" opacity=".85"/>
-      <path d="M150,34C160,24 172,18 184,14C172,22 162,30 156,40Z" fill="#cfdaf5" opacity=".7"/>
-      <path d="M130,100C140,92 152,88 166,88C154,92 142,98 134,106Z" fill="#b7c6ea" opacity=".55"/>
-      <path d="M268,110C282,102 292,92 298,82" stroke="#7d94c6" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
-      <path d="${dots}" fill="#9aa6c8" opacity=".12"/>
-    </g></g></svg>`;
+    <g class="sym"><g class="sym-head" filter="url(#vnLiquid)">${img()}</g></g>
+  </svg>`;
 }
 PROFILE_FX.push({id:'symbiote',name:'Веном',prem:true});
 function _cosGooTop(){
