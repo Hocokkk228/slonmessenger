@@ -3094,3 +3094,6 @@ video.mv-media{cursor:default;}
 .np-sym-sign{filter:drop-shadow(0 0 4px rgba(255,255,255,.35));}
 /* ранний доступ */
 .avf-cell[data-beta]::after,.cos-cell[data-beta]::after{content:"Скоро";position:absolute;top:4px;left:6px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;background:linear-gradient(90deg,#ff4ecd,#6a5cff);color:#fff;z-index:5;}
+/* слой эффекта профиля не должен перебиваться стилями шапки */
+.pfx{position:absolute!important;inset:0!important;z-index:60!important;width:auto!important;height:auto!important;}
+.pfx-symbiote .sym-svg{height:min(210px,62%)!important;}
