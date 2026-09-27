@@ -3099,3 +3099,5 @@ video.mv-media{cursor:default;}
 .pfx-symbiote .sym-svg{height:min(210px,62%)!important;}
 .pfx-symbiote .sym-drool{animation:symThroat 7s steps(105) infinite;}
 .pfx-symbiote .sym-svg{height:min(250px,70%)!important;}
+/* Веном: в правом верхнем углу, примерно 70% ширины окна, не больше 300px */
+.pfx-symbiote .sym-svg{left:auto!important;right:0!important;top:0!important;width:min(72%,300px)!important;height:auto!important;aspect-ratio:300/240;}

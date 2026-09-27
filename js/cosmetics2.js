@@ -84,13 +84,13 @@ function _cosSymbiote(){
   // нижняя челюсть: от подбородка (118,178) к углу рта (246,132)
   for(let i=0;i<10;i++){const k=i/9,x=122+k*118,y=176-k*42;const len=(i%2?14:22)*(1-k*.35)+R()*4;loT+=fang(x,y,len,3.8-k,-1,2+k*3);}
   let dots='';for(let i=0;i<150;i++){const x=110+R()*190,y=0+R()*120,r=.5+R()*1.1;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
-  return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin slice" aria-hidden="true">
+  return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin meet" aria-hidden="true">
     <defs>
       <linearGradient id="symTongue" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e0f2e"/><stop offset=".45" stop-color="#e3345c"/><stop offset="1" stop-color="#ff7d9b"/></linearGradient>
       <radialGradient id="symGloss" cx=".45" cy=".2" r=".75"><stop offset="0" stop-color="#4a5468"/><stop offset=".35" stop-color="#161a24"/><stop offset="1" stop-color="#020203"/></radialGradient>
       <radialGradient id="symMouth" cx=".6" cy=".4" r=".7"><stop offset="0" stop-color="#5a0018"/><stop offset="1" stop-color="#12000a"/></radialGradient>
     </defs>
-    <path class="sym-trail" d="M230,80C180,54 110,26 0,0" stroke="#050507" stroke-width="24" stroke-linecap="round" fill="none"/>
+    <path class="sym-trail" d="M230,80C180,54 110,26 0,0" stroke="#050507" stroke-width="11" stroke-linecap="round" fill="none" opacity=".85"/>
     <g class="sym"><g class="sym-head">
       <!-- шея и тело уходят за правый край -->
       <path d="M300,0V240H236C250,200 262,160 258,128C290,120 300,60 300,0Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
