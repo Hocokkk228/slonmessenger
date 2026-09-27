@@ -63,38 +63,57 @@ function _cosBubble(){
   return f.apply(this,arguments);
 };}
 
-// эмблема: белый паук с длинными изогнутыми лапами
-function _venomSign(){return '<path fill="#fff" d="M0,-9C3,-9 4,-5 3,-1C2,2 3,5 0,10C-3,5 -2,2 -3,-1C-4,-5 -3,-9 0,-9Z"/>'
-  +'<path fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" d="M2,-5C9,-10 16,-9 22,-16M-2,-5C-9,-10 -16,-9 -22,-16M3,-1C11,-3 17,0 24,-4M-3,-1C-11,-3 -17,0 -24,-4M3,2C10,4 14,10 20,12M-3,2C-10,4 -14,10 -20,12M2,5C7,10 8,16 12,22M-2,5C-7,10 -8,16 -12,22"/>';}
-// ── Симбиот (Веном): эффект профиля ──
-// Вылезает справа, раскрывает пасть, орёт с высунутым языком, утекает в левый верхний угол. Цикл 7 с.
+// эмблема: белый паук — толстое тело-капля и 8 загнутых лап-когтей
+function _venomSign(){
+  const leg=(sx,d)=>`<path fill="#fff" d="${d}" transform="scale(${sx},1)"/>`;
+  const L=['M3,-6C9,-12 16,-16 22,-26C19,-17 14,-9 5,-3Z','M4,-2C12,-6 20,-6 27,-12C23,-5 16,-1 5,1Z',
+    'M4,2C12,3 19,8 25,14C18,11 12,8 4,5Z','M3,5C8,10 11,17 13,26C8,19 5,13 1,8Z'];
+  return '<path fill="#fff" d="M0,-13C5,-13 6,-6 5,-1C4,4 5,9 0,16C-5,9 -4,4 -5,-1C-6,-6 -5,-13 0,-13Z"/>'
+    +L.map(d=>leg(1,d)+leg(-1,d)).join('');
+}
+// ── Веном: эффект профиля ──
+// Голова выходит из правого края, пасть раскрывается, язык вываливается и трясётся (орёт),
+// потом всё утекает в левый верхний угол. Рисунок раскрытый; закрытая пасть — поворот челюсти.
 function _cosSymbiote(){
   const R=_cosRnd(13);
-  let dots='';for(let i=0;i<140;i++){const x=40+R()*170,y=10+R()*150,r=.5+R()*1.1;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
-  const teeth=(pts,dir)=>pts.map(([x,y,l,w])=>`M${x-w},${y}L${x},${y+dir*l}L${x+w},${y}Z`).join('');
-  const up=teeth([[70,93,9,3],[80,96,12,3.4],[91,98,14,3.6],[103,99,14,3.6],[115,98,12,3.4],[126,95,9,3]],1);
-  const lo=teeth([[74,104,-8,2.8],[86,108,-11,3.2],[98,110,-12,3.4],[110,109,-11,3.2],[121,106,-8,2.8]],1);
+  // клыки: длинные, чуть загнутые (квадратичная кривая), с чёрной обводкой
+  const fang=(x,y,len,w,dir,bend)=>`M${_cosF(x-w)},${_cosF(y)}Q${_cosF(x-w*.2+bend)},${_cosF(y+dir*len*.6)} ${_cosF(x+bend)},${_cosF(y+dir*len)}Q${_cosF(x+w*.5+bend*.5)},${_cosF(y+dir*len*.5)} ${_cosF(x+w)},${_cosF(y)}Z`;
+  let upT='',loT='';
+  // верхняя губа: от кончика морды (96,98) к углу рта (248,122)
+  for(let i=0;i<11;i++){const k=i/10,x=100+k*140,y=98+k*22+Math.sin(k*3)*3;const len=(i%2?16:26)*(1-k*.35)+R()*5;upT+=fang(x,y,len,4.2-k*1.2,1,-3-k*3);}
+  // нижняя челюсть: от подбородка (118,178) к углу рта (246,132)
+  for(let i=0;i<10;i++){const k=i/9,x=122+k*118,y=176-k*42;const len=(i%2?14:22)*(1-k*.35)+R()*4;loT+=fang(x,y,len,3.8-k,-1,2+k*3);}
+  let dots='';for(let i=0;i<150;i++){const x=110+R()*190,y=0+R()*120,r=.5+R()*1.1;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
   return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin slice" aria-hidden="true">
     <defs>
-      <linearGradient id="symTongue" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#b3123a"/><stop offset=".5" stop-color="#ff4d78"/><stop offset="1" stop-color="#ff8aa6"/></linearGradient>
-      <radialGradient id="symGloss" cx=".35" cy=".25" r=".7"><stop offset="0" stop-color="#3a4252"/><stop offset=".5" stop-color="#101218"/><stop offset="1" stop-color="#030304"/></radialGradient>
+      <linearGradient id="symTongue" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e0f2e"/><stop offset=".45" stop-color="#e3345c"/><stop offset="1" stop-color="#ff7d9b"/></linearGradient>
+      <radialGradient id="symGloss" cx=".45" cy=".2" r=".75"><stop offset="0" stop-color="#4a5468"/><stop offset=".35" stop-color="#161a24"/><stop offset="1" stop-color="#020203"/></radialGradient>
+      <radialGradient id="symMouth" cx=".6" cy=".4" r=".7"><stop offset="0" stop-color="#5a0018"/><stop offset="1" stop-color="#12000a"/></radialGradient>
     </defs>
-    <path class="sym-trail" d="M210,92C170,64 110,34 0,0" stroke="#050507" stroke-width="22" stroke-linecap="round" fill="none"/>
+    <path class="sym-trail" d="M230,80C180,54 110,26 0,0" stroke="#050507" stroke-width="24" stroke-linecap="round" fill="none"/>
     <g class="sym"><g class="sym-head">
-      <path d="M300,40C262,34 236,52 222,70C204,96 214,126 300,150Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
-      <path d="M232,58C240,50 256,44 270,44M226,122C236,134 256,140 272,140" stroke="#cfd8ff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
-      <ellipse cx="100" cy="104" rx="46" ry="16" fill="#3a0010" class="sym-throat"/>
-      <g class="sym-tongue"><path d="M110,106C84,122 54,112 30,128C18,136 24,150 38,144C60,134 86,138 112,114Z" fill="url(#symTongue)" stroke="#000" stroke-width="2.4"/>
-        <path d="M100,112C82,122 62,120 44,132" stroke="#ffd0dc" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/></g>
-      <path d="M232,76C228,40 186,22 144,30C104,38 70,58 58,88L66,96C104,86 150,86 196,98C214,102 232,98 232,76Z" fill="url(#symGloss)" stroke="#000" stroke-width="3.2"/>
-      <path d="${up}" fill="#fff" stroke="#000" stroke-width="1.2"/>
-      <path class="sym-eye" d="M78,66C88,42 118,28 146,32C140,52 120,70 98,72C90,72 82,70 78,66Z" fill="#fff" stroke="#000" stroke-width="3.4"/>
-      <path class="sym-eye" d="M156,30C178,20 208,24 224,40C212,56 190,62 172,58C162,54 158,42 156,30Z" fill="#fff" stroke="#000" stroke-width="3.4"/>
-      <path d="M150,34C170,28 196,30 214,40M80,74C96,62 118,54 140,50" stroke="#dfe6ff" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".75"/>
-      <path d="${dots}" fill="#9aa6c8" opacity=".16"/>
-      <g class="sym-jaw"><path d="M60,100C82,126 150,134 206,112L204,100C150,118 96,114 60,100Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
-        <path d="${lo}" fill="#fff" stroke="#000" stroke-width="1.1"/></g>
-      <path d="M298,150C288,168 294,190 280,206M262,146C258,160 262,172 254,184" stroke="#050507" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <!-- шея и тело уходят за правый край -->
+      <path d="M300,0V240H236C250,200 262,160 258,128C290,120 300,60 300,0Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
+      <!-- пасть изнутри -->
+      <path d="M96,98C140,108 200,116 250,124L246,134C200,150 160,168 118,180C108,160 100,130 96,98Z" fill="url(#symMouth)"/>
+      <!-- язык -->
+      <g class="sym-tongue"><path d="M205,140C170,150 140,146 112,160C84,174 62,166 40,184C28,194 36,210 52,202C72,190 92,196 120,182C150,168 182,164 210,150Z" fill="url(#symTongue)" stroke="#000" stroke-width="2.6"/>
+        <path d="M190,150C160,156 130,160 104,176C84,188 66,186 52,196" stroke="#ffc6d4" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".85"/></g>
+      <!-- нижняя челюсть с клыками -->
+      <g class="sym-jaw"><path d="M250,130C210,146 170,168 118,180C112,186 116,198 128,198C176,192 226,170 262,140Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
+        <path d="${loT}" fill="#f7f4ea" stroke="#000" stroke-width="1.4"/></g>
+      <!-- слюна между челюстями -->
+      <path class="sym-drool" d="M150,108C152,130 148,150 152,170M188,114C186,132 190,146 186,160M122,102C120,124 126,146 124,170" stroke="#dff3ff" stroke-width="1.3" fill="none" opacity=".55"/>
+      <!-- череп и верхняя челюсть -->
+      <path d="M300,8C262,-10 196,-4 150,24C112,48 88,76 92,98C140,110 200,116 252,124C278,118 300,80 300,8Z" fill="url(#symGloss)" stroke="#000" stroke-width="3.4"/>
+      <path d="${upT}" fill="#f7f4ea" stroke="#000" stroke-width="1.4"/>
+      <!-- глаза: большие, белые, угловатые -->
+      <path class="sym-eye" d="M150,44C168,20 214,8 252,18C244,40 220,58 192,62C174,64 158,58 150,44Z" fill="#fff" stroke="#000" stroke-width="4"/>
+      <path class="sym-eye" d="M106,66C112,52 128,40 144,38C140,52 130,64 116,70Z" fill="#fff" stroke="#000" stroke-width="3.4"/>
+      <!-- комиксные блики и растр -->
+      <path d="M212,6C240,2 270,6 290,16M170,26C184,16 200,10 214,8M104,86C112,76 122,70 132,66" stroke="#e4ecff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/>
+      <path d="${dots}" fill="#9aa6c8" opacity=".14"/>
+      <path d="M292,236C286,220 294,206 286,190M270,238C268,226 272,214 266,204" stroke="#050507" stroke-width="6" stroke-linecap="round" fill="none"/>
     </g></g></svg>`;
 }
 PROFILE_FX.push({id:'symbiote',name:'Веном',prem:true});
