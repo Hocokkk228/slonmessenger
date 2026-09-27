@@ -63,6 +63,7 @@ async function _mmLoad(force){
   list.sort((a,b)=>(b.ts||0)-(a.ts||0));
   _mm.list=list;_mm.loaded=true;
   setTimeout(_mmCovFill,500);
+  setTimeout(_lrcPrefetchAll,1500);
   try{_plRemap();}catch(e){}
   return list;
 }
@@ -881,3 +882,23 @@ async function _mmCovFill(){
   }catch(e){}
   _mmCovBusy=false;
 }
+
+// тексты всех треков — скачиваем заранее в фоне (фонотека + плейлист профиля), по одному, уже найденные пропускаем
+let _lrcPfBusy=false;
+async function _lrcPrefetchAll(){
+  if(_lrcPfBusy||typeof _lrcFind!=='function')return;_lrcPfBusy=true;
+  try{
+    const list=[..._mm.list.map(x=>({title:x.title,artist:x.artist,dur:x.dur})),...(_pxMe().playlist||[]).map(x=>({title:x.title,artist:x.artist,dur:x.dur}))];
+    const done=new Set();
+    for(const t of list){
+      const k=_lrcKey(t);if(!t.title||done.has(k))continue;done.add(k);
+      const c=await _lrcGet(k);if(c&&(c.syncedLyrics||c.plainLyrics))continue;
+      if(_lrcMiss[k]&&Date.now()-_lrcMiss[k]<864e5)continue;           // не нашли недавно — не долбим каждый раз
+      const h=await _lrcFind(t).catch(()=>null);
+      if(!h){_lrcMiss[k]=Date.now();try{localStorage.setItem('sl_lrcmiss',JSON.stringify(_lrcMiss));}catch(e){}}
+      await new Promise(r=>setTimeout(r,300));
+    }
+  }catch(e){}
+  _lrcPfBusy=false;
+}
+const _lrcMiss=(()=>{try{return JSON.parse(localStorage.getItem('sl_lrcmiss')||'{}')||{};}catch(e){return {};}})();
