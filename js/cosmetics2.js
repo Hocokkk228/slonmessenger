@@ -71,52 +71,72 @@ function _venomSign(){
   return '<path fill="#fff" d="M0,-13C5,-13 6,-6 5,-1C4,4 5,9 0,16C-5,9 -4,4 -5,-1C-6,-6 -5,-13 0,-13Z"/>'
     +L.map(d=>leg(1,d)+leg(-1,d)).join('');
 }
-// ── Веном: эффект профиля ──
-// Голова выходит из правого края, пасть раскрывается, язык вываливается и трясётся (орёт),
-// потом всё утекает в левый верхний угол. Рисунок раскрытый; закрытая пасть — поворот челюсти.
+// ── Веном: эффект профиля (иллюстрация слоями) ──
+// Голова в профиль из правого края: череп с синим отливом и комиксными бликами, ухмылка до затылка,
+// зубы-иглы цвета слоновой кости, толстый S-образный язык, слюна; затем голова бьётся на осколки.
 function _cosSymbiote(){
   const R=_cosRnd(13);
-  // клыки: длинные, чуть загнутые (квадратичная кривая), с чёрной обводкой
-  const fang=(x,y,len,w,dir,bend)=>`M${_cosF(x-w)},${_cosF(y)}Q${_cosF(x-w*.2+bend)},${_cosF(y+dir*len*.6)} ${_cosF(x+bend)},${_cosF(y+dir*len)}Q${_cosF(x+w*.5+bend*.5)},${_cosF(y+dir*len*.5)} ${_cosF(x+w)},${_cosF(y)}Z`;
-  let upT='',loT='';
-  // верхняя губа: от кончика морды (96,98) к углу рта (248,122)
-  for(let i=0;i<11;i++){const k=i/10,x=100+k*140,y=98+k*22+Math.sin(k*3)*3;const len=(i%2?16:26)*(1-k*.35)+R()*5;upT+=fang(x,y,len,4.2-k*1.2,1,-3-k*3);}
-  // нижняя челюсть: от подбородка (118,178) к углу рта (246,132)
-  for(let i=0;i<10;i++){const k=i/9,x=122+k*118,y=176-k*42;const len=(i%2?14:22)*(1-k*.35)+R()*4;loT+=fang(x,y,len,3.8-k,-1,2+k*3);}
-  // осколки: головa «бьётся как стекло» и куски улетают влево-вверх
-  let shards='';for(let i=0;i<26;i++){const x=110+R()*180,y=6+R()*170,sz=6+R()*16,pts=[];for(let k=0;k<3+Math.floor(R()*2);k++){const a=k*2.1+R();pts.push(_cosF(x+Math.cos(a)*sz*(.5+R()*.6))+','+_cosF(y+Math.sin(a)*sz*(.5+R()*.6)));}
-    shards+=`<path class="sym-shard" style="--dx:${-(90+R()*220).toFixed(0)}px;--dy:${(-60+R()*50).toFixed(0)}px;--r:${(-200+R()*400).toFixed(0)}deg" d="M${pts.join('L')}Z" fill="${R()>.8?'#e6ecff':R()>.5?'#1b2130':'#050507'}" stroke="#000" stroke-width="1"/>`;}
-  let dots='';for(let i=0;i<150;i++){const x=110+R()*190,y=0+R()*120,r=.5+R()*1.1;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
+  const bz=(p0,p1,p2,p3,t)=>{const u=1-t;return [u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]];};
+  // зуб-игла: основание на губе, кончик — вдоль dir, лёгкий изгиб назад
+  const needle=(x,y,len,w,dir,bend)=>`M${_cosF(x-w)},${_cosF(y)}C${_cosF(x-w*.6)},${_cosF(y+dir*len*.45)} ${_cosF(x+bend*.6)},${_cosF(y+dir*len*.85)} ${_cosF(x+bend)},${_cosF(y+dir*len)}C${_cosF(x+w*.3+bend*.4)},${_cosF(y+dir*len*.6)} ${_cosF(x+w*.8)},${_cosF(y+dir*len*.3)} ${_cosF(x+w)},${_cosF(y)}Z`;
+  const UL=[[118,112],[160,122],[214,128],[262,128]], LL=[[126,150],[170,168],[222,160],[262,138]];
+  let upT='',loT='',upG='',loG='';
+  for(let i=0;i<14;i++){const t=.03+i*(.92/13),[x,y]=bz(...UL,t),k=t;const len=(i%3===1?34:i%3===2?24:28)*(1-k*.62)+R()*4;upT+=needle(x,y-1,len,3.6-k*1.6,1,4+k*6);}
+  for(let i=0;i<12;i++){const t=.05+i*(.88/11),[x,y]=bz(...LL,t),k=t;const len=(i%2?20:27)*(1-k*.6)+R()*4;loT+=needle(x,y+1,len,3.2-k*1.3,-1,3+k*5);}
+  upG=`M118,112C160,122 214,128 262,128L262,132C214,133 160,127 118,117Z`;
+  loG=`M126,150C170,168 222,160 262,138L262,143C222,165 170,173 126,155Z`;
+  // прожилки жижи на черепе
+  let veins='';for(let i=0;i<7;i++){const x=190+R()*100,y=10+R()*60;veins+=`M${_cosF(x)},${_cosF(y)}c${_cosF(-8-R()*14)},${_cosF(4+R()*8)} ${_cosF(-14-R()*18)},${_cosF(12+R()*10)} ${_cosF(-26-R()*20)},${_cosF(14+R()*16)}`;}
+  let dots='';for(let i=0;i<170;i++){const x=120+R()*180,y=0+R()*200,r=.5+R()*1.05;dots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
+  // осколки для «разбитого стекла»
+  let shards='';for(let i=0;i<28;i++){const x=120+R()*175,y=6+R()*190,sz=6+R()*17,pts=[];for(let k=0;k<3+Math.floor(R()*2);k++){const a=k*2.1+R();pts.push(_cosF(x+Math.cos(a)*sz*(.5+R()*.6))+','+_cosF(y+Math.sin(a)*sz*(.5+R()*.6)));}
+    shards+=`<path class="sym-shard" style="--dx:${-(90+R()*220).toFixed(0)}px;--dy:${(-60+R()*50).toFixed(0)}px;--r:${(-200+R()*400).toFixed(0)}deg" d="M${pts.join('L')}Z" fill="${R()>.82?'#e6ecff':R()>.5?'#1b2233':'#050507'}" stroke="#000" stroke-width="1"/>`;}
   return `<svg class="sym-svg" viewBox="0 0 300 240" preserveAspectRatio="xMaxYMin meet" aria-hidden="true">
     <defs>
-      <linearGradient id="symTongue" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e0f2e"/><stop offset=".45" stop-color="#e3345c"/><stop offset="1" stop-color="#ff7d9b"/></linearGradient>
-      <radialGradient id="symGloss" cx=".45" cy=".2" r=".75"><stop offset="0" stop-color="#4a5468"/><stop offset=".35" stop-color="#161a24"/><stop offset="1" stop-color="#020203"/></radialGradient>
-      <radialGradient id="symMouth" cx=".6" cy=".4" r=".7"><stop offset="0" stop-color="#5a0018"/><stop offset="1" stop-color="#12000a"/></radialGradient>
+      <radialGradient id="vnSkin" cx="210" cy="40" r="170" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3b4a66"/><stop offset=".25" stop-color="#161c2a"/><stop offset=".6" stop-color="#07090e"/><stop offset="1" stop-color="#010102"/></radialGradient>
+      <radialGradient id="vnJaw" cx="200" cy="200" r="120" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a2233"/><stop offset=".6" stop-color="#06080c"/><stop offset="1" stop-color="#010102"/></radialGradient>
+      <linearGradient id="vnTooth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbe9"/><stop offset=".55" stop-color="#eed9a4"/><stop offset="1" stop-color="#b8904c"/></linearGradient>
+      <linearGradient id="vnToothLo" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fffbe9"/><stop offset=".55" stop-color="#eed9a4"/><stop offset="1" stop-color="#b8904c"/></linearGradient>
+      <radialGradient id="vnMouth" cx="190" cy="140" r="90" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6e0a1f"/><stop offset=".5" stop-color="#2c0410"/><stop offset="1" stop-color="#0a0105"/></radialGradient>
+      <linearGradient id="vnTongue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a97"/><stop offset=".45" stop-color="#e2294f"/><stop offset="1" stop-color="#7a0820"/></linearGradient>
+      <linearGradient id="vnEye" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef3fb"/><stop offset="1" stop-color="#c9d4e6"/></linearGradient>
     </defs>
     <g class="sym-shards">${shards}</g>
     <g class="sym"><g class="sym-head">
-      <!-- шея и тело уходят за правый край -->
-      <path d="M300,0V240H236C250,200 262,160 258,128C290,120 300,60 300,0Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
+      <!-- шея: жижа уходит вниз за край -->
+      <path d="M300,168V240H232C240,222 256,198 300,168Z" fill="url(#vnJaw)" stroke="#000" stroke-width="3"/>
       <!-- пасть изнутри -->
-      <path d="M96,98C140,108 200,116 250,124L246,134C200,150 160,168 118,180C108,160 100,130 96,98Z" fill="url(#symMouth)"/>
-      <!-- язык -->
-      <g class="sym-tongue"><path d="M205,140C170,150 140,146 112,160C84,174 62,166 40,184C28,194 36,210 52,202C72,190 92,196 120,182C150,168 182,164 210,150Z" fill="url(#symTongue)" stroke="#000" stroke-width="2.6"/>
-        <path d="M190,150C160,156 130,160 104,176C84,188 66,186 52,196" stroke="#ffc6d4" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".85"/></g>
-      <!-- нижняя челюсть с клыками -->
-      <g class="sym-jaw"><path d="M250,130C210,146 170,168 118,180C112,186 116,198 128,198C176,192 226,170 262,140Z" fill="url(#symGloss)" stroke="#000" stroke-width="3"/>
-        <path d="${loT}" fill="#f7f4ea" stroke="#000" stroke-width="1.4"/></g>
-      <!-- слюна между челюстями -->
-      <path class="sym-drool" d="M150,108C152,130 148,150 152,170M188,114C186,132 190,146 186,160M122,102C120,124 126,146 124,170" stroke="#dff3ff" stroke-width="1.3" fill="none" opacity=".55"/>
+      <path class="sym-throat" d="M118,112C160,122 214,128 262,128L262,138C222,160 170,168 126,150C122,138 118,124 118,112Z" fill="url(#vnMouth)"/>
+      <!-- нижняя челюсть: дёсны и зубы -->
+      <g class="sym-jaw">
+        <path d="M126,150C170,168 222,160 262,138L300,132V176C262,196 200,204 160,194C140,188 128,172 126,150Z" fill="url(#vnJaw)" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M156,192C196,200 244,188 292,162" stroke="#7d94c6" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".8"/>
+        <path d="${loG}" fill="#8e1830"/>
+        <path d="${loT}" fill="url(#vnToothLo)" stroke="#3a2408" stroke-width=".8"/>
+      </g>
+      <!-- язык: толстый, S-образный -->
+      <g class="sym-tongue">
+        <path d="M214,140C176,146 150,150 126,164C104,177 94,198 106,214C116,227 138,224 142,208C145,196 134,188 126,194C128,184 150,170 176,162C194,156 206,152 216,148Z" fill="url(#vnTongue)" stroke="#12000a" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M196,148C172,152 150,158 132,170C116,181 106,196 112,208" stroke="#ffc2d1" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".85"/>
+        <path d="M188,152C170,156 156,162 142,172M168,158C156,163 146,170 138,178" stroke="#8a0c26" stroke-width="1.2" fill="none" opacity=".7"/>
+      </g>
+      <!-- слюна -->
+      <path class="sym-drool" d="M150,122C152,138 148,152 151,164M176,126C174,140 178,150 175,160M204,128C206,140 202,148 205,156M134,118C132,132 137,146 134,156" stroke="#e6f6ff" stroke-width="1.4" fill="none" opacity=".6"/>
       <!-- череп и верхняя челюсть -->
-      <path d="M300,8C262,-10 196,-4 150,24C112,48 88,76 92,98C140,110 200,116 252,124C278,118 300,80 300,8Z" fill="url(#symGloss)" stroke="#000" stroke-width="3.4"/>
-      <path d="${upT}" fill="#f7f4ea" stroke="#000" stroke-width="1.4"/>
-      <!-- глаза: большие, белые, угловатые -->
-      <path class="sym-eye" d="M150,44C168,20 214,8 252,18C244,40 220,58 192,62C174,64 158,58 150,44Z" fill="#fff" stroke="#000" stroke-width="4"/>
-      <path class="sym-eye" d="M106,66C112,52 128,40 144,38C140,52 130,64 116,70Z" fill="#fff" stroke="#000" stroke-width="3.4"/>
-      <!-- комиксные блики и растр -->
-      <path d="M212,6C240,2 270,6 290,16M170,26C184,16 200,10 214,8M104,86C112,76 122,70 132,66" stroke="#e4ecff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/>
-      <path d="${dots}" fill="#9aa6c8" opacity=".14"/>
-      <path d="M292,236C286,220 294,206 286,190M270,238C268,226 272,214 266,204" stroke="#050507" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M300,8C262,-6 206,0 172,22C146,38 128,62 122,84C119,96 116,104 118,112C160,122 214,128 262,128C276,122 290,108 300,96Z" fill="url(#vnSkin)" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
+      <path d="${veins}" stroke="#26324d" stroke-width="2" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="${upG}" fill="#8e1830"/>
+      <path d="${upT}" fill="url(#vnTooth)" stroke="#3a2408" stroke-width=".8"/>
+      <!-- глаза -->
+      <path class="sym-eye" d="M176,56C196,34 240,24 278,32C272,52 248,68 218,72C198,74 184,68 176,56Z" fill="url(#vnEye)" stroke="#000" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M190,54C210,40 240,34 262,36" stroke="#fff" stroke-width="2" fill="none" opacity=".9"/>
+      <path class="sym-eye" d="M138,86C144,72 156,62 170,60C166,72 156,82 144,88Z" fill="url(#vnEye)" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      <!-- комиксные блики -->
+      <path d="M204,8C232,0 266,2 294,12C270,8 240,8 214,14Z" fill="#dfe8ff" opacity=".85"/>
+      <path d="M150,34C160,24 172,18 184,14C172,22 162,30 156,40Z" fill="#cfdaf5" opacity=".7"/>
+      <path d="M130,100C140,92 152,88 166,88C154,92 142,98 134,106Z" fill="#b7c6ea" opacity=".55"/>
+      <path d="M268,110C282,102 292,92 298,82" stroke="#7d94c6" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
+      <path d="${dots}" fill="#9aa6c8" opacity=".12"/>
     </g></g></svg>`;
 }
 PROFILE_FX.push({id:'symbiote',name:'Веном',prem:true});

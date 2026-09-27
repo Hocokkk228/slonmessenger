@@ -3118,3 +3118,5 @@ video.mv-media{cursor:default;}
 .pfx-symbiote .sym-shard{transform-box:fill-box;transform-origin:center;opacity:0;animation:venShard 5.6s steps(84) infinite;}
 @keyframes venShard{0%,38%{opacity:0;transform:translate(0,0) rotate(0)}40%{opacity:1;transform:translate(0,0) rotate(0)}52%{opacity:.9;transform:translate(calc(var(--dx)*.7),calc(var(--dy)*.7)) rotate(calc(var(--r)*.7))}58%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
 .pfx-symbiote .goo-top{height:64px!important;}
+/* Веном: пасть раскрыта шире (минус — открыть), язык поверх нижних зубов */
+@keyframes venJaw{0%,100%{transform:rotate(-4deg)}10%{transform:rotate(-14deg)}18%{transform:rotate(-9deg)}24%{transform:rotate(-16deg)}30%{transform:rotate(-10deg)}36%{transform:rotate(-14deg)}}
