@@ -2648,9 +2648,9 @@ video.mv-media{cursor:default;}
 /* видео в чате */
 .video-bub{position:relative;max-width:300px;border-radius:12px;overflow:hidden;cursor:pointer;background:#000;}
 .video-bub video{display:block;width:100%;max-height:340px;object-fit:cover;pointer-events:none;}
-.vb-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;}
-.vb-play svg{width:26px;height:26px;fill:#fff;}
-.vb-name{position:absolute;left:8px;bottom:6px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:8px;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.video-bub .vb-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55)!important;display:flex;align-items:center;justify-content:center;}
+.video-bub .vb-play svg{width:26px;height:26px;fill:#fff;}
+.video-bub .vb-name{position:absolute;left:8px;bottom:6px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:8px;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* строка статуса в меню сообщения */
 .ctx-foot{display:flex;align-items:center;gap:8px;margin:4px -6px -6px;padding:10px 16px;border-top:6px solid rgba(0,0,0,.18);font-size:13px;color:var(--text2);}
 .ctx-foot-ticks{font-size:12px;letter-spacing:-3px;}

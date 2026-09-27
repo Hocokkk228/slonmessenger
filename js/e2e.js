@@ -134,6 +134,28 @@ async function _e2eSelfSignal(p){
       const msg=await _e2eEncryptTo(myUsername,dv.d,dv.ik,_e2eEnc({vk:_e2eVk}));
       _hubSend({t:'send',to:myUsername,payload:{type:'e2e_vk',to:p.d,from:_e2eMe.deviceId,msg}});
     }).catch(e=>console.warn('[e2e] vk send',e));
+  }else if(p.type==='e2e_need'&&p.d&&p.d!==_e2eMe.deviceId&&p.key){
+    // другое моё устройство не открыло сообщение — если у меня оно открыто, отдаю ему (только ему)
+    await _e2eQ(async()=>{
+      let ev=0;for(const h of Object.values(chatHist))for(const m of h||[])if(m&&m._mk===p.key){ev=m._ev||0;}
+      const payload=await _idb.get(_e2eK('p:'+p.key+':'+ev));if(!payload)return;
+      delete _e2eDevCache[myUsername];
+      const dv=((await _e2eDevices([myUsername]))[myUsername]||[]).find(x=>+x.d===+p.d);if(!dv)return;
+      await _e2eSetSessions(_e2eAddr(myUsername,dv.d),[]);      // заново через X3DH — сбитая сессия не мешает
+      const msg=await _e2eEncryptTo(myUsername,dv.d,dv.ik,_e2eEnc({key:p.key,ev,p:payload}));
+      _hubSend({t:'send',to:myUsername,payload:{type:'e2e_give',to:p.d,from:_e2eMe.deviceId,msg}});
+    }).catch(e=>console.warn('[e2e] give',e));
+  }else if(p.type==='e2e_give'&&p.to===_e2eMe.deviceId){
+    try{
+      const plain=await _e2eQ(()=>_e2eDecryptFrom({u:myUsername,d:p.from},p.msg));
+      const g=_e2eDec(plain);if(!g||!g.key||!g.p)return;
+      await _idb.put(_e2eK('p:'+g.key+':'+(g.ev||0)),g.p);
+      if(_e2eWaiting[g.key])_e2eRetry(g.key);
+      else{                                                     // заглушка уже в истории — пересобираем
+        for(const [chat,h] of Object.entries(chatHist)){const m=(h||[]).find(x=>x&&x._mk===g.key&&x._e2eWait);
+          if(m){const rec=_e2eWaitRec[g.key];if(rec){_e2eWaiting[g.key]=rec;_e2eRetry(g.key);}break;}}
+      }
+    }catch(e){console.warn('[e2e] give recv',e);}
   }else if(p.type==='e2e_vk'&&!_e2eVk&&p.to===_e2eMe.deviceId){
     try{
       const plain=await _e2eQ(()=>_e2eDecryptFrom({u:myUsername,d:p.from},p.msg));
@@ -359,15 +381,19 @@ async function _e2eOpen(key,rec){
 // навсегда оставалось заглушкой, а отправитель ничего не знал. Теперь получатель просит
 // перешифровать, отправитель заново делает X3DH с этим устройством и обновляет запись журнала.
 const _e2eAsked={};
+const _e2eWaitRec={};   // ключ → запись журнала (чтобы пересобрать заглушку, когда придёт расшифровка)
 function _e2eAskResend(key,rec){
   const from=rec&&rec.e&&rec.e.from;
-  if(!from||!from.u||from.u===myUsername||_e2eAsked[key]||!_e2eMe)return;
-  _e2eAsked[key]=1;
+  if(!from||!from.u||_e2eAsked[key]||!_e2eMe)return;
+  _e2eAsked[key]=1;_e2eWaitRec[key]=rec;
   // сейф с другого моего устройства может успеть раньше — подождём немного
   setTimeout(()=>{
     if(!_e2eWaiting[key])return;
-    if(typeof _fbSend==='function')_fbSend(from.u,{type:'e2e_retry',key,d:_e2eMe.deviceId});
-  },4000);
+    // мои другие устройства: у кого сообщение открыто — перешифрует для этого устройства
+    if(typeof _hubSend==='function')_hubSend({t:'send',to:myUsername,payload:{type:'e2e_need',key,d:_e2eMe.deviceId}});
+    // отправитель (если это не я сам) — перешифрует заново
+    if(from.u!==myUsername&&typeof _fbSend==='function')_fbSend(from.u,{type:'e2e_retry',key,d:_e2eMe.deviceId});
+  },2500);
 }
 const _e2eResent={};
 async function _e2eResend(pid,key,dev){
