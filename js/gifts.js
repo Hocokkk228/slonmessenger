@@ -17,41 +17,14 @@ function _msIco(cls){
     <path d="M8.6 7.2c1-1 2.2-1.4 3.4-1.4" stroke="#fff6cc" stroke-width="1" fill="none" stroke-linecap="round" opacity=".9"/></svg>`;
 }
 
-// ── Плюшевый слоник (подарок) — рисунок и анимация ──
+// ── Плюшевый слоник (подарок): художественная картинка img/gifts/plush.webp + анимация ──
+const GIFT_IMG={plush:'img/gifts/plush.webp'};
 function _giftSvg(id,cls){
-  if(id!=='plush')return '';
+  const src=GIFT_IMG[id];if(!src)return '';
   return `<svg class="gift-svg gp${cls?' '+cls:''}" viewBox="0 0 120 120" aria-hidden="true">
-    <defs>
-      <radialGradient id="gpB" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#c3cbea"/><stop offset=".6" stop-color="#9ea9d4"/><stop offset="1" stop-color="#7580b4"/></radialGradient>
-      <radialGradient id="gpE" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffc4d0"/><stop offset="1" stop-color="#f08aa2"/></radialGradient>
-    </defs>
-    <ellipse class="gp-shadow" cx="60" cy="110" rx="30" ry="5" fill="#000" opacity=".22"/>
-    <g class="gp-all">
-      <!-- туловище и лапы -->
-      <path d="M36,98C30,76 40,58 60,58S90,76 84,98C80,108 40,108 36,98Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.4"/>
-      <path d="M50,70C56,76 64,76 70,70" stroke="#6f7aa8" stroke-width="1" stroke-dasharray="2.2 2" fill="none"/>
-      <ellipse cx="60" cy="86" rx="14" ry="12" fill="#b8c1e6" opacity=".7"/>
-      <g class="gp-arm l"><path d="M40,70C30,74 28,86 34,90C38,92 42,86 44,80Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.2"/></g>
-      <g class="gp-arm r"><path d="M80,70C90,74 92,86 86,90C82,92 78,86 76,80Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.2"/></g>
-      <ellipse cx="46" cy="102" rx="10" ry="7.5" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.2"/><ellipse cx="74" cy="102" rx="10" ry="7.5" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.2"/>
-      <ellipse cx="46" cy="103" rx="5.5" ry="4.2" fill="#f4a9b8"/><ellipse cx="74" cy="103" rx="5.5" ry="4.2" fill="#f4a9b8"/>
-      <!-- уши -->
-      <g class="gp-ear l"><path d="M34,40C16,32 8,50 16,62C22,70 32,66 38,58Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.3"/><path d="M31,44C20,40 15,52 20,59C24,64 30,61 34,55Z" fill="url(#gpE)"/></g>
-      <g class="gp-ear r"><path d="M86,40C104,32 112,50 104,62C98,70 88,66 82,58Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.3"/><path d="M89,44C100,40 105,52 100,59C96,64 90,61 86,55Z" fill="url(#gpE)"/></g>
-      <!-- голова -->
-      <circle cx="60" cy="44" r="25" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.4"/>
-      <path d="M60,19C58,26 58,32 60,38" stroke="#6f7aa8" stroke-width="1" stroke-dasharray="2.2 2" fill="none"/>
-      <!-- хобот -->
-      <g class="gp-trunk"><path d="M54,52C52,62 52,70 56,74C60,78 66,76 67,70C68,66 64,64 62,67C61,62 62,57 64,52Z" fill="url(#gpB)" stroke="#6f7aa8" stroke-width="1.3"/>
-        <path d="M55,60h7M55,65h6" stroke="#6f7aa8" stroke-width=".9" opacity=".7"/></g>
-      <!-- глаза и щёки -->
-      <g class="gp-eyes"><ellipse cx="50" cy="42" rx="3.2" ry="3.8" fill="#1d2033"/><ellipse cx="70" cy="42" rx="3.2" ry="3.8" fill="#1d2033"/>
-        <circle cx="51.2" cy="40.6" r="1.2" fill="#fff"/><circle cx="71.2" cy="40.6" r="1.2" fill="#fff"/></g>
-      <ellipse cx="43" cy="51" rx="4.5" ry="3" fill="#f59bb0" opacity=".75"/><ellipse cx="77" cy="51" rx="4.5" ry="3" fill="#f59bb0" opacity=".75"/>
-      <!-- бантик -->
-      <g class="gp-bow"><path d="M60,62L50,56L50,68ZM60,62L70,56L70,68Z" fill="#ff5d8f" stroke="#c23466" stroke-width="1"/><circle cx="60" cy="62" r="3" fill="#ff86aa" stroke="#c23466" stroke-width="1"/></g>
-    </g>
-    <g class="gp-hearts"><path class="gp-h a" d="M20,30c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff7aa2"/><path class="gp-h b" d="M100,24c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff9ab8"/></g>
+    <ellipse class="gp-shadow" cx="60" cy="111" rx="34" ry="5" fill="#000" opacity=".25"/>
+    <g class="gp-all"><g class="gp-wob"><image href="${src}" x="8" y="6" width="104" height="101" preserveAspectRatio="xMidYMid meet"/></g></g>
+    <g class="gp-hearts"><path class="gp-h a" d="M16,30c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff7aa2"/><path class="gp-h b" d="M104,22c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff9ab8"/></g>
   </svg>`;
 }
 const _giftTitle=id=>(_wal.gifts[id]||{}).title||'Подарок';

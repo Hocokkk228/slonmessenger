@@ -3228,3 +3228,5 @@ video.mv-media{cursor:default;}
 @keyframes gpHeart{0%{opacity:0;transform:translateY(8px) scale(.5)}30%{opacity:1}70%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-18px) scale(.8)}}
 .gp.mini .gp-hearts{display:none;}
 @media (prefers-reduced-motion:reduce){.gp *{animation:none!important}}
+.gp .gp-wob{transform-box:view-box;transform-origin:60px 104px;animation:gpWob 5.2s ease-in-out infinite;}
+@keyframes gpWob{0%,100%{transform:rotate(0)}25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}
