@@ -265,14 +265,31 @@ function _spRender(quiet){
   // Внизу, как «Telegram Desktop» в Telegram: приложения SLON для всех платформ
   h+=`<div class="sp-apps-foot" onclick="_spApps()" role="button">
     <img src="icons/icon-96.png" alt=""><div><b>SLON Desktop</b><span>Приложения для Windows, Android и iPhone</span></div></div>`;
+  // в приложении Android: вместо ссылки на приложения — установленная версия и проверка обновления
+  const nat=window.Capacitor?.isNativePlatform?.();
+  if(nat)h=h.replace(/<div class="sp-apps-foot"[\s\S]*$/,`<div class="sp-apps-foot" id="spVerFoot" onclick="_spCheckUpdate()" role="button">
+    <img src="icons/icon-96.png" alt=""><div><b>SLON для Android</b><span id="spVerTxt">Версия…</span></div></div>`);
   const body=$('spBody');
   body.innerHTML=h;
+  if(nat)_spCheckUpdate(true);
   body.classList.toggle('sp-quiet',!!quiet);
   if(myLinkedChannel)_spLoadChannelData(myLinkedChannel);
 }
 
 function _spSoon(){toast('Скоро');}
 
+// Установленная версия приложения Android и есть ли новее (quiet — только подпись, без окна)
+async function _spCheckUpdate(quiet){
+  const el=$('spVerTxt');
+  try{
+    const m=await (await fetch(location.origin+'/app-version.json')).json();
+    const v=await (await fetch(APP_SITE+'version.json?'+Date.now(),{cache:'no-store'})).json();
+    const a=v.android||{},old=_verNewer(a.version,m.version);
+    if(el)el.textContent='Версия '+m.version+(old?' · доступна '+a.version+' — нажми, чтобы обновить':' · актуальная');
+    if(old&&!quiet)_offerUpdate(a);
+    else if(!quiet)toast('У тебя последняя версия');
+  }catch(e){if(el)el.textContent='Версия неизвестна — нет связи с сайтом';if(!quiet)toast('Не удалось проверить обновление');}
+}
 // ── Страница «Приложения SLON»: Windows / Android / iPhone ──
 const _APP_ICO={
   windows:'<svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3v-6zm0 13l7.5 1v-7H3v6zm8.5 1.2L21 21v-8.5h-9.5v7.2zm0-15.4v7.2H21V3l-9.5 1.3z"/></svg>',

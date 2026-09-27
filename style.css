@@ -2383,7 +2383,7 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .app-here-tag{font-style:normal;font-size:11px;color:var(--accent);font-weight:600;margin-top:2px;}
 .app-card-btn{flex-shrink:0;border:none;border-radius:18px;padding:8px 14px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
 .app-card-btn:active{transform:scale(.96);}
-.is-native .sp-apps-foot{display:none;}
+/* в приложении Android подвал показывает установленную версию */
 .ios-help{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .22s;}
 .ios-help.show{opacity:1;}
 .ios-help-card{width:min(440px,100%);background:var(--bg2);color:var(--text1);border-radius:20px 20px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(40px);transition:transform .28s cubic-bezier(.2,.9,.3,1.1);}
