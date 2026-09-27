@@ -146,7 +146,7 @@ async function _pxLyrics(tr){
   w.innerHTML=`<div class="px-kara-bg"${tr.cover?` style="background-image:url('${esc(tr.cover)}')"`:''}></div>
     <div class="px-kara-hd">${tr.cover?`<img src="${esc(tr.cover)}" alt="">`:''}<div class="px-kara-tt"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}</span></div>
       <button class="px-kara-x" onclick="_pxKaraClose()" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>
-    <div class="px-kara-body" id="pxKaraBody"><div class="px-kara-msg">Ищем текст…</div></div>
+    <div class="px-kara-main">${tr.cover?`<img class="px-kara-art" src="${esc(tr.cover)}" alt="">`:''}<div class="px-kara-body" id="pxKaraBody" onwheel="_kr&&(_kr.userT=Date.now())" ontouchmove="_kr&&(_kr.userT=Date.now())"><div class="px-kara-msg">Ищем текст…</div></div></div>
     <div class="px-kara-bar">
       <div class="px-kara-ctl">
         <button onclick="_pxKaraSeek(-10)" title="Назад 10 с"><svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg></button>
@@ -197,7 +197,7 @@ function _pxKaraTick(){
     _kr.idx=i;
     body.querySelectorAll('.px-kl').forEach(el=>{const n=+el.dataset.i;el.classList.toggle('past',n<i);el.classList.toggle('cur',n===i);});
     const cur=body.querySelector('.px-kl.cur');
-    if(cur&&!body.matches(':hover'))body.scrollTo({top:cur.offsetTop-body.clientHeight*0.38,behavior:'smooth'});
+    if(cur&&!(_kr.userT&&Date.now()-_kr.userT<3000))body.scrollTo({top:cur.offsetTop-body.clientHeight*0.38,behavior:'smooth'});
   }
   // заливка текущей строки — доля времени до следующей
   if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur){const nx=(L[i+1]?.t)??(L[i].t+4);const p=Math.max(0,Math.min(1,(t-L[i].t)/Math.max(.3,nx-L[i].t)));cur.style.setProperty('--kp',(p*100).toFixed(1)+'%');}}

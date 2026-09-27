@@ -3042,3 +3042,9 @@ video.mv-media{cursor:default;}
 .px-kara-prog{display:flex;align-items:center;gap:10px;max-width:640px;margin:8px auto 0;font-size:12px;opacity:.85;font-variant-numeric:tabular-nums;}
 .px-kara-prog input{flex:1;accent-color:#fff;height:4px;}
 .px-kara-note{text-align:center;font-size:12px;opacity:.6;margin-top:6px;min-height:14px;}
+.px-kara-main{flex:1;min-height:0;display:flex;align-items:center;gap:6vw;padding:0 5vw;}
+.px-kara-main .px-kara-body{height:100%;padding:0;}
+.px-kara-art{display:none;width:min(34vw,440px);aspect-ratio:1;border-radius:22px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6);flex-shrink:0;}
+@media (min-width:900px){.px-kara-art{display:block}}
+.px-kl{font-size:clamp(28px,3.6vw,54px)!important;padding:12px 0;}
+.px-kl.plain{font-size:clamp(24px,2.8vw,40px)!important;}
