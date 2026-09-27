@@ -238,6 +238,7 @@ function startCallWithPerm(peerId,isVideo){
 }
 
 async function doStartCall(peerId,isVideo,stream){
+  if(typeof _apiEnsureTurn==='function')await _apiEnsureTurn();
   // Сброс буферов сигналинга от предыдущих звонков
   _pendingIceCandidates=[];
   _pendingRemoteOffer=null;
@@ -254,23 +255,55 @@ async function doStartCall(peerId,isVideo,stream){
     if(activeCall)activeCall.answered=true;
     _handleRemoteTrack(e.track);
   };
-  _callPC.onconnectionstatechange=()=>{
-    if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
-      if(activeCall)endCallCleanup();
-    }
-  };
+  _callPC.onconnectionstatechange=()=>_callConnWatch(_callPC,peerId);
   const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
   activeCall={call:fakeCall,peerId,isVideo,answered:false,callId,outgoing:true};
   setupCallUI(peerId,isVideo);
   // Уведомляем собеседника о звонке (с callId чтобы отмена корректно привязалась)
-  _callSend(peerId,{type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null,callId});
+  const inc={type:'call_incoming',isVideo,nick:myNick||('@'+myUsername),avatar:myAvatar||null,callId};
+  _callSend(peerId,inc);
   if(typeof _pushCall==='function')_pushCall(peerId,callId,isVideo); // разбудить телефон собеседника
   // Offer
   try{
     const offer=await _callPC.createOffer();
     await _callPC.setLocalDescription(offer);
     _callSend(peerId,{type:'call_offer',sdp:_callPC.localDescription.toJSON(),isVideo,callId});
-  }catch(e){console.error('call offer error',e);endCallCleanup();}
+  }catch(e){console.error('call offer error',e);endCallCleanup();return;}
+  // Сигнал мог потеряться (у кого-то «полуживой» сокет) — повторяем вызов и offer,
+  // пока собеседник не ответит «звоню» (call_ring), не возьмёт трубку или не отклонит. До 45 с.
+  let n=0;
+  const t=setInterval(()=>{
+    if(!activeCall||activeCall.callId!==callId||activeCall._ringing||activeCall.answered||++n>15){clearInterval(t);return;}
+    _callSend(peerId,inc);
+    if(_callPC?.localDescription)_callSend(peerId,{type:'call_offer',sdp:_callPC.localDescription.toJSON(),isVideo,callId});
+  },3000);
+}
+
+// Следим за соединением звонка: «отвалилось» — пробуем восстановить (новый маршрут через ICE restart),
+// сбрасываем только если за 15 с не поднялось
+function _callConnWatch(pc,peerId){
+  if(!pc||pc!==_callPC||!activeCall)return;
+  const st=pc.connectionState;
+  if(st==='connected'){clearTimeout(activeCall._dropT);activeCall._dropT=null;activeCall._restarts=0;return;}
+  if(st==='closed'){endCallCleanup();return;}
+  if(st!=='failed'&&st!=='disconnected')return;
+  // звонящий перезапускает ICE (один «ведущий», чтобы не было встречных офферов)
+  if(activeCall.outgoing&&(activeCall._restarts||0)<3&&pc.signalingState==='stable'){
+    activeCall._restarts=(activeCall._restarts||0)+1;
+    (async()=>{try{pc.restartIce?.();const o=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(o);_sendRenegOffer(pc,peerId);}catch(e){console.warn('ice restart:',e);}})();
+  }
+  if(!activeCall._dropT)activeCall._dropT=setTimeout(()=>{
+    if(activeCall&&_callPC===pc&&pc.connectionState!=='connected')endCallCleanup();
+  },15000);
+}
+
+// answer мог потеряться — повторяем, пока соединение не поднялось (звонящий дубль просто проигнорирует)
+function _resendAnswer(peerId){
+  const pc=_callPC;let n=0;
+  const t=setInterval(()=>{
+    if(!pc||pc!==_callPC||!activeCall||pc.connectionState==='connected'||++n>4||!pc.localDescription||pc.localDescription.type!=='answer'){clearInterval(t);return;}
+    _callSend(peerId,{type:'call_answer',sdp:pc.localDescription.toJSON()});
+  },3000);
 }
 
 async function answerCall(){
@@ -286,6 +319,7 @@ async function answerCall(){
   _syncCallToSelf('answered',callId,peerId);
 
   getMediaStream(isVideo).then(async stream=>{
+    if(typeof _apiEnsureTurn==='function')await _apiEnsureTurn();
     _remoteStream=new MediaStream();
     localStream=stream;
     _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
@@ -296,11 +330,7 @@ async function answerCall(){
     _callPC.ontrack=e=>{
       _handleRemoteTrack(e.track);
     };
-    _callPC.onconnectionstatechange=()=>{
-      if(_callPC?.connectionState==='failed'||_callPC?.connectionState==='closed'){
-        if(activeCall)endCallCleanup();
-      }
-    };
+    _callPC.onconnectionstatechange=()=>_callConnWatch(_callPC,peerId);
     const fakeCall={peer:peerId,close:()=>{_callPC?.close();_callPC=null;},peerConnection:_callPC};
     activeCall={call:fakeCall,peerId,isVideo,answered:true,outgoing:false,callId};
     setupCallUI(peerId,isVideo);
@@ -315,6 +345,7 @@ async function answerCall(){
         const answer=await _callPC.createAnswer();
         await _callPC.setLocalDescription(answer);
         _callSend(peerId,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
+        _resendAnswer(peerId);
         _pendingRemoteOffer=null;
       }catch(e){console.error('answer error',e);endCallCleanup();}
     }

@@ -96,13 +96,21 @@ async function _apiCheckSession(){
 
 // Свой TURN Cloudflare для звонков: подменяем список ICE-серверов «на месте»
 // (ICE_SERVERS — общий массив, его читают все звонки). Нет ключа — остаётся старый.
+let _turnAt=0;   // когда последний раз получили TURN (0 — ещё нет)
 async function _apiLoadTurn(){
-  if(!_apiToken())return;
+  if(!_apiToken())return false;
   try{
     const d=await api('/turn');
     const list=(d.iceServers||[]).filter(s=>s&&s.urls);
-    if(list.length){ICE_SERVERS.splice(0,ICE_SERVERS.length,{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},...list);}
+    if(list.length){ICE_SERVERS.splice(0,ICE_SERVERS.length,{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.nextcloud.com:3478'},{urls:'stun:stun.zadarma.com:3478'},...list);_turnAt=Date.now();return true;}
   }catch(e){}
+  return false;
+}
+// Перед звонком: TURN обязателен (без него между разными сетями звонок не соединяется). Ждём не дольше 3 с.
+async function _apiEnsureTurn(){
+  if(_turnAt&&Date.now()-_turnAt<12*3600e3)return;
+  await Promise.race([_apiLoadTurn(),new Promise(r=>setTimeout(r,3000))]);
 }
 setTimeout(_apiLoadTurn,4000);
-setInterval(_apiLoadTurn,12*3600e3);
+// пока не получили — пробуем каждую минуту (медленный интернет при запуске, вход позже)
+setInterval(()=>{if(!_turnAt||Date.now()-_turnAt>12*3600e3)_apiLoadTurn();},60e3);

@@ -162,8 +162,9 @@ async function setPresence(u, online, ls) {
 async function deliver(from, to, payload) {
   const item = { t: 'data', from, payload };
   const conns = await liveConns(to);
-  if (conns.length) await bcast(to, item, null, conns);
-  if (conns.some(c => !c.bg)) return true;
+  // доставлено, только если хотя бы одно открытое приложение реально приняло (мёртвый сокет → очередь и пуш)
+  const sent = await Promise.all(conns.map(c => wsSend(c.conn_id, item)));
+  if (conns.some((c, i) => !c.bg && sent[i])) return true;
   if (QUEUE_TYPES.has(payload.type))
     await q('UPSERT INTO queue (u,id,msg,ts) VALUES ($u,$i,$m,$t);', { u: to, i: String(now()).padStart(15, '0') + rnd(4), m: JSON.stringify(item), t: now() });
   if (payload.type === 'call_incoming')
@@ -511,7 +512,12 @@ const routes = {
   async 'GET /turn'(r) {
     if (!r.user) return E('unauthorized', 'Войди заново', 401);
     const { TURN_URLS, TURN_USER, TURN_PASS } = process.env;
-    if (TURN_URLS && TURN_USER && TURN_PASS) return J({ ok: true, iceServers: [{ urls: TURN_URLS.split(',').map(x => x.trim()).filter(Boolean), username: TURN_USER, credential: TURN_PASS }], ttl: 86400 });
+    if (TURN_URLS && TURN_USER && TURN_PASS) {
+      const urls = TURN_URLS.split(',').map(x => x.trim()).filter(Boolean);
+      // к каждому turn:host:port без транспорта добавляем TCP-вариант — там, где UDP режут
+      for (const u of [...urls]) if (/^turn:[^?]+$/.test(u) && !urls.includes(u + '?transport=tcp')) urls.push(u + '?transport=tcp');
+      return J({ ok: true, iceServers: [{ urls, username: TURN_USER, credential: TURN_PASS }], ttl: 86400 });
+    }
     return E('no_turn', 'TURN не настроен', 503);
   },
   async 'GET /presence'(r) {

@@ -612,9 +612,15 @@ function onData(pid,data){
       }
       if(activeCall?.peerId===pid){endCallCleanup();}
       break;
+    case 'call_ring':
+      if(activeCall?.peerId===pid&&(!data.callId||data.callId===activeCall.callId))activeCall._ringing=true;
+      break;
     case 'call_incoming':
       // Входящий звонок — показываем UI, ждём offer
+      if(data.callId&&activeCall?.peerId===pid&&activeCall.callId===data.callId)break; // повтор уже принятого
       if(activeCall)break; // уже в звонке
+      // повтор того же вызова (звонящий шлёт каждые 3 с, пока мы не отзовёмся) — только подтверждаем
+      if(data.callId&&pendingCall?.peerId===pid&&pendingCall.callId===data.callId){_callSend(pid,{type:'call_ring',callId:data.callId});break;}
       // Проверяем что это не старый звонок (callId должен отличаться от последнего отменённого)
       if(data.callId&&_cancelledCallIds?.has(data.callId))break;
       if(data.callId&&typeof _callKey==='function'&&_cancelledCallIds?.has(_callKey(data.callId)))break;
@@ -630,6 +636,7 @@ function onData(pid,data){
       $('icName').textContent=data.nick||peerNames[pid]||('@'+pid);
       $('icType').textContent=data.isVideo?'Видеозвонок':'Голосовой звонок';
       $('incoming').classList.add('show');startRingSound();
+      if(data.callId)_callSend(pid,{type:'call_ring',callId:data.callId});   // «у меня звонит» — звонящий перестаёт повторять
       // Уведомление с кнопками «Ответить»/«Отклонить» (когда приложение свёрнуто)
       if(document.visibilityState!=='visible')
         showDesktopNotif(data.nick||peerNames[pid]||('@'+pid),data.isVideo?'Входящий видеозвонок':'Входящий звонок',peerAvatars[pid]||null,'call',
@@ -657,6 +664,7 @@ function onData(pid,data){
             const answer=await _callPC.createAnswer();
             await _callPC.setLocalDescription(answer);
             _callSend(pid,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
+            if(typeof _resendAnswer==='function')_resendAnswer(pid);
           }catch(e){console.warn('late offer handle:',e);}
         }
       });
@@ -664,6 +672,7 @@ function onData(pid,data){
     case 'call_answer':
       _sigRun(async()=>{
         if(!activeCall||activeCall.peerId!==pid||!_callPC)return;
+        if(_callPC.signalingState!=='have-local-offer')return;   // повтор answer — уже применён
         try{
           await _callPC.setRemoteDescription(_boostDesc(data.sdp));
           await _flushPendingIce();
