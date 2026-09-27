@@ -52,8 +52,8 @@ for(const k of ['ironman','catears','wings','shark'])delete AV_FRAME_CARD_BG[k];
 function _cosMegalodon(){
   const R=_cosRnd(7);
   const circ=(r,cx=50,cy=50)=>`M${cx-r},${cy}A${r},${r} 0 1,0 ${cx+r},${cy}A${r},${r} 0 1,0 ${cx-r},${cy}Z`;
-  const head='M-30,58C-33,8 -4,-40 50,-44C104,-40 133,8 130,58C128,98 98,130 50,134C2,130 -28,98 -30,58Z';
-  const belly='M-29,70Q-14,84 4,78T34,88T66,88T96,78T129,70C127,100 97,130 50,134C3,130 -27,100 -29,70Z';
+  const head='M-16,54C-18,14 8,-24 50,-26C92,-24 118,14 116,54C114,90 88,118 50,120C12,118 -14,90 -16,54Z';
+  const belly='M-15,70Q-4,80 10,76T36,84T64,84T90,76T115,70C112,94 88,118 50,120C12,118 -12,94 -15,70Z';
   // зуб: широкий треугольник с выпуклыми краями и лёгким изгибом, кончик к центру
   const pts=(a,w,rb,rt,bend)=>{
     const b1=_cosP(rb,a-w/2),b2=_cosP(rb,a+w/2),t=_cosP(rt,a+bend),m=_cosP(rb+1.5,a);
@@ -73,8 +73,8 @@ function _cosMegalodon(){
     }
     return `<g class="${cls}"><path class="mg-t" d="${t}"/><path class="mg-ts" d="${s}"/><path class="mg-th" d="${h}"/></g>`;
   };
-  let spots='';for(let i=0;i<110;i++){const a=R()*360,rr=58+R()*62,[x,y]=_cosP(rr,a,50,44);if(y>74)continue;const r=.25+R()*.8;spots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
-  let scars='';for(let i=0;i<7;i++){const x=-12+R()*124,y=-30+R()*44;scars+=`M${_cosF(x)},${_cosF(y)}l${_cosF(3+R()*7)},${_cosF((R()-.5)*4)}`;}
+  let spots='';for(let i=0;i<110;i++){const a=R()*360,rr=58+R()*12,[x,y]=_cosP(rr,a,50,48);if(y>72)continue;const r=.25+R()*.8;spots+=`M${_cosF(x-r)},${_cosF(y)}a${r},${r} 0 1,0 ${_cosF(2*r)},0a${r},${r} 0 1,0 ${_cosF(-2*r)},0Z`;}
+  let scars='';for(let i=0;i<7;i++){const x=-4+R()*104,y=-20+R()*30;scars+=`M${_cosF(x)},${_cosF(y)}l${_cosF(3+R()*7)},${_cosF((R()-.5)*4)}`;}
   const eye=(x,y,fl)=>`<g transform="translate(${x},${y})">
       <ellipse rx="6.2" ry="4.6" fill="#0b1014" stroke="#56697a" stroke-width=".8"/>
       <ellipse rx="4.6" ry="3.6" fill="url(#mgEye)"/>
@@ -82,7 +82,7 @@ function _cosMegalodon(){
       <path d="M-6.5,-3.2Q0,-6.4 6.5,-3.2" stroke="#1a232b" stroke-width="1.2" fill="none"/></g>`;
   const gills=(x,dir)=>{let d='';for(let i=0;i<5;i++)d+=`M${_cosF(x+dir*i*2.6)},${60+i*5.5}q${-dir*3.5},4.6 ${-dir*.4},9.5`;return d;};
   let folds='';for(let i=0;i<22;i++){const a=i*(360/22)+(R()-.5)*6,p1=_cosP(55,a),p2=_cosP(50.5,a+3);folds+=`M${F(p1)}Q${F(_cosP(53,a+4))} ${F(p2)}`;}
-  return _cosSvg('avf-mg',[-36,-82,172,222],`
+  return _cosSvg('avf-mg',[-20,-30,140,154],`
     <defs>
       <linearGradient id="mgSkin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2631"/><stop offset=".3" stop-color="#2f4353"/><stop offset=".55" stop-color="#4c6577"/><stop offset=".8" stop-color="#6a8394"/><stop offset="1" stop-color="#8aa0af"/></linearGradient>
       <linearGradient id="mgFin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#46607a"/><stop offset="1" stop-color="#1a2530"/></linearGradient>
@@ -94,17 +94,15 @@ function _cosMegalodon(){
       <clipPath id="mgNoHole"><path d="${head}${circ(56)}" clip-rule="evenodd"/></clipPath>
       <radialGradient id="mgEye" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#2a3640"/><stop offset=".6" stop-color="#070a0d"/><stop offset="1" stop-color="#000"/></radialGradient>
     </defs>
-    <path d="M66,-38C76,-62 92,-76 114,-80C108,-62 106,-44 111,-26Z" fill="url(#mgFin)" stroke="#0c131a" stroke-width="1"/>
-    <path d="M70,-40C80,-58 94,-70 108,-74" stroke="#7d97ac" stroke-width="1" fill="none" opacity=".5"/>
     <path d="${head}${circ(56)}" fill="url(#mgSkin)" fill-rule="evenodd" stroke="#0b1116" stroke-width="1.3"/>
     <path d="${belly}" fill="url(#mgBelly)" clip-path="url(#mgNoHole)"/>
-    <path d="M-29,70Q-14,84 4,78T34,88T66,88T96,78T129,70" stroke="#5f7686" stroke-width="1" fill="none" opacity=".55"/>
+    <path d="M-15,70Q-4,80 10,76T36,84T64,84T90,76T115,70" stroke="#5f7686" stroke-width="1" fill="none" opacity=".55"/>
     <path d="${head}${circ(56)}" fill="url(#mgSheen)" fill-rule="evenodd"/>
     <path d="${spots}" fill="#0a1217" opacity=".32"/>
     <path d="${scars}" stroke="#d6e2e9" stroke-width=".7" stroke-linecap="round" opacity=".5" fill="none"/>
-    <path d="${gills(-21,1)}${gills(121,-1)}" stroke="#152029" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".75"/>
-    <path d="M36,-28q4,-3 8,0M56,-28q4,-3 8,0" stroke="#070b0e" stroke-width="2" stroke-linecap="round" fill="none"/>
-    ${eye(-6,6,false)}${eye(106,6,true)}
+    <path d="${gills(-9,1)}${gills(109,-1)}" stroke="#152029" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".75"/>
+    <path d="M38,-16q4,-3 8,0M54,-16q4,-3 8,0" stroke="#070b0e" stroke-width="2" stroke-linecap="round" fill="none"/>
+    ${eye(2,10,false)}${eye(98,10,true)}
     <path d="${circ(56)}${circ(46)}" fill="url(#mgGum)" fill-rule="evenodd"/>
     <path d="${folds}" stroke="#6f1a26" stroke-width=".7" fill="none" opacity=".7"/>
     <circle cx="50" cy="50" r="46.3" fill="url(#mgThroat)"/>
@@ -128,21 +126,23 @@ function _cosCatHood(){
   let furIn='';for(let i=0;i<60;i++){const x=-10+R()*120,y=-40+R()*26;furIn+=`M${_cosF(x)},${_cosF(y)}l${_cosF((R()-.5)*3)},${_cosF(-2-R()*3)}`;}
   let chin='';for(let i=0;i<46;i++){const a=10+R()*160,[x,y]=_cosP(49+R()*14,a);chin+=`M${_cosF(x)},${_cosF(y)}l${_cosF((R()-.5)*2)},${_cosF(2+R()*3)}`;}
   const stripes='M50,-42q-3,10 0,18M38,-40q-2,9 3,16M62,-40q2,9 -3,16M27,-35q0,8 6,13M73,-35q0,8 -6,13M-20,16q10,2 16,-2M-24,30q11,1 17,-3M120,16q-10,2 -16,-2M124,30q-11,1 -17,-3';
-  const eye=(cx,flip)=>`<g class="ch-eye" transform="translate(${cx},-11)">
+  const eye=(cx,flip)=>`<g class="ch-eye" transform="translate(${cx},-21)">
       <path d="M-15,0C-11,-10 11,-10 15,0C11,10 -11,10 -15,0Z" fill="#2a1608"/>
       <circle r="10.2" fill="url(#chIris)"/>
       <ellipse rx="3.2" ry="8.6" fill="#050302"/>
       <circle cx="${flip?3.4:-3.4}" cy="-4" r="2.6" fill="#fff"/><circle cx="${flip?-3:3}" cy="3.6" r="1.1" fill="#fff" opacity=".8"/>
       <path class="ch-lid" d="M-16,-11H16V1C11,-8 -11,-8 -16,1Z" fill="url(#chFur)"/>
     </g>`;
-  const whisk='M24,2q-22,-4 -40,2M24,6q-22,2 -38,10M76,2q22,-4 40,2M76,6q22,2 38,10';
-  return _cosSvg('avf-ch',[-36,-70,172,196],`
+  const whisk='M28,1q-18,-4 -34,2M28,4q-18,2 -32,9M72,1q18,-4 34,2M72,4q18,2 32,9';
+  return _cosSvg('avf-ch',[-22,-52,144,166],`
     <defs>
       <radialGradient id="chFur" cx="50" cy="0" r="88" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffc27a"/><stop offset=".5" stop-color="#ec8a3a"/><stop offset=".85" stop-color="#c2601f"/><stop offset="1" stop-color="#8e3f12"/></radialGradient>
       <radialGradient id="chWhite" cx="50" cy="70" r="70" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff"/><stop offset=".8" stop-color="#f1e7dc"/><stop offset="1" stop-color="#d9c7b5"/></radialGradient>
       <radialGradient id="chIris" cx="-2" cy="-3" r="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d4f56a"/><stop offset=".55" stop-color="#7cbf2e"/><stop offset="1" stop-color="#2f6415"/></radialGradient>
       <linearGradient id="chEarIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e98c8f"/><stop offset="1" stop-color="#f7c0bd"/></linearGradient>
+      <mask id="chHoleM"><rect x="-60" y="-100" width="240" height="260" fill="#fff"/><circle cx="50" cy="50" r="47" fill="#000"/></mask>
     </defs>
+    <g mask="url(#chHoleM)"><g transform="translate(50,50) scale(.86) translate(-50,-50)">
     <g class="ch-ear l"><path d="M-22,-8C-24,-38 -16,-60 -8,-64C6,-54 20,-42 28,-28Z" fill="url(#chFur)" stroke="#7a3510" stroke-width="1"/><path d="M-14,-16C-15,-36 -10,-50 -6,-53C2,-45 10,-37 15,-29Z" fill="url(#chEarIn)"/></g>
     <g class="ch-ear r"><path d="M122,-8C124,-38 116,-60 108,-64C94,-54 80,-42 72,-28Z" fill="url(#chFur)" stroke="#7a3510" stroke-width="1"/><path d="M114,-16C115,-36 110,-50 106,-53C98,-45 90,-37 85,-29Z" fill="url(#chEarIn)"/></g>
     <path d="${head}${hole}" fill="url(#chFur)" fill-rule="evenodd" stroke="#7a3510" stroke-width="1.1"/>
@@ -152,8 +152,9 @@ function _cosCatHood(){
     <path d="${furIn}" stroke="#ffcf94" stroke-width=".7" stroke-linecap="round" fill="none" opacity=".55"/>
     <path d="M-6,48C-8,86 14,114 50,116C86,114 108,86 106,48C100,56 97,60 97,50A47,47 0 1,1 3,50C3,60 0,56 -6,48Z" fill="url(#chWhite)"/>
     <path d="${chin}" stroke="#cdb9a5" stroke-width=".7" stroke-linecap="round" fill="none" opacity=".8"/>
-    <ellipse cx="37" cy="2" rx="14" ry="8" fill="url(#chWhite)"/><ellipse cx="63" cy="2" rx="14" ry="8" fill="url(#chWhite)"/>
     ${eye(17,false)}${eye(83,true)}
+    </g></g>
+    <ellipse cx="38" cy="1" rx="12" ry="6.5" fill="url(#chWhite)"/><ellipse cx="62" cy="1" rx="12" ry="6.5" fill="url(#chWhite)"/>
     <path d="M44.5,-4Q50,-7 55.5,-4Q54,1.5 50,3.5Q46,1.5 44.5,-4Z" fill="#e5818a" stroke="#a24d56" stroke-width=".8"/>
     <path d="M50,3.5v2" stroke="#8a3a2a" stroke-width="1"/>
     <path class="ch-whisk" d="${whisk}" stroke="#fff" stroke-width=".8" stroke-linecap="round" fill="none" opacity=".85"/>
@@ -200,11 +201,11 @@ function _cosSoulFire(){
     const a=-25+i*(230/29)+(R()-.5)*5;           // -25..205 — бока и низ
     const [bx,by]=_cosP(44+R()*4,a);
     const side=Math.abs(Math.cos(a*Math.PI/180));   // 1 — сбоку, 0 — снизу
-    const len=26+R()*22+side*14,w=6+R()*4,lean=(bx<50?-1:1)*(4+side*10)+(R()-.5)*6;
+    const len=15+R()*13+side*9,w=5+R()*3,lean=(bx<50?-1:1)*(3+side*7)+(R()-.5)*5;
     const d=tongue(bx,by+4,len,w,lean);
     if(i%3===1)backHot+=d;else back+=d;
   }
-  for(let i=0;i<14;i++){const a=25+i*(130/13)+(R()-.5)*6,[bx,by]=_cosP(49,a);front+=tongue(bx,by+3,9+R()*9,3.4+R()*2,(bx<50?-2:2)+(R()-.5)*4);}
+  for(let i=0;i<14;i++){const a=25+i*(130/13)+(R()-.5)*6,[bx,by]=_cosP(49,a);front+=tongue(bx,by+3,7+R()*6,3+R()*1.6,(bx<50?-2:2)+(R()-.5)*4);}
   const skull=(x,y,s)=>`<g transform="translate(${x},${y}) scale(${s})">
       <path d="M-9,2C-10,-8 -5,-13 0,-13S10,-8 9,2C9,5 7,6 6,7V10H-6V7C-7,6 -9,5 -9,2Z" fill="url(#sfBone)" stroke="#34495c" stroke-width=".8"/>
       <path d="M-7,-6C-5,-10 -1,-11.5 2,-11" stroke="#fff" stroke-width=".8" fill="none" opacity=".55" stroke-linecap="round"/>
@@ -224,14 +225,14 @@ function _cosSoulFire(){
         <feGaussianBlur stdDeviation=".7"/>
       </filter>
     </defs>`;
-  const box=[-34,-40,168,176];
+  const box=[-24,-26,148,140];
   // два слоя: позади аватарки и перед ней (см. .avf-soulfire в style.css)
   return _cosSvg('avf-sf avf-sf-back',box,`${defs}
       <g filter="url(#sfWarp)"><path class="sf-fl" d="${back}" fill="url(#sfFire)"/><path class="sf-fl sf-hot" d="${backHot}" fill="url(#sfHot)"/></g>`)
     +_cosSvg('avf-sf avf-sf-front',box,`
       <g filter="url(#sfWarp)"><path class="sf-fl" d="${front}" fill="url(#sfFire)"/></g>
-      <ellipse cx="50" cy="112" rx="46" ry="9" fill="#5fe3ff" opacity=".22"/>
-      <g class="sf-skulls">${skull(10,103,1.15)}${skull(30,111,1.3)}${skull(50,115,1.45)}${skull(70,111,1.3)}${skull(90,103,1.15)}</g>`);
+      <ellipse cx="50" cy="102" rx="38" ry="7" fill="#5fe3ff" opacity=".2"/>
+      <g class="sf-skulls">${skull(16,96,.78)}${skull(32,101,.88)}${skull(50,104,.98)}${skull(68,101,.88)}${skull(84,96,.78)}</g>`);
 }
 
 // ── Подменяем разметку рамок: новые — здесь, остальное — как было ──

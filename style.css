@@ -2820,9 +2820,9 @@ video.mv-media{cursor:default;}
 @keyframes sfRise{0%{transform:scaleY(.9)}100%{transform:scaleY(1.08)}}
 /* пламя: задний слой под аватаркой, передний — над */
 .avf.avf-soulfire{z-index:auto;}
-.avf-soulfire .avf-sf-back{z-index:1;}
+.avf-soulfire .avf-sf-back{z-index:-1;}
 .avf-soulfire .avf-sf-front{z-index:4;}
-.avf-host[data-avframe="soulfire"]>img,.avf-host[data-avframe="soulfire"]>.av-l,.avf-host[data-avframe="soulfire"]>.av-clip,.avf-host[data-avframe="soulfire"]>.avf-demo-face{position:relative;z-index:2;}
+.avf-host[data-avframe="soulfire"]{isolation:isolate;}
 .avf-mg .mg-th{fill:none;stroke:#fff;stroke-width:.7;stroke-linecap:round;opacity:.7;}
 .avf-mg .mg-front .mg-t{stroke-dasharray:.8 .55;}
 @keyframes sfFlick{0%{transform:scale(.92,.78) skewX(-5deg)}40%{transform:scale(1.04,1.12) skewX(4deg)}100%{transform:scale(.96,.9) skewX(-2deg)}}
