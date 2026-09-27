@@ -95,6 +95,7 @@ async function _mmAddBlob(blob,name){
   await _mmLoad();
   const it=_mmItem(rec);_mm.list=[it,..._mm.list.filter(x=>x.id!==it.id)];
   _mmPaint();_mmUpload(rec.id);
+  if(typeof _lrcFind==='function')_lrcFind({title:rec.title,artist:rec.artist,dur:rec.dur}).catch(()=>{});   // текст — сразу, на будущее
   return it;
 }
 
@@ -138,6 +139,9 @@ async function _mmCache(it){
 const _mmTr=it=>({id:'mm_'+it.id,src:'file',url:'',title:it.title,artist:it.artist,cover:it.coverUrl||'',dur:it.dur,mm:it.id});
 async function _mmPlay(id,list){
   const it=_mmFind(id);if(!it)return;
+  if(!_mm.fromHist&&_mm.cur&&_mm.cur.mm&&_mm.cur.mm!==id){_mm.hist.push(_mm.cur.mm);if(_mm.hist.length>200)_mm.hist.shift();}
+  _mm.fromHist=false;
+  if(list&&_mm.src==null)_mm.src='lib';
   if(list){_mm.queue=list;_mm.qi=list.indexOf(id);}
   else if(!_mm.queue.includes(id)){_mm.queue=_mmFiltered().map(x=>x.id);_mm.qi=_mm.queue.indexOf(id);}
   else _mm.qi=_mm.queue.indexOf(id);
@@ -152,10 +156,44 @@ function _mmToggle(){if(!_pxAudio||!_mm.cur)return;if(_pxAudio.paused)_pxAudio.p
 function _mmStep(d){
   if(!_mm.queue.length)return;
   if(d<0&&_pxAudio&&_pxAudio.currentTime>4){_pxAudio.currentTime=0;return;}
+  const cur=_mm.queue[_mm.qi];
+  if(_mm.shuffle){
+    if(d<0){const prev=_mm.hist.pop();if(prev){_mm.fromHist=true;_mmPlay(prev,_mm.queue);}return;}
+    _mm.played=_mm.played||new Set();if(cur)_mm.played.add(cur);
+    let left=_mm.queue.filter(x=>!_mm.played.has(x));
+    if(!left.length){_mm.played=new Set(cur?[cur]:[]);left=_mm.queue.filter(x=>x!==cur);}   // круг пройден — заново
+    if(!left.length){_pxAudio?.pause();return;}
+    _mmPlay(left[Math.floor(Math.random()*left.length)],_mm.queue);return;
+  }
   const i=_mm.qi+d;if(i<0||i>=_mm.queue.length){if(d>0){_pxAudio?.pause();}return;}
   _mmPlay(_mm.queue[i],_mm.queue);
 }
-function _mmShuffle(){const ids=_mmFiltered().map(x=>x.id);for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}if(ids.length)_mmPlay(ids[0],ids);}
+// «Перемешать» — режим, а не кнопка запуска: включает случайный порядок для следующих треков
+_mm.shuffle=(()=>{try{return localStorage.getItem('sl_mm_shuf')==='1';}catch(e){return false;}})();_mm.hist=[];
+function _mmShufToggle(){
+  _mm.shuffle=!_mm.shuffle;_mm.played=new Set();
+  try{localStorage.setItem('sl_mm_shuf',_mm.shuffle?'1':'0');}catch(e){}
+  toast(_mm.shuffle?'Перемешивание включено':'Перемешивание выключено');_mmPlayBtns();
+}
+// кнопка «Слушать» ↔ «Пауза» у того списка, который сейчас играет
+function _mmPlayBtns(){
+  const playing=!!(_mm.cur&&_pxAudio&&!_pxAudio.paused&&String(_pxAudioId)===_mm.cur.id);
+  document.querySelectorAll('[data-mmsrc]').forEach(b=>{
+    const on=playing&&_mm.src===b.dataset.mmsrc,st=on?'p':'l';
+    if(b.dataset.st!==st){b.dataset.st=st;b.classList.remove('mm-swap');void b.offsetWidth;b.classList.add('mm-swap');
+      b.innerHTML=on?_MM_ICO.pause+' Пауза':_MM_ICO.play+(_mm.src===b.dataset.mmsrc&&_mm.cur?' Продолжить':' Слушать');}
+  });
+  document.querySelectorAll('.mm-shuf').forEach(b=>b.classList.toggle('on',!!_mm.shuffle));
+}
+// нажали «Слушать»: этот список уже играет — пауза/продолжить; иначе — с начала (или со случайного, если перемешивание)
+function _mmSrcPlay(src,ids){
+  if(!ids.length)return;
+  if(_mm.src===src&&_mm.cur&&_pxAudio&&String(_pxAudioId)===_mm.cur.id){if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();return;}
+  _mm.src=src;_mm.played=new Set();_mm.hist=[];
+  _mmPlay(_mm.shuffle?ids[Math.floor(Math.random()*ids.length)]:ids[0],ids);
+}
+function _mmShuffle(){_mmShufToggle();}
+
 let _mmHooked=null;
 function _mmHook(){
   if(!_pxAudio||_mmHooked===_pxAudio)return;_mmHooked=_pxAudio;
@@ -234,7 +272,7 @@ function _spMusic(){
   const page=_spPush('Моя музыка',`<div class="mm-page">
     <div class="mm-top">
       <button class="wal-btn" onclick="_mmPick()">${_MM_ICO.plus} Добавить треки</button>
-      <button class="mm-ib" onclick="_mmShuffle()" title="Перемешать">${_MM_ICO.shuffle}</button>
+      <button class="mm-ib mm-shuf${_mm.shuffle?' on':''}" onclick="_mmShufToggle()" title="Перемешивание">${_MM_ICO.shuffle}</button>
     </div>
     <div class="mm-say" id="mmSay" style="display:none"></div>
     <input class="lm-inp mm-q" id="mmQ" placeholder="Поиск по моей музыке" oninput="_mm.q=this.value;_mmPaint()">
@@ -268,7 +306,7 @@ function _mmPaint(){
   const l=_mmFiltered();
   const c=$('mmCloud');
   if(c)c.innerHTML=_mm.list.length?`<span>${_mm.list.length} ${_mmPlural(_mm.list.length)}</span>`+(_mm.quota?`<span>Облако: ${_mmSz(_mm.used)} из ${_mmSz(_mm.quota)}</span><div class="mm-cloud-bar"><i style="width:${Math.min(100,_mm.used/_mm.quota*100).toFixed(1)}%"></i></div>`:''):'';
-  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}')">
+  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mm.src='lib';_mmPlay('${esc(it.id)}',_mmFiltered().map(x=>x.id))">
       ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
       <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist||'Неизвестный исполнитель')}${it.dur?' · '+_rcFmt(it.dur*1000):''}</span></div>
       ${_mmStatus(it)}
@@ -277,7 +315,7 @@ function _mmPaint(){
   _mmPaintPlay();
 }
 function _mmRowUp(id){const s=document.querySelector(`.mm-tr[data-mm="${CSS.escape(id)}"] .mm-st`);if(s&&_mm.up[id]!=null)s.textContent=_mm.up[id]+'%';}
-function _mmPaintPlay(){document.querySelectorAll('.mm-tr').forEach(r=>r.classList.toggle('cur',_pxAudioId==='mm_'+r.dataset.mm&&_pxAudio&&!_pxAudio.paused));}
+function _mmPaintPlay(){_mmPlayBtns();document.querySelectorAll('.mm-tr').forEach(r=>r.classList.toggle('cur',_pxAudioId==='mm_'+r.dataset.mm&&_pxAudio&&!_pxAudio.paused));}
 const _mmPlural=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'трек':a>=2&&a<=4&&(b<12||b>14)?'трека':'треков';};
 
 // ── меню трека ──
@@ -578,8 +616,8 @@ async function _mmFamSet(u,on){
 // фонотека друга
 function _spMusicOf(owner){
   _spPush('Музыка '+esc(peerNames[owner]||('@'+owner)),`<div class="mm-page">
-    <div class="mm-top"><button class="wal-btn" onclick="_mmOfPlayAll('${esc(owner)}',false)">${_MM_ICO.play} Слушать</button>
-      <button class="mm-ib" onclick="_mmOfPlayAll('${esc(owner)}',true)" title="Перемешать">${_MM_ICO.shuffle}</button></div>
+    <div class="mm-top"><button class="wal-btn" data-mmsrc="fam:${esc(owner)}" onclick="_mmOfPlayAll('${esc(owner)}')">${_MM_ICO.play} Слушать</button>
+      <button class="mm-ib mm-shuf${_mm.shuffle?' on':''}" onclick="_mmShufToggle()" title="Перемешивание">${_MM_ICO.shuffle}</button></div>
     <div class="sp-card mm-list" id="mmOfList"><div class="px-empty">Загрузка…</div></div></div>`);
   api('/mm/of?u='+encodeURIComponent(owner)).then(d=>{
     _mmFam.of[owner]=(d.tracks||[]).map(t=>({id:'f_'+t.id,cid:'',title:t.title,artist:t.artist,album:t.album,dur:t.dur,size:t.size,mime:t.mime,ts:t.ts,url:t.url,coverUrl:t.coverUrl,local:false,friend:owner}));
@@ -588,18 +626,14 @@ function _spMusicOf(owner){
 }
 function _mmOfPaint(owner){
   const box=$('mmOfList');if(!box)return;const l=_mmFam.of[owner]||[];
-  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}',_mmFam.of['${esc(owner)}'].map(x=>x.id))">
+  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr" data-mm="${esc(it.id)}" onclick="_mm.src='fam:${esc(owner)}';_mmPlay('${esc(it.id)}',_mmFam.of['${esc(owner)}'].map(x=>x.id))">
       ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
       <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist||'Неизвестный исполнитель')}${it.dur?' · '+_rcFmt(it.dur*1000):''}</span></div>
       <button class="px-mini" title="Ещё" onclick="event.stopPropagation();_mmOfMenu('${esc(it.id)}')">${_MM_ICO.more}</button></div>`).join('')
     :'<div class="px-empty">Здесь пока пусто</div>';
   _mmPaintPlay();
 }
-function _mmOfPlayAll(owner,shuf){
-  const ids=(_mmFam.of[owner]||[]).map(x=>x.id);if(!ids.length)return;
-  if(shuf)for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
-  _mmPlay(ids[0],ids);
-}
+function _mmOfPlayAll(owner){_mmSrcPlay('fam:'+owner,(_mmFam.of[owner]||[]).map(x=>x.id));}
 function _mmOfMenu(id){
   const it=_mmFind(id);if(!it)return;
   _pxSheet(`<div class="mm-sh-hd">${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}<div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></div>
@@ -734,23 +768,19 @@ function _mmPlPagePaint(id){
   const p=_mmPlById(id);if(!p){box.innerHTML='<div class="px-empty">Плейлист удалён</div>';return;}
   const l=_mmPlItems(p);
   box.innerHTML=`<div class="mm-pl-hero">${_mmPlCover(p,'mm-pl-big')}<div class="mm-pl-name">${esc(p.name)}</div><div class="mm-pl-sub">${l.length} ${_mmPlural(l.length)}</div></div>
-    <div class="mm-top"><button class="wal-btn" onclick="_mmPlPlay('${esc(id)}',false)">${_MM_ICO.play} Слушать</button>
-      <button class="mm-ib" onclick="_mmPlPlay('${esc(id)}',true)" title="Перемешать">${_MM_ICO.shuffle}</button>
+    <div class="mm-top"><button class="wal-btn" data-mmsrc="pl:${esc(id)}" onclick="_mmPlPlay('${esc(id)}')">${_MM_ICO.play} Слушать</button>
+      <button class="mm-ib mm-shuf${_mm.shuffle?' on':''}" onclick="_mmShufToggle()" title="Перемешивание">${_MM_ICO.shuffle}</button>
       <button class="mm-ib" onclick="_mmPlMenu('${esc(id)}')" title="Ещё">${_MM_ICO.more}</button></div>
     <button class="mm-fam-add" onclick="_mmPlPickTracks('${esc(id)}')">${_MM_ICO.plus} Добавить треки</button>
     ${p.want&&p.want.length?`<button class="mm-fam-add" onclick="_mmPlRefill('${esc(id)}')">${_MM_ICO.plus} Дособрать из списка <span>ждут ${p.want.length}</span></button>`:''}
-    <div class="sp-card mm-list">${l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}',_mmPlItems(_mmPlById('${esc(id)}')).map(x=>x.id))">
+    <div class="sp-card mm-list">${l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mm.src='pl:${esc(id)}';_mmPlay('${esc(it.id)}',_mmPlItems(_mmPlById('${esc(id)}')).map(x=>x.id))">
         ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
         <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist||'Неизвестный исполнитель')}${it.dur?' · '+_rcFmt(it.dur*1000):''}</span></div>
         <button class="px-mini" title="Убрать из плейлиста" onclick="event.stopPropagation();_mmPlRemove('${esc(id)}','${esc(it.cid||it.id)}')">${_MM_ICO.x}</button></div>`).join('')
       :'<div class="px-empty">Пусто. Добавляй треки через ⋮ → «Добавить в плейлист».</div>'}</div>`;
   _mmPaintPlay();
 }
-function _mmPlPlay(id,shuf){
-  const ids=_mmPlItems(_mmPlById(id)||{}).map(x=>x.id);if(!ids.length)return;
-  if(shuf)for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
-  _mmPlay(ids[0],ids);
-}
+function _mmPlPlay(id){_mmSrcPlay('pl:'+id,_mmPlItems(_mmPlById(id)||{}).map(x=>x.id));}
 function _mmPlRemove(id,t){
   const p=_mmPlById(id);if(!p)return;
   p.tr=(p.tr||[]).filter(x=>x!==t);

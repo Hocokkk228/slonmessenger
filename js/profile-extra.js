@@ -139,6 +139,26 @@ function _lrcParse(s){
   return out;
 }
 let _kr=null;      // {tr, lines, synced, raf, idx}
+// ── поиск текста (LRCLIB) с кешем на устройстве: найденный текст больше не ищется ──
+let _lrcDbP=null;
+function _lrcDb(){return _lrcDbP||(_lrcDbP=new Promise((res,rej)=>{const r=indexedDB.open('slon_lrc',1);r.onupgradeneeded=()=>r.result.createObjectStore('l');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));}
+async function _lrcGet(k){try{const db=await _lrcDb();return await new Promise(res=>{const q=db.transaction('l').objectStore('l').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}}
+async function _lrcPut(k,v){try{const db=await _lrcDb();db.transaction('l','readwrite').objectStore('l').put(v,k);}catch(e){}}
+const _lrcKey=tr=>(String(tr.artist||'')+'|'+String(tr.title||'')).toLowerCase();
+async function _lrcFind(tr){
+  const k=_lrcKey(tr),c=await _lrcGet(k);
+  if(c&&(c.syncedLyrics||c.plainLyrics))return c;
+  const q=async(ar)=>{const u='https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'');
+    for(let a=0;a<3;a++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);return await r.json();}catch(e){}}return [];};
+  const first=String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0];
+  let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
+  const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
+  const syn=(j||[]).filter(x=>x.syncedLyrics);
+  const whole=syn.filter(x=>{const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);});
+  const hit=byDur(whole)[0]||byDur(syn)[0]||(j||[]).find(x=>x.plainLyrics)||null;
+  if(hit)_lrcPut(k,{syncedLyrics:hit.syncedLyrics||'',plainLyrics:hit.plainLyrics||'',duration:hit.duration||0});
+  return hit;
+}
 async function _pxLyrics(tr){
   if(!tr)return;
   _pxKaraClose(true);
@@ -165,14 +185,7 @@ async function _pxLyrics(tr){
   $('pxKaraNote').textContent=full?'':(_kr.off!=null?'Отрывок подстроен под текст · нажми строку, чтобы поправить':'Отрывок: нажми строку, которая сейчас звучит, — текст подстроится');
   try{
     // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
-    const q=async(ar)=>{const u='https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'');
-      for(let a=0;a<3;a++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);return await r.json();}catch(e){}}return [];};
-    const first=String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0];
-    let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
-    const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
-    const syn=(j||[]).filter(x=>x.syncedLyrics);
-    const whole=syn.filter(x=>{const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);});
-    const hit=byDur(whole)[0]||byDur(syn)[0]||(j||[]).find(x=>x.plainLyrics)||null;
+    const hit=await _lrcFind(tr);
     if(!_kr||_kr.tr!==tr)return;
     const body=$('pxKaraBody');if(!body)return;
     if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
