@@ -24,6 +24,7 @@ const extraF=path.join(process.env.USERPROFILE,'.slon','yc-env.json');
 // файл пишет PowerShell (бывает с BOM); при ошибке НЕ печатаем содержимое — там секреты
 let extra={};if(fs.existsSync(extraF)){try{extra=JSON.parse(fs.readFileSync(extraF,'utf8').replace(/^﻿/,''));}catch(e){console.log('~/.slon/yc-env.json повреждён — запусти set-secrets.cmd заново');process.exit(1);}}
 if(extra.TURN_URLS)extra.TURN_URLS=String(extra.TURN_URLS).split(',').map(x=>x.trim()).filter(Boolean).map(x=>/^(turns?|stun):/.test(x)?x:'turn:'+x).join(',');
+{const dk=path.join(process.env.USERPROFILE,'.slon','diag.key');if(fs.existsSync(dk))extra.DIAG_KEY=fs.readFileSync(dk,'utf8').trim();}   // служебный ключ диагностики
 for(const [k,v] of Object.entries(extra))env.push(k+'_B64='+Buffer.from(String(v)).toString('base64'));   // base64: в значениях бывают запятые
 const out=JSON.parse(yc(['serverless','function','version','create','--function-id',fn.id,'--runtime','nodejs22','--entrypoint','index.handler',
   '--memory','256m','--execution-timeout','30s','--source-path',path.join(__dirname,'slon-fn.zip'),'--service-account-id',sa,

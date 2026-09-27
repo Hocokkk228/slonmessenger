@@ -30,6 +30,21 @@ async function _e2eRegister(){
   const b=E2E.bundleOf(_e2eMe.identity,_e2eMe.spk,opks);
   await api('/e2e/register',{deviceId:_e2eMe.deviceId,ik:b.ik,ikd:b.ikd,spk:b.spk,opks:b.opks});
 }
+// Самопочинка (то, что раньше давал только перезаход): в справочнике сервера этого устройства нет
+// или там чужой ключ личности — собеседники шифруют «мимо», и сообщения сюда не читаются.
+// Сверяем при каждом запуске и перерегистрируемся.
+async function _e2eVerifyReg(){
+  const d=await api('/e2e/devices?u='+encodeURIComponent(myUsername));
+  const mine=(d.devices&&d.devices[myUsername])||[];
+  const x=mine.find(v=>+v.d===+_e2eMe.deviceId);
+  const ik=E2E.bundleOf(_e2eMe.identity,_e2eMe.spk,[]).ik;
+  if(x&&x.ik===ik)return;
+  console.warn('[e2e] устройство не в справочнике или ключ другой — перерегистрация');
+  await _e2eRegister();
+  delete _e2eDevCache[myUsername];
+  // сообщения, которые не расшифровались, — просим отправителей перешифровать
+  for(const [k,rec] of Object.entries(_e2eWaiting)){delete _e2eAsked[k];_e2eAskResend(k,rec);}
+}
 async function _e2eTopUp(){
   const c=await api('/e2e/count?d='+_e2eMe.deviceId);
   if(!c.registered){await _e2eRegister();return;}
@@ -66,6 +81,7 @@ async function _e2eInit(){
       await _e2eSave();
       await _e2eRegister();
     }else{
+      await _e2eVerifyReg().catch(e=>console.warn('[e2e] verify',e));
       await _e2eTopUp().catch(()=>{});
       await _e2eRotateSpk().catch(()=>{});
     }

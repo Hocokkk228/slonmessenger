@@ -563,6 +563,19 @@ async function _toggleCamScreen(){
   }
 }
 
+// Дополнительные звуковые дорожки собеседника (звук демонстрации) — каждая в своём скрытом плеере
+const _extraAudio={};
+function _playExtraAudio(track){
+  if(_extraAudio[track.id])return;
+  const el=new Audio();el.autoplay=true;el.srcObject=new MediaStream([track]);
+  if(selSpk&&selSpk!=='default'&&typeof el.setSinkId==='function')el.setSinkId(selSpk).catch(()=>{});
+  el.play().catch(()=>{});
+  _extraAudio[track.id]=el;
+  track.addEventListener('ended',()=>_stopExtraAudio(track.id));
+}
+function _stopExtraAudio(id){
+  for(const k of id?[id]:Object.keys(_extraAudio)){const el=_extraAudio[k];if(!el)continue;try{el.pause();el.srcObject=null;}catch(e){}delete _extraAudio[k];}
+}
 function _handleRemoteTrack(track){
   if(!_remoteStream)_remoteStream=new MediaStream();
   if(!_remoteStream.getTracks().some(t=>t.id===track.id)){
@@ -591,6 +604,9 @@ function _handleRemoteTrack(track){
   };
   const rv=$('remoteVideo'),a=$('remAudio');
   rv.muted=true; // звук — только через remAudio, иначе он удваивается
+  // <audio> играет только ПЕРВУЮ звуковую дорожку потока. Вторая — звук демонстрации экрана —
+  // молча отбрасывалась («галочку звука поставил, а не слышно»). Лишние дорожки — в свои плееры.
+  if(track.kind==='audio'&&_remoteStream.getAudioTracks()[0]!==track){_playExtraAudio(track);}
   // Видео назначает _updateRemoteVideoUI (свежим потоком только с видео)
   if(a.srcObject!==_remoteStream)a.srcObject=_remoteStream;
   a.volume=1.0;
@@ -791,7 +807,7 @@ function _logCallMessage(peerId,o){
   saveAll();
 }
 
-function endCallCleanup(){playHangupSound();stopRingSound();_nativeAudio('normal');
+function endCallCleanup(){playHangupSound();stopRingSound();_nativeAudio('normal');_stopExtraAudio();
   // Запись звонка сообщением в чат (один раз)
   if(activeCall&&activeCall.peerId&&!activeCall._logged){
     activeCall._logged=true;
@@ -996,7 +1012,8 @@ async function toggleScreenShare(){
   // Разрешаем начать демку даже без соединений — новые участники получат трек при входе
   try{
     if(!navigator.mediaDevices?.getDisplayMedia){toast('Демонстрация экрана не поддерживается');return;}
-    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:_screenConstraints(),audio:true});
+    // systemAudio:'include' — в окне выбора сразу есть «Показать системный звук» (включён по умолчанию, где браузер позволяет)
+    screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:_screenConstraints(),audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},systemAudio:'include',surfaceSwitching:'include'});
     const screenTrack=screenShareStream.getVideoTracks()[0];
     if(!screenTrack){screenShareStream.getTracks().forEach(t=>t.stop());screenShareStream=null;toast('Нет видео экрана');return;}
     _hintTrack(screenTrack,true);

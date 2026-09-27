@@ -499,6 +499,29 @@ const routes = {
     return J({ ok: true });
   },
   // проверка SMTP без отправки письма: только код ошибки, без секретов
+  // Диагностика доставки (по служебному ключу): соединения, журнал, устройства шифрования. Без содержимого.
+  async 'GET /diag'(r) {
+    const qs = r.qs;
+    const K = process.env.DIAG_KEY;
+    if (!K || !same(sha(String(qs.get('k') || '')), sha(K))) return E('not_found', 'Нет такого метода', 404);
+    const u = String(qs.get('u') || '').toLowerCase();
+    if (!u) {
+      const rows = await q('SELECT u, bg, at_ts, dev FROM conns;', {});
+      return J({ ok: true, conns: rows.map(x => ({ u: x.u, bg: x.bg, agoMin: Math.round((now() - x.at_ts) / 60000), dev: x.dev })) });
+    }
+    const [conns, ml, dev, fcm, pres, q1] = await Promise.all([
+      q('SELECT conn_id, bg, at_ts, drained, dev FROM conns VIEW idx_user WHERE u=$u;', { u }),
+      q('SELECT k, rec, upd FROM ml VIEW idx_upd WHERE u=$u AND upd>$s ORDER BY upd DESC LIMIT 15;', { u, s: now() - 6 * 3600e3 }),
+      q('SELECT device_id, updated FROM e2e_devices WHERE username=$u;', { u }),
+      q('SELECT device, updated FROM fcm_tokens WHERE username=$u;', { u }),
+      one('SELECT online, ts FROM presence WHERE username=$u;', { u }),
+      q('SELECT id, ts FROM queue WHERE u=$u LIMIT 50;', { u }),
+    ]);
+    const recent = ml.map(x => { let o = {}; try { o = JSON.parse(x.rec); } catch (e) { } return { agoMin: Math.round((now() - x.upd) / 60000), chat: o.chat, out: !!o.out, k: o.k, e2eFor: o.e && o.e.c ? Object.keys(o.e.c) : null, del: !!(o.del || o.gone) }; });
+    return J({ ok: true, u, conns: conns.map(x => ({ bg: x.bg, agoMin: Math.round((now() - x.at_ts) / 60000), drained: x.drained, dev: x.dev })),
+      presence: pres, e2eDevices: dev.map(x => ({ d: x.device_id, updatedDaysAgo: Math.round((now() - x.updated) / 864e5) })),
+      fcm: fcm.length, queue: q1.length, recent });
+  },
   async 'GET /mail/check'() {
     const m = mailer(); if (!m) return J({ ok: false, err: 'mail_off' });
     try { await Promise.race([m.verify(), new Promise((_, j) => setTimeout(() => j(Object.assign(new Error('timeout'), { code: 'TIMEOUT' })), 15000))]); return J({ ok: true }); }
