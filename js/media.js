@@ -5,9 +5,9 @@ async function _saveMediaToIdb(msgId,kind,src){
       const resp=await fetch(src);
       blob=await resp.blob();
     }else if(src.startsWith('data:')){
-      const parts=src.split(',');
-      const mime=parts[0].match(/:(.*?);/)?.[1]||'application/octet-stream';
-      const bytes=atob(parts[1]);
+      const du=_duParts(src);
+      const mime=du.mime||'application/octet-stream';
+      const bytes=atob(du.b64);
       const buf=new Uint8Array(bytes.length);
       for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
       blob=new Blob([buf],{type:mime});
@@ -38,6 +38,7 @@ const RC_AUDIO={echoCancellation:true,noiseSuppression:true,autoGainControl:true
 // Микрофон/камера, выбранные в настройках (selMic/selCam) — как в звонках
 function _rcAudioC(strict){
   const c={...RC_AUDIO};
+  if(window.Capacitor?.isNativePlatform?.())c.echoCancellation=false;
   if(typeof selMic!=='undefined'&&selMic&&selMic!=='default')c.deviceId=strict?{exact:selMic}:{ideal:selMic};
   return c;
 }
@@ -49,12 +50,15 @@ function _rcVideoC(){
 // Сначала строго выбранный микрофон; если его отключили — любой доступный
 async function _rcGetStream(mode){
   const gum=c=>navigator.mediaDevices.getUserMedia(c);
+  // тот же выбор микрофона, что в звонках (гарнитура на Windows — «устройство связи»)
+  const d=typeof _micDeviceC==='function'?await _micDeviceC():undefined;
+  const strictA=()=>{const a=_rcAudioC(true);if(d)a.deviceId=d;return a;};
   if(mode==='slon'){
-    return gum({audio:_rcAudioC(true),video:_rcVideoC()})
+    return gum({audio:strictA(),video:_rcVideoC()})
       .catch(()=>gum({audio:_rcAudioC(false),video:_rcVideoC()}))
       .catch(()=>gum({audio:true,video:true}));
   }
-  return gum({audio:_rcAudioC(true)}).catch(()=>gum({audio:_rcAudioC(false)})).catch(()=>gum({audio:true}));
+  return gum({audio:strictA()}).catch(()=>gum({audio:_rcAudioC(false)})).catch(()=>gum({audio:true}));
 }
 let _rcMode=(()=>{try{return localStorage.getItem('sl_recMode')==='slon'?'slon':'voice';}catch(e){return 'voice';}})();
 let _rec=null;        // текущая запись (см. _rcBegin)
@@ -784,9 +788,9 @@ function renderSlonBub(msg,isOut){
       }else if(src.startsWith('blob:')){
         srcUrl=src;_saveMediaToIdb(msg.id,'slon',src).catch(()=>{});
       }else if(src.startsWith('data:')){
-        const parts=src.split(',');
-        const mime=parts[0].match(/:(.*?);/)?.[1]||'video/webm';
-        const bytes=atob(parts[1]),buf=new Uint8Array(bytes.length);
+        const du=_duParts(src);
+        const mime=du.mime||'video/webm';
+        const bytes=atob(du.b64),buf=new Uint8Array(bytes.length);
         for(let i=0;i<bytes.length;i++)buf[i]=bytes.charCodeAt(i);
         const blob=new Blob([buf],{type:mime});
         srcUrl=URL.createObjectURL(blob);

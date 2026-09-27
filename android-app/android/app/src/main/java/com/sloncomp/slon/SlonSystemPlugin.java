@@ -4,6 +4,8 @@ import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -27,6 +29,34 @@ public class SlonSystemPlugin extends Plugin {
     static JSObject pendingLaunch;
 
     @Override public void load() { instance = this; }
+
+    // ── Звуковой режим звонка ──
+    // WebView (в отличие от Chrome) сам не переключает Android в режим связи. Без него на части
+    // телефонов (OPPO/realme/Xiaomi) микрофон с эхоподавлением отдаёт тишину — собеседник тебя не слышит.
+    // mode: "call" — режим связи (звук в динамик, если нет гарнитуры), "normal" — обратно.
+    @PluginMethod
+    public void audioMode(PluginCall call) {
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            boolean on = "call".equals(call.getString("mode", "normal"));
+            if (on) {
+                am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                boolean headset = false;
+                if (Build.VERSION.SDK_INT >= 23) for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                    int t = d.getType();
+                    if (t == AudioDeviceInfo.TYPE_WIRED_HEADSET || t == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                        || t == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
+                        || (Build.VERSION.SDK_INT >= 26 && t == AudioDeviceInfo.TYPE_USB_HEADSET)) headset = true;
+                }
+                am.setSpeakerphoneOn(!headset && call.getBoolean("speaker", true));
+                am.setMicrophoneMute(false);
+            } else {
+                am.setSpeakerphoneOn(false);
+                am.setMode(AudioManager.MODE_NORMAL);
+            }
+            call.resolve();
+        } catch (Exception e) { call.reject(e.getMessage()); }
+    }
 
     // ── Фоновая связь с сервером (уведомления при закрытом приложении) ──
     // ── «Проверка уведомлений»: что именно мешает уведомлениям ──

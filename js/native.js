@@ -55,7 +55,7 @@ async function _nativeSave(msg,kind,name){
       toast('Сохранено в галерею');
     }else{
       const fname=name||(kind+'_'+msg.id+'.'+_extOf(b.type,'bin'));
-      await _NP.Filesystem.writeFile({path:'SLON/'+fname,data:data.split(',')[1],directory:'DOCUMENTS',recursive:true});
+      await _NP.Filesystem.writeFile({path:'SLON/'+fname,data:_duParts(data).b64,directory:'DOCUMENTS',recursive:true});
       toast('Сохранено: Документы/SLON/'+fname);
     }
   }catch(e){console.warn('save:',e);toast('Не удалось сохранить: '+(e.message||e));}

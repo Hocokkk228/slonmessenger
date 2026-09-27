@@ -131,10 +131,25 @@ function _setupCallTransceivers(pc,stream){
   _tuneAllSenders(pc,false);
 }
 
+// Какой микрофон брать. Выбран в настройках и подключён — строго его. Не выбран — на Windows
+// «устройство связи» (communications): гарнитуру Windows ставит именно им, а «по умолчанию»
+// часто остаётся микрофон веб-камеры/ноутбука — и собеседник тебя не слышит, пока не выберешь вручную.
+async function _micDeviceC(){
+  try{
+    const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+    if(selMic&&selMic!=='default'&&ds.some(d=>d.deviceId===selMic))return {exact:selMic};
+    if(!selMic&&ds.some(d=>d.deviceId==='communications'))return {exact:'communications'};
+  }catch(e){}
+  return undefined;
+}
+// Android: режим связи на время звонка (без него WebView на части телефонов пишет с микрофона тишину)
+function _nativeAudio(mode){try{const p=window.Capacitor?.Plugins?.SlonSystem;if(p&&p.audioMode)p.audioMode({mode}).catch(()=>{});}catch(e){}}
+
 async function permDoRequest(){
   const isVideo=_permIsVideo;
+  _nativeAudio('call');
   const ac={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
-  if(selMic&&selMic!=='default')ac.deviceId={ideal:selMic};
+  {const d=await _micDeviceC();if(d)ac.deviceId=d;}
   const constraints=isVideo?{audio:ac,video:_camConstraints()}:{audio:ac};
   try{
     const stream=await navigator.mediaDevices.getUserMedia(constraints);
@@ -174,8 +189,9 @@ async function getMediaStream(isVideo){
     if(typeof navigator.permissions!=='undefined'&&navigator.permissions.query){
       navigator.permissions.query({name:'microphone'}).then(result=>{
         if(result.state==='granted'){
+          _nativeAudio('call');
           const ac={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
-          if(selMic&&selMic!=='default')ac.deviceId={ideal:selMic};
+          _micDeviceC().then(d=>{if(d)ac.deviceId=d;
           const c=isVideo?{audio:ac,video:_camConstraints()}:{audio:ac};
           navigator.mediaDevices.getUserMedia(c)
             .then(resolve)
@@ -184,6 +200,7 @@ async function getMediaStream(isVideo){
                 navigator.mediaDevices.getUserMedia(isVideo?{audio:true,video:true}:{audio:true}).then(resolve).catch(reject);
               }else doGet();
             });
+          });
         }else doGet();
       }).catch(()=>doGet());
     }else doGet();
@@ -774,7 +791,7 @@ function _logCallMessage(peerId,o){
   saveAll();
 }
 
-function endCallCleanup(){playHangupSound();stopRingSound();
+function endCallCleanup(){playHangupSound();stopRingSound();_nativeAudio('normal');
   // Запись звонка сообщением в чат (один раз)
   if(activeCall&&activeCall.peerId&&!activeCall._logged){
     activeCall._logged=true;

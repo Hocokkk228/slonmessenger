@@ -880,7 +880,7 @@ async function finishFile(fid,pid){
   }else{
     const fdid='fd_'+fid;
     try{
-      const b64=fullData.includes(',')?fullData.split(',')[1]:fullData;
+      const b64=_duParts(fullData).b64;
       const bin=atob(b64);const arr=new Uint8Array(bin.length);
       for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
       fileStore[fdid]=URL.createObjectURL(new Blob([arr],{type:f.mime||'application/octet-stream'}));

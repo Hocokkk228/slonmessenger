@@ -120,8 +120,8 @@ function _msDownload(id){
 // Файл уходит одним запросом как есть (не base64), с прогрессом загрузки.
 // Скачивание — по неугадываемому id. Старые медиа (mstore в Firebase) читаются по-прежнему.
 function _srvUpload(dataUrl,meta,onProg){
-  const [head,b64]=dataUrl.split(',');
-  const mime=meta.mime||head.match(/:(.*?);/)?.[1]||'application/octet-stream';
+  const {mime:m0,b64}=_duParts(dataUrl);
+  const mime=meta.mime||m0||'application/octet-stream';
   const bin=atob(b64||''),buf=new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
   return _srvUploadBlob(new Blob([buf],{type:mime}),mime,meta.name,onProg);
@@ -288,7 +288,7 @@ async function _mlMaterialize(key,r0){
   // файл
   const fdid='fd_'+r.id;
   try{
-    const b64=data.includes(',')?data.split(',')[1]:data;
+    const b64=_duParts(data).b64;
     const bin=atob(b64),arr=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
     fileStore[fdid]=URL.createObjectURL(new Blob([arr],{type:r.mime||'application/octet-stream'}));

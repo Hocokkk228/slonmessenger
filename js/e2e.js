@@ -405,7 +405,7 @@ async function _e2eEdit(chat,key,msg,text){
 
 // ── Файлы: шифруем до загрузки, ключ — внутрь сообщения ──
 async function _e2eEncryptMedia(dataUrl,mime){
-  const [,b64]=dataUrl.split(',');
+  const b64=_duParts(dataUrl).b64;
   const bytes=E2E.unb64(b64||'');
   const mk=await E2E.randomKey();
   const sealed=await E2E.sealBytes(mk,bytes,'media');

@@ -28,6 +28,15 @@ function _ico(name, cls) {
   return `<svg class="ico${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 
+// data:URL → {mime, b64}
+function _duParts(u){
+  u=String(u||'');
+  if(!u.startsWith('data:'))return {mime:'',b64:u};
+  const i=u.lastIndexOf(',');
+  const head=u.slice(5,i);
+  return {mime:head.replace(/;base64$/i,'').split(';')[0]||'',b64:u.slice(i+1)};
+}
+
 // Розетка «как у Telegram» (12 лепестков) — основа слонгалочки
 const _ROSETTE = (() => {
   const n = 12, R = 11, r = 9.4; let d = '';
