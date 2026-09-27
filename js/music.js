@@ -64,6 +64,7 @@ async function _mmLoad(force){
   _mm.list=list;_mm.loaded=true;
   setTimeout(_mmCovFill,500);
   setTimeout(_lrcPrefetchAll,1500);
+  setTimeout(_mmSyncAll,2500);
   try{_plRemap();}catch(e){}
   return list;
 }
@@ -128,7 +129,7 @@ const _mmCaching=new Set();
 async function _mmCache(it){
   if(_mmCaching.has(it.id))return;_mmCaching.add(it.id);
   try{
-    const b=await (await fetch(it.url)).blob();
+    const r=await fetch(it.url);if(!r.ok)throw new Error("http "+r.status);const b=await r.blob();
     let cover=null;if(it.coverUrl){try{cover=await (await fetch(it.coverUrl)).blob();}catch(e){}}
     await _mmPutRec({id:it.id,cid:it.cid,title:it.title,artist:it.artist,album:it.album,dur:it.dur,size:b.size,mime:it.mime||b.type,cover,audio:new Blob([b],{type:it.mime||b.type}),ts:it.ts});
     it.local=true;_mmPaint();
@@ -920,3 +921,20 @@ async function _lrcPrefetchAll(){
   _lrcPfBusy=false;
 }
 const _lrcMiss=(()=>{try{return JSON.parse(localStorage.getItem('sl_lrcmiss')||'{}')||{};}catch(e){return {};}})();
+
+// все треки из облака — сразу на устройство (в фоне, по одному), чтобы играли без ожидания и без сети
+let _mmSyncBusy=false;
+async function _mmSyncAll(){
+  if(_mmSyncBusy)return;_mmSyncBusy=true;
+  try{
+    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
+    const todo=_mm.list.filter(it=>!it.local&&it.url&&!it.friend);
+    let n=0;
+    for(const it of todo){
+      n++;_mmSay(todo.length>1?'Скачиваем музыку на устройство: '+n+' из '+todo.length:'');
+      await _mmCache(it);
+    }
+    _mmSay('');
+  }catch(e){}
+  _mmSyncBusy=false;
+}
