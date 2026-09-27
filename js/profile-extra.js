@@ -110,7 +110,8 @@ async function _pxPlay(tr,btn){
   if(_pxAudio&&_pxAudioId===tr.id&&!_pxAudio.paused){_pxAudio.pause();_pxBtns();return;}
   try{
     if(!_pxAudio){_pxAudio=new Audio();_pxAudio.onended=_pxAudio.onpause=_pxAudio.onplay=_pxBtns;}
-    if(_pxAudioId!==tr.id){_pxAudioId=tr.id;btn?.classList.add('busy');_pxAudio.src=tr.src==='file'?tr.url:await _dzPreview(tr.id);}
+    if(_pxAudioId!==tr.id){_pxAudioId=tr.id;btn?.classList.add('busy');_pxAudio.src=tr.src==='file'?tr.url:tr.src==='au'?await _auStream(tr):await _dzPreview(tr.id);
+      if(tr.start){await new Promise(r=>{_pxAudio.onloadedmetadata=r;setTimeout(r,4000);});try{_pxAudio.currentTime=tr.start;}catch(e){}}}
     await _pxAudio.play();
   }catch(e){toast('Не удалось включить отрывок');}
   finally{btn?.classList.remove('busy');_pxBtns();}
@@ -145,18 +146,19 @@ function _pxTrackPill(tr,list,owner){
   const more=(list||[]).length>1?`<button class="px-pl-more" onclick="event.stopPropagation();_pxPlaylist('${owner}')">${list.length} в плейлисте</button>`:'';
   return `<div class="px-track" onclick="_pxLyrics(_pxTr('${owner}'))" title="Текст песни">
     ${tr.cover?`<img class="px-cover" src="${esc(tr.cover)}" alt="">`:'<span class="px-cover px-cover-none"></span>'}
-    <div class="px-tr-t"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}${_pxSrcTag(tr)}</span></div>${more}${tr.src==='file'?`<button class="px-dl" title="Скачать" onclick="event.stopPropagation();_pxDownload(_pxTr('${owner}'))">${_PX_DL}</button>`:''}
+    <div class="px-tr-t"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}${_pxSrcTag(tr)}</span></div>${more}${_pxCanDl(tr)?`<button class="px-dl" title="Скачать" onclick="event.stopPropagation();_pxDownload(_pxTr('${owner}'))">${_PX_DL}</button>`:''}
     <button class="px-play" data-trplay="${esc(String(tr.id))}" onclick="event.stopPropagation();_pxPlay(_pxTr('${owner}'),this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`;
 }
 const _PX_DL='<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
-const _pxSrcTag=t=>t.src==='sc'?' · SoundCloud':t.src==='file'?'':' · отрывок';
+const _pxSrcTag=t=>t.src==='sc'?' · SoundCloud':t.src==='file'||t.src==='au'?'':' · отрывок';
+const _pxCanDl=t=>t&&(t.src==='file'||(t.src==='au'&&t.dl));
 function _pxOf(owner){return owner===myUsername?_pxPublic():(peerPX[owner]||{});}
 function _pxTr(owner,i){const p=_pxOf(owner);return i==null?p.track:(p.playlist||[])[i];}
 function _pxPlaylist(owner){
   const p=_pxOf(owner),pl=p.playlist||[];
   _pxSheet(`<div class="px-sh-t">Плейлист</div><div class="px-pl">${pl.map((t,i)=>`<div class="px-pl-row">
       ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-      <div class="px-tr-t" onclick="_pxLyrics(_pxTr('${owner}',${i}))"><b>${esc(t.title)}</b><span>${esc(t.artist)}${_pxSrcTag(t)}</span></div>${t.src==='file'?`<button class="px-mini" title="Скачать" onclick="_pxDownload(_pxTr('${owner}',${i}))">${_PX_DL}</button>`:''}
+      <div class="px-tr-t" onclick="_pxLyrics(_pxTr('${owner}',${i}))"><b>${esc(t.title)}</b><span>${esc(t.artist)}${_pxSrcTag(t)}</span></div>${_pxCanDl(t)?`<button class="px-mini" title="Скачать" onclick="_pxDownload(_pxTr('${owner}',${i}))">${_PX_DL}</button>`:''}
       <button class="px-play" data-trplay="${esc(String(t.id))}" onclick="_pxPlay(_pxTr('${owner}',${i}),this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`).join('')}</div>`);
   _pxBtns();
 }
@@ -256,9 +258,8 @@ function _pxEditHtml(){
     +_spSec('Музыка в профиле')+`<div class="sp-card sp-pad"><div id="pxMusic"></div>
       <div class="px-src-btns"><button class="lm-btn primary" onclick="_pxPickFile()">Загрузить свой трек</button></div>
       <div class="px-up-st" id="pxUpSt" style="display:none"></div>
-      <div class="px-add"><input class="lm-inp" id="pxScIn" placeholder="Ссылка на трек SoundCloud" onkeydown="if(event.key==='Enter')_pxScAdd()"><button class="lm-btn" onclick="_pxScAdd()">Добавить</button></div>
-      <div class="px-search"><input class="lm-inp" id="pxQ" placeholder="Поиск в каталоге (30-секундные отрывки)" oninput="_pxSearchSoon()"><div class="px-res" id="pxRes"></div></div></div>`
-    +_spHint('Свой трек (mp3, m4a — до 15 МБ, до 5 штук) и SoundCloud играют целиком, свой трек можно скачать. Из каталога — 30-секундный отрывок. Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).')
+      <div class="px-search"><input class="lm-inp" id="pxQ" placeholder="Найти песню или исполнителя" oninput="_pxSearchSoon()"><div class="px-res" id="pxRes"></div></div></div>`
+    +_spHint('Свой трек (mp3/m4a до 15 МБ, до 5 штук) играет целиком, его можно скачать и выбрать, с какого места играть. В поиске — 30-секундные отрывки из каталога. Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).')
     +_spSec('Ссылки')+`<div class="sp-card sp-pad"><div id="pxSocEd"></div>
       <div class="px-add"><input class="lm-inp" id="pxSocIn" placeholder="t.me/… · vk.com/… · tiktok.com/@…" onkeydown="if(event.key==='Enter')_pxSocAdd()"><button class="lm-btn primary" onclick="_pxSocAdd()">Добавить</button></div></div>`
     +_spHint('Значок соцсети определится сам. Без Premium — до 3 ссылок, с Premium — до 8.')
@@ -273,8 +274,8 @@ function _pxEditPaint(){
   const m=$('pxMusic'),pl=d.playlist||[];
   if(m)m.innerHTML=pl.length?`<div class="px-pl">${pl.map((t,i)=>`<div class="px-pl-row${i===0?' main':''}">
       ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}${t.src==='file'?' · свой файл':_pxSrcTag(t)}</span></div>
-      ${i?`<button class="px-mini" title="Сделать главной" onclick="_pxMain(${i})"><svg viewBox="0 0 24 24"><path d="M12 17.3 18.2 21l-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7l-7.2.6 5.4 4.7-1.6 7z"/></svg></button>`:''}
+      <div class="px-tr-t"><b>${esc(t.title)}</b><span>${i===0?'В профиле · ':''}${esc(t.artist)}${t.src==='file'?' · свой файл':t.src==='au'?' · целиком':_pxSrcTag(t)}${t.start?' · с '+_rcFmt(t.start*1000):''}</span></div>
+      ${(t.src==='file'||t.src==='au')?`<button class="px-mini" title="С какого места играть" onclick="_pxSegOpen(${i})"><svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.96 8.96 0 0 0 12 4a9 9 0 1 0 9 9c0-2.12-.74-4.07-1.97-5.61zM12 20a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></button>`:''}${i?`<button class="px-mini" title="Сделать главной" onclick="_pxMain(${i})"><svg viewBox="0 0 24 24"><path d="M12 17.3 18.2 21l-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7l-7.2.6 5.4 4.7-1.6 7z"/></svg></button>`:''}
       <button class="px-mini" title="Убрать" onclick="_pxDel(${i})"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>`).join('')}</div>`
     :'<div class="px-empty">Песни пока нет — найди её ниже.</div>';
   const se=$('pxSocEd');
@@ -295,10 +296,13 @@ async function _pxSearch(){
   if(q.length<2){box.innerHTML='';return;}
   box.innerHTML='<div class="px-empty">Ищем…</div>';
   try{
-    _pxRes=await _dzSearch(q);
-    box.innerHTML=_pxRes.length?_pxRes.map((t,i)=>`<div class="px-pl-row" onclick="_pxAdd(${i})">
+    const [au,dz]=await Promise.allSettled([AU_ON?_auSearch(q):Promise.resolve([]),_dzSearch(q)]);
+    const A=au.status==='fulfilled'?au.value:[],D=dz.status==='fulfilled'?dz.value:[];
+    _pxRes=[...A,...D];
+    if(!_pxRes.length&&au.status==='rejected'&&dz.status==='rejected')throw new Error('Каталоги не отвечают');
+    box.innerHTML=_pxRes.length?_pxRes.map((t,i)=>(i===0&&A.length?'<div class="px-res-h">Целиком</div>':'')+(i===A.length&&D.length?'<div class="px-res-h">Отрывки 30 секунд</div>':'')+`<div class="px-pl-row" onclick="_pxAdd(${i})">
         ${t.cover?`<img src="${esc(t.cover)}" alt="">`:'<span class="px-cover-none"></span>'}
-        <div class="px-tr-t"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>
+        <div class="px-tr-t"><b>${esc(t.title)}</b><span>${esc(t.artist)}${t.dur?' · '+_rcFmt(t.dur*1000):''}</span></div>
         <button class="px-play" data-trplay="${t.id}" onclick="event.stopPropagation();_pxPlay(_pxRes[${i}],this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`).join(''):'<div class="px-empty">Ничего не нашли</div>';
     _pxBtns();
   }catch(e){box.innerHTML=`<div class="px-empty">${esc(e.message)}</div>`;}
@@ -443,10 +447,10 @@ function _pxScSheet(tr){
     <button class="lm-btn" style="margin-top:10px" onclick="_pxLyrics(_pxSheetTr)">Текст песни</button>`);
 }
 async function _pxDownload(tr){
-  if(!tr||tr.src!=='file')return;
+  if(!_pxCanDl(tr))return;
   try{
     toast('Скачивается…');
-    const b=await (await fetch(tr.url)).blob();
+    const b=await (await fetch(tr.src==='au'?await _auDownloadUrl(tr):tr.url)).blob();
     const a=document.createElement('a');a.href=URL.createObjectURL(b);
     a.download=((tr.artist?tr.artist+' - ':'')+tr.title).replace(/[\\/:*?"<>|]+/g,'_')+(/mp4/.test(b.type)?'.m4a':/ogg/.test(b.type)?'.ogg':'.mp3');
     document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
@@ -461,3 +465,51 @@ async function _pxDownload(tr){
   }catch(e){}
   return f.apply(this,arguments);
 };}
+
+// ════════ Audius: поиск и треки целиком (открытый API, без ключа) ════════
+// Выдаются только треки, которые автор открыл для прослушивания; скачать — если автор разрешил.
+const AU_APP='SLON';
+// звук Audius из РФ недоступен (узлы хранения не отвечают ни с телефона, ни с нашего сервера) — поиск выключен
+const AU_ON=false;
+let _auHostP=null;
+function _auHost(){
+  if(!_auHostP)_auHostP=fetch('https://api.audius.co').then(r=>r.json()).then(d=>{const l=d.data||[];return l[Math.floor(Math.random()*l.length)]||'https://api.audius.co';}).catch(()=>{_auHostP=null;return 'https://api.audius.co';});
+  return _auHostP;
+}
+async function _auSearch(q){
+  const h=await _auHost();
+  const r=await fetch(h+'/v1/tracks/search?app_name='+AU_APP+'&query='+encodeURIComponent(q));
+  const j=await r.json();
+  return (j.data||[]).filter(t=>t.is_streamable!==false&&!t.is_stream_gated&&!t.is_delete).slice(0,15).map(t=>({
+    src:'au',id:'au:'+t.id,au:t.id,title:String(t.title||'').slice(0,120),artist:String(t.user?.name||'').slice(0,80),
+    cover:t.artwork?.['480x480']||t.artwork?.['150x150']||'',dur:t.duration||0,dl:!!(t.is_downloadable&&!t.is_download_gated)}));
+}
+async function _auStream(tr){return (await _auHost())+'/v1/tracks/'+encodeURIComponent(tr.au)+'/stream?app_name='+AU_APP;}
+async function _auDownloadUrl(tr){return (await _auHost())+'/v1/tracks/'+encodeURIComponent(tr.au)+'/download?app_name='+AU_APP;}
+
+// ════════ Отрывок: с какого места играть трек в профиле (свои файлы и Audius) ════════
+let _pxSegI=-1,_pxSegA=null;
+function _pxSegOpen(i){
+  const t=_pxDraft?.playlist?.[i];if(!t||!(t.src==='file'||t.src==='au'))return;
+  _pxSegI=i;const dur=Math.max(1,t.dur||0),st=Math.min(t.start||0,dur-1);
+  _pxSheet(`<div class="px-sh-t">С какого места играть</div>
+    <div class="px-lyr-hd">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}<div><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div></div>
+    <input type="range" class="px-seg" id="pxSeg" min="0" max="${dur-1}" step="1" value="${st}" oninput="_pxSegLbl()">
+    <div class="px-seg-row"><span id="pxSegT">${_rcFmt(st*1000)}</span><span>${_rcFmt(dur*1000)}</span></div>
+    <div class="px-src-btns"><button class="lm-btn" onclick="_pxSegTry()">Послушать отсюда</button><button class="lm-btn primary" onclick="_pxSegSave()">Сохранить</button></div>`);
+}
+function _pxSegLbl(){const v=+($('pxSeg')?.value||0);const e=$('pxSegT');if(e)e.textContent=_rcFmt(v*1000);}
+async function _pxSegTry(){
+  const t=_pxDraft?.playlist?.[_pxSegI];if(!t)return;
+  try{
+    if(!_pxSegA){_pxSegA=new Audio();}
+    const src=t.src==='file'?t.url:await _auStream(t);
+    if(_pxSegA.dataset.src!==src){_pxSegA.src=src;_pxSegA.dataset.src=src;await new Promise(r=>{_pxSegA.onloadedmetadata=r;setTimeout(r,4000);});}
+    _pxSegA.currentTime=+($('pxSeg')?.value||0);await _pxSegA.play();
+  }catch(e){toast('Не удалось включить');}
+}
+function _pxSegSave(){
+  const t=_pxDraft?.playlist?.[_pxSegI];if(!t)return;
+  t.start=+($('pxSeg')?.value||0)||0;_pxSegA?.pause();
+  _pxSheetClose();_pxEditPaint();_pxDirty();toast('Будет играть с '+_rcFmt(t.start*1000));
+}

@@ -527,6 +527,8 @@ const routes = {
     const qs = r.qs;
     const K = process.env.DIAG_KEY;
     if (!K || !same(sha(String(qs.get('k') || '')), sha(K))) return E('not_found', 'Нет такого метода', 404);
+    // проверка доступности внешнего адреса с сервера (только статус и время)
+    if (qs.get('probe')) { const t0 = now(); try { const c = new AbortController(); setTimeout(() => c.abort(), 8000); const r = await fetch(qs.get('probe'), { headers: { Range: 'bytes=0-1000' }, signal: c.signal }); return J({ ok: true, status: r.status, type: r.headers.get('content-type'), ms: now() - t0 }); } catch (e) { return J({ ok: false, err: String(e.name || e.message), ms: now() - t0 }); } }
     const u = String(qs.get('u') || '').toLowerCase();
     if (!u) {
       const rows = await q('SELECT u, bg, at_ts, dev FROM conns;', {});
