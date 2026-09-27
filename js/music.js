@@ -174,10 +174,10 @@ const _islQueue=()=>_mm.cur&&_islTr&&_islTr.id===_mm.cur.id&&_mm.queue.length>1;
 function _isl(){
   const on=_islTr&&_pxAudio&&String(_pxAudioId)===String(_islTr.id)&&(!_pxAudio.paused||_pxAudio.currentTime>0);
   let w=$('slIsl');
-  if(!on){if(w){w.classList.add('bye');setTimeout(()=>w.remove(),250);}return;}
+  if(!on){if(w&&!w.classList.contains('bye')){w.classList.add('bye');clearTimeout(w._byeT);w._byeT=setTimeout(()=>{if(w.classList.contains('bye'))w.remove();},250);}return;}
   if(!w){w=document.createElement('div');w.id='slIsl';w.className='sl-isl';w.onclick=e=>{if(!_islOpen&&!e.target.closest('button,input')){_islOpen=true;_isl();}};document.body.appendChild(w);
     document.addEventListener('pointerdown',_islOutside,true);}
-  w.classList.remove('bye');
+  clearTimeout(w._byeT);w.classList.remove('bye');
   const t=_islTr,pl=!_pxAudio.paused,q=_islQueue(),key=[t.id,pl,_islOpen,q].join('|');
   w.classList.toggle('open',_islOpen);w.classList.toggle('playing',pl);
   if(w.dataset.k!==key){
