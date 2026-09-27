@@ -497,13 +497,30 @@ function _plRemap(){
 // запись плейлиста для трека из фонотеки: свой id (не сливается с отрывками), отрывок для гостей — dz
 function _plEntry(it,hit,lib){return {id:'lib_'+Math.random().toString(36).slice(2,12),src:'lib',dz:hit?hit.id:null,title:it.title,artist:it.artist||(hit&&hit.artist)||'',cover:(hit&&hit.cover)||'',dur:it.dur||(hit&&hit.dur)||0,lib};}
 // найти трек в каталоге (для отрывка гостям и обложки)
+// поиск трека в каталоге: несколько запросов, сравнение по похожести (с транслитом: «Егор Крид» = «Egor Kreed»);
+// берём только если совпали и название, и исполнитель — чтобы не подтянуть одноимённый чужой хит
+const _TR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const _tl=s=>String(s||'').toLowerCase().replace(/[а-яё]/g,c=>_TR[c]??c).replace(/ee/g,'i').replace(/oo/g,'u').replace(/ph/g,'f').replace(/w/g,'v');
+const _arts=a=>String(a||'').split(/\s*(?:,|&|\/|;|\bfeat\.?|\bft\.?|\bx\b|\bи\b|(?<!\S)и(?!\S))\s*/i).map(x=>_lrcClean(x)).filter(Boolean);
 async function _plMatch(title,artist){
-  const norm=s=>String(s||'').toLowerCase().replace(/\(.*?\)|\[.*?\]/g,'').replace(/[^a-zа-яё0-9]+/gi,' ').trim();
-  try{
-    const r=await _dzSearch((artist?artist+' ':'')+title);
-    const nt=norm(title),na=norm(String(artist).split(/,|&| x | feat/i)[0]);
-    return r.find(x=>norm(x.title)===nt&&(!na||norm(x.artist).includes(na)))||r.find(x=>norm(x.title).includes(nt)||nt.includes(norm(x.title)))||null;
-  }catch(e){return null;}
+  const T=_lrcClean(title)||String(title||'').toLowerCase(),A=_arts(artist);
+  const qs=[...new Set([(A[0]?A[0]+' ':'')+T,...A.slice(1).map(x=>x+' '+T),A[0]?`artist:"${A[0]}" track:"${T}"`:'',T].filter(Boolean))];
+  const seen=new Map();let best=null;
+  for(const q of qs){
+    let r=[];try{r=await _dzSearch(q);}catch(e){}
+    const withArt=A.length&&q!==T;
+    for(const [i,x] of r.entries()){
+      if(seen.has(x.id))continue;
+      const ts=_lrcSim(_tl(_lrcClean(x.title)),_tl(T));
+      const xa=_arts(x.artist);
+      let as=A.length?Math.max(0,...A.flatMap(a=>xa.map(b=>_lrcSim(_tl(b),_tl(a))))):0.6;
+      if(withArt&&i===0&&ts>=0.9)as=Math.max(as,0.55);   // фиты: каталог пишет только главного артиста, но по запросу с исполнителем трек первый
+      const sc={x,ts,as,s:ts*0.6+as*0.4};seen.set(x.id,sc);
+      if(ts>=0.7&&as>=0.5&&(!best||sc.s>best.s))best=sc;
+    }
+    if(best&&best.ts>=0.95&&best.as>=0.8)break;       // уверенно — хватит
+  }
+  return best?best.x:null;
 }
 async function _mmToProfile(ids){
   await _mmLoad();
@@ -870,13 +887,14 @@ async function _mmCovFill(){
     for(const it of _mm.list){
       if(it.coverUrl)continue;
       const k=(it.artist+'|'+it.title).toLowerCase();
-      if(_mmCovMap[k]===undefined){
+      const miss=_mmCovMap[k]===''||(typeof _mmCovMap[k]==='number'&&Date.now()-_mmCovMap[k]>864e5);
+      if(_mmCovMap[k]===undefined||miss){
         const hit=await _plMatch(it.title,it.artist);
-        _mmCovMap[k]=hit&&hit.cover?hit.cover:'';
+        _mmCovMap[k]=hit&&hit.cover?hit.cover:Date.now();
         try{localStorage.setItem('sl_mmcov',JSON.stringify(_mmCovMap));}catch(e){}
         await new Promise(r=>setTimeout(r,250));
       }
-      if(_mmCovMap[k]){it.coverUrl=_mmCovMap[k];ch=true;}
+      if(typeof _mmCovMap[k]==='string'&&_mmCovMap[k]){it.coverUrl=_mmCovMap[k];ch=true;}
     }
     if(ch){_mmPaint();const pp=$('mmPlPage');if(pp)_mmPlPagePaint(pp.dataset.pl);}
   }catch(e){}
