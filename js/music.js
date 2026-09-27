@@ -142,7 +142,9 @@ async function _mmPlay(id,list){
   else if(!_mm.queue.includes(id)){_mm.queue=_mmFiltered().map(x=>x.id);_mm.qi=_mm.queue.indexOf(id);}
   else _mm.qi=_mm.queue.indexOf(id);
   if(_pxAudio&&_pxAudioId==='mm_'+id){if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();return;}
-  try{const tr=_mmTr(it);tr.url=await _mmSrc(it);_mm.cur=tr;await _pxPlay(tr,null);_mmHook();}
+  try{const tr=_mmTr(it);tr.url=await _mmSrc(it);_mm.cur=tr;
+    if($('pxKara')){_pxAudio?.pause();const lp=_pxLyrics(tr);$('pxKara')?.classList.add('swap');await Promise.race([lp,new Promise(r=>setTimeout(r,12000))]);}
+    await _pxPlay(tr,null);_mmHook();}
   catch(e){toast(e.message||'Не удалось включить');}
   _mmBar();_mmPaint();
 }
@@ -224,6 +226,7 @@ function _mmStop(){_islClose();}
       if(wal)wal.insertAdjacentHTML('afterend',row);else body.querySelector('.sp-card')?.insertAdjacentHTML('afterend',`<div class="sp-card">${row}</div>`);
       _mmLoad().then(l=>{const n=body.querySelector('.mm-row-n');if(n)n.textContent=l.length||'';}).catch(()=>{});
     }
+    if(!_spRender._mmRetry){_spRender._mmRetry=1;[300,1000,2500].forEach(ms=>setTimeout(()=>{const b=$('spBody');if(b&&!b.querySelector('.mm-row')){const w=b.querySelector('.wal-row'),row=`<div class="sp-row mm-row" onclick="_spMusic()"><div class="sp-ico mm-row-ico">${_MM_ICO.note}</div><div class="sp-row-txt"><div class="sp-row-title">Моя музыка</div></div><div class="sp-row-val mm-row-n"></div></div>`;if(w)w.insertAdjacentHTML('afterend',row);else b.querySelector('.sp-card')?.insertAdjacentHTML('afterend',`<div class="sp-card">${row}</div>`);}if(ms===2500)_spRender._mmRetry=0;},ms));}
   }catch(e){console.warn('[mm] sp',e);}
   return r;
 };}
@@ -672,6 +675,7 @@ function _rgb2hsl(r,g,b){
 }
 {const f=_pxLyrics;_pxLyrics=function(tr){
   const p=f.apply(this,arguments);
+  {const k0=$('pxKara');if(k0)k0.style.setProperty('--kara','#ffffff');}
   if(tr&&tr.cover)_covColor(tr.cover).then(c=>{const k=$('pxKara');if(k&&c)k.style.setProperty('--kara',c);});
   return p;
 };}
@@ -803,23 +807,27 @@ async function _mmPlRefill(id){
 async function _mmPlPickTracks(pid){
   const p=_mmPlById(pid);if(!p)return;
   await _mmLoad();
-  const have=new Set(p.tr||[]);
   if(!_mm.list.length){toast('В «Моей музыке» пока пусто');return;}
-  _pxSheet(`<div class="px-sh-t">Добавить в «${esc(p.name)}»</div>
-    <input class="lm-inp mm-q" placeholder="Поиск" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mm-pick .mm-tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none')">
-    <div class="mm-pick">${_mm.list.map(it=>{const on=have.has(it.cid)||have.has(it.id);return `<label class="mm-tr"><input type="checkbox" value="${esc(it.id)}"${on?' checked disabled':''}>
+  const have=new Set(p.tr||[]),on=it=>have.has(it.cid)||have.has(it.id);
+  const row=(it,d)=>`<div class="mm-tr mm-pk${d?' done':''}" data-id="${esc(it.id)}"${d?'':` onclick="_mmPlPickOne('${esc(pid)}',this)"`}>
       ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
-      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></label>`;}).join('')}</div>
-    <div class="mm-pick-bar"><button class="lm-btn" onclick="document.querySelectorAll('.mm-pick input:not(:disabled)').forEach(i=>{if(i.closest('.mm-tr').style.display!=='none')i.checked=true})">Выбрать все</button>
-      <button class="lm-btn primary" onclick="_mmPlPickGo('${esc(pid)}')">Добавить</button></div>`);
+      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>${d?'<i class="mm-pk-ok">уже добавлен</i>':`<span class="mm-pk-plus">${_MM_ICO.plus}</span>`}</div>`;
+  _pxSheet(`<div class="px-sh-t">Добавить в «${esc(p.name)}»</div>
+    <input class="lm-inp mm-q" placeholder="Поиск" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mm-pk').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none')">
+    <div class="mm-pick mm-pick-w" id="mmPkList">${_mm.list.filter(x=>!on(x)).map(x=>row(x,false)).join('')}<div class="mm-pk-sep" id="mmPkSep">Уже в плейлисте</div>${_mm.list.filter(on).map(x=>row(x,true)).join('')}</div>`);
+  $('pxSheet')?.querySelector('.px-sheet-card')?.classList.add('wide');
 }
-function _mmPlPickGo(pid){
-  const p=_mmPlById(pid);if(!p)return;
-  const ids=[...document.querySelectorAll('.mm-pick input:checked:not(:disabled)')].map(i=>i.value);
-  p.tr=p.tr||[];
-  for(const id of ids){const it=_mmFind(id);if(!it)continue;const k=it.cid||it.id;if(!p.tr.includes(k)&&!p.tr.includes(it.id))p.tr.push(k);}
-  _mmPlSave();_pxSheetClose();_mmPlPagePaint(pid);_mmPlsPaint();
-  if(ids.length)toast('Добавлено: '+ids.length);
+function _mmPlPickOne(pid,el){
+  const p=_mmPlById(pid),it=_mmFind(el.dataset.id);if(!p||!it||el.classList.contains('evap'))return;
+  const k=it.cid||it.id;p.tr=p.tr||[];if(!p.tr.includes(k)&&!p.tr.includes(it.id))p.tr.push(k);
+  _mmPlSave();
+  el.classList.add('evap');el.onclick=null;el.removeAttribute('onclick');
+  setTimeout(()=>{
+    el.classList.remove('evap');el.classList.add('done');
+    el.querySelector('.mm-pk-plus')?.replaceWith(Object.assign(document.createElement('i'),{className:'mm-pk-ok',textContent:'уже добавлен'}));
+    $('mmPkSep')?.insertAdjacentElement('afterend',el);
+    _mmPlPagePaint(pid);_mmPlsPaint();
+  },520);
 }
 // обложки для треков без обложки — из каталога по названию и исполнителю
 const _mmCovMap=(()=>{try{return JSON.parse(localStorage.getItem('sl_mmcov')||'{}')||{};}catch(e){return {};}})();

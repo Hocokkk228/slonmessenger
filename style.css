@@ -3434,3 +3434,20 @@ video.mv-media{cursor:default;}
 .mm-pl-name-inp,.mm-pl-name{word-break:break-word;}
 .mm-pl-name.lm-inp{width:100%;box-sizing:border-box;}
 #mmPlName{width:100%;box-sizing:border-box;margin-bottom:10px;}
+
+/* выбор треков в плейлист */
+.px-sheet-card.wide{width:min(900px,96vw);max-height:88dvh;}
+.mm-pick-w{max-height:66dvh;}
+.mm-pk{position:relative;}
+.mm-pk-plus{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;}
+.mm-pk-plus svg{width:24px;height:24px;fill:currentColor;}
+.mm-pk.done{opacity:.45;cursor:default;}
+.mm-pk.done:hover{background:none;}
+.mm-pk-ok{font-style:normal;font-size:12.5px;color:var(--text2);flex-shrink:0;}
+.mm-pk-sep{font-size:12.5px;font-weight:600;color:var(--text2);padding:14px 10px 4px;}
+.mm-pk.evap{animation:mmEvap .5s ease-in forwards;pointer-events:none;}
+@keyframes mmEvap{0%{opacity:1;filter:blur(0);transform:none}60%{opacity:.4;filter:blur(3px);transform:translateY(-6px) scale(1.02)}100%{opacity:0;filter:blur(8px);transform:translateY(-14px) scale(.96);max-height:0;padding-top:0;padding-bottom:0}}
+.mm-pk.evap{max-height:70px;overflow:hidden;}
+/* текст: смена трека — «рулетка» сверху вниз */
+.px-kara.swap .px-kara-art,.px-kara.swap .px-kara-hd,.px-kara.swap .px-kara-body{animation:karaSwap .55s cubic-bezier(.2,1,.3,1);}
+@keyframes karaSwap{from{opacity:0;transform:translateY(-60px)}to{opacity:1;transform:none}}

@@ -149,9 +149,9 @@ async function _pxLyrics(tr){
     <div class="px-kara-main">${tr.cover?`<img class="px-kara-art" src="${esc(tr.cover)}" alt="">`:''}<div class="px-kara-body" id="pxKaraBody" onwheel="_kr&&(_kr.userT=Date.now())" ontouchmove="_kr&&(_kr.userT=Date.now())"><div class="px-kara-msg">Ищем текст…</div></div></div>
     <div class="px-kara-bar">
       <div class="px-kara-ctl">
-        <button onclick="_pxKaraSeek(-10)" title="Назад 10 с"><svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg></button>
+        <button onclick="_pxKaraStep(-1)" title="Прошлый трек"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
         <button class="px-kara-pp" id="pxKaraPP" onclick="_pxKaraToggle()"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
-        <button onclick="_pxKaraSeek(10)" title="Вперёд 10 с"><svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg></button>
+        <button onclick="_pxKaraStep(1)" title="Следующий трек"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
       </div>
       <div class="px-kara-prog"><span id="pxKaraT">0:00</span><input type="range" id="pxKaraR" min="0" max="1000" value="0" oninput="_pxKaraScrub(this.value)"><span id="pxKaraD">0:00</span></div>
       <div class="px-kara-note" id="pxKaraNote"></div>
@@ -165,11 +165,14 @@ async function _pxLyrics(tr){
   $('pxKaraNote').textContent=full?'':(_kr.off!=null?'Отрывок подстроен под текст · нажми строку, чтобы поправить':'Отрывок: нажми строку, которая сейчас звучит, — текст подстроится');
   try{
     // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
-    const q=(ar)=>fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'')).then(r=>r.json()).catch(()=>[]);
+    const q=async(ar)=>{const u='https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'');
+      for(let a=0;a<3;a++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);return await r.json();}catch(e){}}return [];};
     const first=String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0];
     let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
     const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
-    const hit=byDur((j||[]).filter(x=>x.syncedLyrics))[0]||(j||[]).find(x=>x.plainLyrics)||null;
+    const syn=(j||[]).filter(x=>x.syncedLyrics);
+    const whole=syn.filter(x=>{const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);});
+    const hit=byDur(whole)[0]||byDur(syn)[0]||(j||[]).find(x=>x.plainLyrics)||null;
     if(!_kr||_kr.tr!==tr)return;
     const body=$('pxKaraBody');if(!body)return;
     if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
@@ -211,6 +214,7 @@ async function _pxKaraToggle(){
   if(_pxKaraAudioIs()&&_pxAudio.paused&&_pxAudio.src){try{await _pxAudio.play();}catch(e){}return;}
   await _pxPlay(_kr.tr,null);
 }
+function _pxKaraStep(d){if(typeof _mm==='object'&&_mm.cur&&_kr&&String(_kr.tr.id)===String(_mm.cur.id)&&_mm.queue.length>1)_mmStep(d);else _pxKaraSeek(d*10);}
 function _pxKaraSeek(ds){if(_pxKaraAudioIs()&&_kr.full){_pxAudio.currentTime=Math.max(0,_pxAudio.currentTime+ds);_kr.idx=-2;}}
 function _pxKaraScrub(v){if(_pxKaraAudioIs()&&isFinite(_pxAudio.duration)){_pxAudio.currentTime=v/1000*_pxAudio.duration;_kr.idx=-2;}}
 async function _pxKaraLine(i){
