@@ -612,6 +612,9 @@ function onData(pid,data){
       }
       if(activeCall?.peerId===pid){endCallCleanup();}
       break;
+    case 'e2e_retry':
+      if(typeof _e2eResend==='function')_e2eResend(pid,data.key,data.d).catch(e=>console.warn('[e2e] resend',e));
+      break;
     case 'call_ring':
       if(activeCall?.peerId===pid&&(!data.callId||data.callId===activeCall.callId))activeCall._ringing=true;
       break;

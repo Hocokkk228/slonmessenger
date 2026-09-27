@@ -62,10 +62,11 @@ function _hubConnect(){
     if(typeof _e2eOn!=='undefined'&&_e2eOn){_hubAwaitVault=true;_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});}
     else _hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});
     // у Яндекса каждое сообщение — вызов функции: пингуем раз в 8 минут (шлюз рвёт после 10 минут тишины)
-    clearInterval(_hubPing);_hubPing=setInterval(()=>_hubSend({t:'ping'}),SRV_KIND==='yc'?480000:25000);
+    _hubLastRx=Date.now();
+    clearInterval(_hubPing);_hubPing=setInterval(_hubProbe,SRV_KIND==='yc'?480000:25000);
     _hubPollPresence();
   };
-  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(x){return;}_hubDispatch(m);};
+  ws.onmessage=e=>{_hubLastRx=Date.now();let m;try{m=JSON.parse(e.data);}catch(x){return;}_hubDispatch(m);};
   ws.onclose=ev=>{
     if(_hubWs!==ws)return;
     _hubUp=false;clearInterval(_hubPing);
@@ -76,6 +77,25 @@ function _hubConnect(){
     clearTimeout(_hubTimer);_hubTimer=setTimeout(_hubConnect,wait);
   };
   ws.onerror=()=>{};
+}
+// «Зомби-сокет»: телефон сменил сеть или уснул — соединение мертво, а readyState всё ещё OPEN.
+// Тогда ничего не приходит, пока не перезапустишь приложение. Проверяем: пинг → ждём ответ;
+// нет ответа за 6 с — рвём и подключаемся заново (журнал догонится по ml_sync).
+let _hubLastRx=0,_hubProbing=false;
+function _hubProbe(){
+  const ws=_hubWs;
+  if(!ws||ws.readyState!==1||_hubProbing)return;
+  _hubProbing=true;
+  const sent=Date.now();
+  try{ws.send(JSON.stringify({t:'ping'}));}catch(e){}
+  setTimeout(()=>{
+    _hubProbing=false;
+    if(_hubWs!==ws||_hubLastRx>=sent)return;
+    console.warn('[hub] нет ответа на пинг — переподключаемся');
+    _hubWs=null;_hubUp=false;clearInterval(_hubPing);
+    try{ws.close();}catch(e){}
+    _hubRetry=0;_hubConnect();
+  },6000);
 }
 function _hubMlUpd(upd){if(upd>+(localStorage.getItem(_hubMlKey())||0))try{localStorage.setItem(_hubMlKey(),String(upd));}catch(e){}}
 
@@ -148,6 +168,15 @@ async function _hubPollPresence(){
 setInterval(()=>{if(_hubUp&&document.visibilityState==='visible')_hubPollPresence();},SRV_KIND==='yc'?60000:25000);
 
 // Переподключение: вернулись в приложение, появилась сеть, сменился аккаунт
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_hubConnect();if(_hubUp)_hubPollPresence();}});
-window.addEventListener('online',()=>{_hubRetry=0;_hubConnect();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){
+  _hubConnect();
+  if(_hubUp){
+    _hubPollPresence();
+    // вернулись в приложение после паузы — проверяем, живо ли соединение, и догоняем журнал
+    if(Date.now()-_hubLastRx>45000){_hubProbe();_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});}
+  }
+}});
+// сменилась сеть (Wi-Fi ↔ мобильная): старый сокет почти наверняка мёртв
+window.addEventListener('online',()=>{_hubRetry=0;if(_hubWs&&_hubWs.readyState===1)_hubProbe();else _hubConnect();});
+try{navigator.connection?.addEventListener('change',()=>{if(_hubWs&&_hubWs.readyState===1)_hubProbe();});}catch(e){}
 setInterval(()=>{if(_fbMode&&myUsername&&(!_hubWs||_hubUser!==myUsername))_hubConnect();},3000);

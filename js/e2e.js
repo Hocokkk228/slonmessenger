@@ -331,11 +331,45 @@ async function _e2eOpen(key,rec){
       const v=await _e2eVaultGet(key);
       if(v&&(v.ev||0)>=ev)payload=v.p;
     }
-    if(!payload){_e2eWaiting[key]=rec;return null;}
+    if(!payload){_e2eWaiting[key]=rec;_e2eAskResend(key,rec);return null;}
     await _idb.put(_e2eK('p:'+key+':'+ev),payload);
     if(my)_e2eVaultPut(key,ev,payload);         // для будущих устройств
     return payload;
   });
+}
+
+// ── Повторный запрос (как «retry receipt» в Signal) ──
+// У получателя сбились ключи (переустановка, очистка данных, сбой храповика) — сообщение
+// навсегда оставалось заглушкой, а отправитель ничего не знал. Теперь получатель просит
+// перешифровать, отправитель заново делает X3DH с этим устройством и обновляет запись журнала.
+const _e2eAsked={};
+function _e2eAskResend(key,rec){
+  const from=rec&&rec.e&&rec.e.from;
+  if(!from||!from.u||from.u===myUsername||_e2eAsked[key]||!_e2eMe)return;
+  _e2eAsked[key]=1;
+  // сейф с другого моего устройства может успеть раньше — подождём немного
+  setTimeout(()=>{
+    if(!_e2eWaiting[key])return;
+    if(typeof _fbSend==='function')_fbSend(from.u,{type:'e2e_retry',key,d:_e2eMe.deviceId});
+  },4000);
+}
+const _e2eResent={};
+async function _e2eResend(pid,key,dev){
+  if(!key||!_e2eMe||(_e2eResent[key]||0)>=2)return;
+  const m=(chatHist[pid]||[]).find(x=>x._mk===key&&x.sender==='me');
+  if(!m)return;                                          // не наше сообщение этому человеку — не трогаем
+  const ev=m._ev||0;
+  const payload=await _idb.get(_e2eK('p:'+key+':'+ev));
+  if(!payload)return;
+  _e2eResent[key]=(_e2eResent[key]||0)+1;
+  delete _e2eDevCache[pid];                              // свежий список устройств собеседника
+  if(dev!=null)await _e2eSetSessions(_e2eAddr(pid,dev),[]);   // сбитую сессию — заново через X3DH
+  const sealed=await _e2eSeal(pid,payload).catch(()=>null);
+  if(!sealed)return;
+  const nev=ev+1;
+  await _idb.put(_e2eK('p:'+key+':'+nev),payload);
+  m._ev=nev;
+  _hubSend({t:'ml_patch',chat:pid,key,patch:{e:sealed.self,ev:nev},patchPeer:{e:sealed.peer,ev:nev}});
 }
 
 // ── Отправка ──

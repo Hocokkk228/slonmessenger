@@ -357,6 +357,8 @@ function _mlOnChange(key,r){
   const m=hist.find(x=>x.id===r.id);if(!m)return;
   // зашифрованная правка: расшифровываем новую версию
   if(r.e&&!r.del&&!r.gone&&(r.ev||0)>(m._ev||0)&&typeof _e2eOpen==='function'){
+    // заглушка «Зашифрованное сообщение» — отправитель перешифровал: собираем сообщение заново
+    if(m._e2eWait&&typeof _e2eRetry==='function'){_e2eWaiting[key]={...r,chat};_e2eRetry(key);return;}
     _e2eOpen(key,r).then(p=>{if(p&&p.text!=null){m._ev=r.ev;_mlOnChange(key,{id:r.id,chat,text:p.text});}});
     return;
   }
