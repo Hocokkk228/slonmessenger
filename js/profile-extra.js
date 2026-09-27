@@ -123,14 +123,102 @@ function _pxBtns(){
     b.innerHTML=on?'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>':'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
   });
 }
-// текст песни (LRCLIB — открытая база, без ключа)
+// ════════ Текст песни — режим караоке ════════
+// Синхронные строки из LRCLIB ([мм:сс.xx] строка). Текущая строка выделена цветом и заливается
+// по ходу пения, уже спетые — светлые, будущие — приглушены; окно само прокручивается.
+// Нажатие на строку — перемотка. Синхронизация — только у полных треков (свой файл):
+// у 30-секундных отрывков неизвестно, с какого места песни они вырезаны.
+function _lrcParse(s){
+  const out=[];
+  for(const line of String(s||'').split('\n')){
+    const tags=[...line.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];if(!tags.length)continue;
+    const text=line.replace(/\[[^\]]*\]/g,'').trim();
+    for(const m of tags)out.push({t:+m[1]*60+ +m[2],text});
+  }
+  out.sort((a,b)=>a.t-b.t);
+  return out;
+}
+let _kr=null;      // {tr, lines, synced, raf, idx}
 async function _pxLyrics(tr){
-  _pxSheet(`<div class="px-lyr-hd">${tr.cover?`<img src="${esc(tr.cover)}" alt="">`:''}<div><b>${esc(tr.title)}</b><span>${esc(tr.artist)}</span></div></div><div class="px-lyr" id="pxLyr">Ищем текст…</div>`);
+  if(!tr)return;
+  _pxKaraClose(true);
+  const w=document.createElement('div');w.id='pxKara';w.className='px-kara';
+  w.innerHTML=`<div class="px-kara-bg"${tr.cover?` style="background-image:url('${esc(tr.cover)}')"`:''}></div>
+    <div class="px-kara-hd">${tr.cover?`<img src="${esc(tr.cover)}" alt="">`:''}<div class="px-kara-tt"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}</span></div>
+      <button class="px-kara-x" onclick="_pxKaraClose()" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>
+    <div class="px-kara-body" id="pxKaraBody"><div class="px-kara-msg">Ищем текст…</div></div>
+    <div class="px-kara-bar">
+      <div class="px-kara-ctl">
+        <button onclick="_pxKaraSeek(-10)" title="Назад 10 с"><svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg></button>
+        <button class="px-kara-pp" id="pxKaraPP" onclick="_pxKaraToggle()"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+        <button onclick="_pxKaraSeek(10)" title="Вперёд 10 с"><svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg></button>
+      </div>
+      <div class="px-kara-prog"><span id="pxKaraT">0:00</span><input type="range" id="pxKaraR" min="0" max="1000" value="0" oninput="_pxKaraScrub(this.value)"><span id="pxKaraD">0:00</span></div>
+      <div class="px-kara-note" id="pxKaraNote"></div>
+    </div>`;
+  document.body.appendChild(w);requestAnimationFrame(()=>w.classList.add('show'));
+  document.addEventListener('keydown',_pxKaraKey);
+  const full=tr.src==='file';
+  _kr={tr,lines:[],synced:false,raf:0,idx:-2,full};
+  $('pxKaraNote').textContent=full?'':'Отрывок 30 секунд — строки не синхронизируются';
   try{
     const r=await fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+'&artist_name='+encodeURIComponent(tr.artist));
-    const j=await r.json();const hit=(j||[]).find(x=>x.plainLyrics)||null;
-    const el=$('pxLyr');if(el)el.textContent=hit?hit.plainLyrics:'Текст не найден';
-  }catch(e){const el=$('pxLyr');if(el)el.textContent='Не удалось загрузить текст';}
+    const j=await r.json();
+    const hit=(j||[]).find(x=>x.syncedLyrics)||(j||[]).find(x=>x.plainLyrics)||null;
+    if(!_kr||_kr.tr!==tr)return;
+    const body=$('pxKaraBody');if(!body)return;
+    if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
+    else if(hit.syncedLyrics){
+      _kr.lines=_lrcParse(hit.syncedLyrics);_kr.synced=full;
+      body.innerHTML='<div class="px-kara-pad"></div>'+_kr.lines.map((l,i)=>`<div class="px-kl${l.text?'':' gap'}" data-i="${i}" onclick="_pxKaraLine(${i})">${l.text?esc(l.text):'♪'}</div>`).join('')+'<div class="px-kara-pad"></div>';
+    }else{
+      body.innerHTML='<div class="px-kara-pad s"></div>'+String(hit.plainLyrics).split('\n').map(l=>`<div class="px-kl plain">${esc(l)||'&nbsp;'}</div>`).join('')+'<div class="px-kara-pad s"></div>';
+    }
+  }catch(e){const b=$('pxKaraBody');if(b)b.innerHTML='<div class="px-kara-msg">Не удалось загрузить текст</div>';}
+  _kr.raf=requestAnimationFrame(_pxKaraTick);
+}
+function _pxKaraAudioIs(){return _kr&&_pxAudio&&String(_pxAudioId)===String(_kr.tr.id);}
+function _pxKaraTick(){
+  if(!_kr)return;
+  _kr.raf=requestAnimationFrame(_pxKaraTick);
+  const a=_pxKaraAudioIs()?_pxAudio:null;
+  const t=a?a.currentTime:0,d=a&&isFinite(a.duration)?a.duration:(_kr.tr.dur||0);
+  const pp=$('pxKaraPP');if(pp){const on=a&&!a.paused;if(pp.dataset.on!==String(!!on)){pp.dataset.on=String(!!on);pp.innerHTML=on?'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>':'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';}}
+  const r=$('pxKaraR');if(r&&!r.matches(':active'))r.value=d?Math.round(t/d*1000):0;
+  const tt=$('pxKaraT');if(tt)tt.textContent=_rcFmt(t*1000);const dd=$('pxKaraD');if(dd)dd.textContent=_rcFmt(d*1000);
+  if(!_kr.synced||!_kr.lines.length)return;
+  const L=_kr.lines;let i=-1;
+  for(let k=0;k<L.length;k++){if(L[k].t<=t)i=k;else break;}
+  const body=$('pxKaraBody');if(!body)return;
+  if(i!==_kr.idx){
+    _kr.idx=i;
+    body.querySelectorAll('.px-kl').forEach(el=>{const n=+el.dataset.i;el.classList.toggle('past',n<i);el.classList.toggle('cur',n===i);});
+    const cur=body.querySelector('.px-kl.cur');
+    if(cur&&!body.matches(':hover'))body.scrollTo({top:cur.offsetTop-body.clientHeight*0.38,behavior:'smooth'});
+  }
+  // заливка текущей строки — доля времени до следующей
+  if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur){const nx=(L[i+1]?.t)??(L[i].t+4);const p=Math.max(0,Math.min(1,(t-L[i].t)/Math.max(.3,nx-L[i].t)));cur.style.setProperty('--kp',(p*100).toFixed(1)+'%');}}
+}
+async function _pxKaraToggle(){
+  if(!_kr)return;
+  if(_pxKaraAudioIs()&&!_pxAudio.paused){_pxAudio.pause();return;}
+  if(_pxKaraAudioIs()&&_pxAudio.paused&&_pxAudio.src){try{await _pxAudio.play();}catch(e){}return;}
+  await _pxPlay(_kr.tr,null);
+}
+function _pxKaraSeek(ds){if(_pxKaraAudioIs()&&_kr.full){_pxAudio.currentTime=Math.max(0,_pxAudio.currentTime+ds);_kr.idx=-2;}}
+function _pxKaraScrub(v){if(_pxKaraAudioIs()&&isFinite(_pxAudio.duration)){_pxAudio.currentTime=v/1000*_pxAudio.duration;_kr.idx=-2;}}
+async function _pxKaraLine(i){
+  if(!_kr||!_kr.synced)return;
+  if(!_pxKaraAudioIs()||!_pxAudio.src)await _pxPlay(_kr.tr,null);
+  if(_pxKaraAudioIs()){_pxAudio.currentTime=_kr.lines[i].t;_kr.idx=-2;if(_pxAudio.paused)try{await _pxAudio.play();}catch(e){}}
+}
+function _pxKaraKey(e){if(e.key==='Escape')_pxKaraClose();else if(e.key===' '&&_kr&&!/INPUT|TEXTAREA/.test(document.activeElement?.tagName||'')){e.preventDefault();_pxKaraToggle();}}
+function _pxKaraClose(instant){
+  document.removeEventListener('keydown',_pxKaraKey);
+  if(_kr){cancelAnimationFrame(_kr.raf);_kr=null;}
+  const w=$('pxKara');if(!w)return;
+  if(instant){w.remove();return;}
+  w.classList.remove('show');setTimeout(()=>w.remove(),250);
 }
 function _pxSheet(html){
   document.getElementById('pxSheet')?.remove();
