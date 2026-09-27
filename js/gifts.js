@@ -23,7 +23,7 @@ function _giftSvg(id,cls){
   const src=GIFT_IMG[id];if(!src)return '';
   return `<svg class="gift-svg gp${cls?' '+cls:''}" viewBox="0 0 120 120" aria-hidden="true">
     <ellipse class="gp-shadow" cx="60" cy="111" rx="34" ry="5" fill="#000" opacity=".25"/>
-    <g class="gp-all"><g class="gp-wob"><image href="${src}" x="8" y="6" width="104" height="101" preserveAspectRatio="xMidYMid meet"/></g></g>
+    <g class="gp-all"><g class="gp-wob"><image href="${src}" x="14" y="12" width="92" height="89" preserveAspectRatio="xMidYMid meet"/></g></g>
     <g class="gp-hearts"><path class="gp-h a" d="M16,30c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff7aa2"/><path class="gp-h b" d="M104,22c-2-3-6-1-4,2l4,4 4-4c2-3-2-5-4-2z" fill="#ff9ab8"/></g>
   </svg>`;
 }

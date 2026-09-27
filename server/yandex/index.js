@@ -709,7 +709,8 @@ const routes = {
     const to = String(d.to || '').toLowerCase(), g = GIFTS[d.gift];
     if (!validUser(to) || to === u) return E('bad', 'Неверный получатель');
     if (!g) return E('bad', 'Такого подарка нет');
-    if (!(await getUser(to)) && !(await fbGet('auth/' + to))) return E('not_found', 'Пользователь не найден', 404);
+    // получатель: аккаунт на сервере, старый аккаунт Firebase или хотя бы опубликованный профиль
+    if (!(await getUser(to)) && !(await fbGet('auth/' + to)) && !(await fbGet('profiles/' + to + '/username'))) return E('not_found', 'Пользователь не найден', 404);
     const text = String(d.text || '').slice(0, 200);
     const w = await one('SELECT bal FROM wallet WHERE u=$u;', { u });
     const bal = w?.bal || 0;
