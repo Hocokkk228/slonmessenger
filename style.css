@@ -2832,7 +2832,7 @@ video.mv-media{cursor:default;}
 
 /* ════════ Эффект профиля (по краям окна) ════════ */
 .pfx{position:absolute;inset:0;pointer-events:none;z-index:60;overflow:hidden;border-radius:inherit;}
-.pfx svg path{fill:none;vector-effect:non-scaling-stroke;}
+.pfx-web svg path{fill:none;vector-effect:non-scaling-stroke;}
 .pfx-web .fx-web-c{position:absolute;top:0;width:min(34%,150px);height:auto;aspect-ratio:1;}
 .pfx-web .fx-web-c.l{left:0;}.pfx-web .fx-web-c.r{right:0;transform:scaleX(-1);}
 .pfx-web .fx-web-side{position:absolute;top:120px;bottom:30px;width:14px;height:auto;}
@@ -3048,3 +3048,47 @@ video.mv-media{cursor:default;}
 @media (min-width:900px){.px-kara-art{display:block}}
 .px-kl{font-size:clamp(28px,3.6vw,54px)!important;padding:12px 0;}
 .px-kl.plain{font-size:clamp(24px,2.8vw,40px)!important;}
+
+/* ════════ Косметика 2 ════════ */
+/* чернильный взрыв: пульсирует рывками, как в комиксе */
+.avf-ink{filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
+.avf-ink .ink-g{transform-box:view-box;transform-origin:50px 50px;animation:inkPulse 1.6s steps(4) infinite;}
+@keyframes inkPulse{0%,100%{transform:scale(1) rotate(0)}25%{transform:scale(1.035) rotate(1.2deg)}50%{transform:scale(.99) rotate(-.8deg)}75%{transform:scale(1.02) rotate(.5deg)}}
+/* облака и луна */
+.avf-cm{filter:drop-shadow(0 0 6px rgba(150,190,255,.7));}
+.avf-cm .cm-cloud{animation:cmDrift 6s ease-in-out infinite;}
+.avf-cm .cm-cloud.b{animation-duration:7.5s;animation-direction:reverse;}
+.avf-cm .cm-cloud.c{animation-duration:9s;}
+@keyframes cmDrift{0%,100%{translate:0 0}50%{translate:3px -1px}}
+.avf-cm .cm-star,.avf-bb .bb-star{transform-box:fill-box;transform-origin:center;animation:cmTw 2.4s ease-in-out infinite;}
+@keyframes cmTw{0%,100%{opacity:.25;scale:.6}50%{opacity:1;scale:1.1}}
+.avf-cm .cm-moon{filter:drop-shadow(0 0 4px #fff3b0);}
+/* пузырь */
+.avf-bb{filter:drop-shadow(0 0 8px rgba(60,170,255,.55));}
+.avf-bb .bb-swirl{transform-box:view-box;transform-origin:50px 50px;animation:bbSpin 7s linear infinite;}
+@keyframes bbSpin{to{transform:rotate(360deg)}}
+/* симбиот — эффект профиля, 15 кадров в секунду */
+.pfx-symbiote .sym-svg{position:absolute;right:0;top:0;width:100%;height:260px;overflow:visible;}
+.pfx-symbiote .sym{animation:symMove 7s steps(105) infinite;transform-box:view-box;transform-origin:230px 90px;}
+.pfx-symbiote .sym-jaw{transform-box:view-box;transform-origin:206px 104px;animation:symJaw 7s steps(105) infinite;}
+.pfx-symbiote .sym-tongue{transform-box:view-box;transform-origin:112px 110px;animation:symTongue 7s steps(105) infinite;}
+.pfx-symbiote .sym-throat{animation:symThroat 7s steps(105) infinite;}
+.pfx-symbiote .sym-head{animation:symShake 7s steps(105) infinite;}
+.pfx-symbiote .sym-trail{stroke-dasharray:260;stroke-dashoffset:260;animation:symTrail 7s steps(105) infinite;}
+@keyframes symMove{0%{transform:translate(170px,10px) scale(.55,.8);opacity:0}6%{opacity:1}14%{transform:translate(20px,0) scale(1.06,.95)}18%,62%{transform:translate(0,0) scale(1)}
+  70%{transform:translate(-40px,-26px) scale(.82,1.12) skewX(-12deg)}80%{transform:translate(-120px,-78px) scale(.45,1.3) skewX(-26deg);opacity:.9}
+  90%{transform:translate(-190px,-120px) scale(.12,.6) skewX(-30deg);opacity:0}100%{opacity:0;transform:translate(-190px,-120px) scale(.1)}}
+@keyframes symJaw{0%,20%{transform:rotate(0)}28%{transform:rotate(-26deg)}34%,54%{transform:rotate(-34deg)}60%,100%{transform:rotate(0)}}
+@keyframes symTongue{0%,27%{transform:scaleX(0)}36%{transform:scaleX(1.05)}40%{transform:scaleX(.92) skewY(4deg)}44%{transform:scaleX(1.08) skewY(-4deg)}48%{transform:scaleX(.96) skewY(3deg)}53%{transform:scaleX(1)}58%,100%{transform:scaleX(0)}}
+@keyframes symThroat{0%,24%{opacity:0}30%,56%{opacity:1}60%,100%{opacity:0}}
+@keyframes symShake{0%,34%{transform:translate(0,0)}36%{transform:translate(-2px,1px)}38%{transform:translate(2px,-1px)}40%{transform:translate(-2px,-1px)}42%{transform:translate(1px,2px)}44%{transform:translate(-1px,-2px)}46%{transform:translate(2px,1px)}48%{transform:translate(-2px,1px)}50%,100%{transform:translate(0,0)}}
+@keyframes symTrail{0%,64%{stroke-dashoffset:260;opacity:1}84%{stroke-dashoffset:0;opacity:1}96%,100%{stroke-dashoffset:0;opacity:0}}
+/* симбиот — фон строки */
+.np-symbiote{background:linear-gradient(90deg,#070b1c 0%,#0d1636 55%,#142150 100%);}
+.np-symbiote .np-sym{position:absolute;right:0;top:0;width:70%;height:100%;}
+.np-symbiote .np-sym-eyes{animation:npSymBlink 4s steps(1) infinite;}
+@keyframes npSymBlink{0%,92%,100%{opacity:1}94%,97%{opacity:0}}
+.np-symbiote .np-sym-drip{animation:npSymDrip 2.6s ease-in infinite;}
+@keyframes npSymDrip{0%{transform:translateY(-10px);opacity:0}30%{opacity:1}100%{transform:translateY(8px);opacity:0}}
+.vn-sign{filter:drop-shadow(0 0 3px rgba(255,255,255,.4));}
+.np-sym-sign{filter:drop-shadow(0 0 4px rgba(255,255,255,.35));}
