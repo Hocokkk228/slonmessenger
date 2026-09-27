@@ -1,9 +1,9 @@
 {
   "android": {
-    "version": "1.6.1",
-    "size": "5,3 МБ",
+    "version": "1.6.2",
+    "size": "5,4 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Просмотр медиа, любые файлы, синхронизация звонков и уведомлений между устройствами, восстановление пароля по почте"
+    "notes": "Звук в звонках и голосовых на Android, слонкружки, надёжная доставка сообщений и звонков"
   },
   "windows": {
     "version": "1.0.0",
