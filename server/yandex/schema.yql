@@ -33,3 +33,6 @@ CREATE TABLE gifts        (to_u Utf8, id Utf8, from_u Utf8, gift Utf8, text Utf8
 CREATE TABLE wall         (owner Utf8, id Utf8, author Utf8, text Utf8, photo Utf8, ts Int64, likes Int64, PRIMARY KEY (owner, id));
 CREATE TABLE wall_likes   (owner Utf8, id Utf8, u Utf8, ts Int64, PRIMARY KEY (owner, id, u));
 CREATE TABLE wall_cfg     (owner Utf8, who Utf8, PRIMARY KEY (owner));
+-- «Моя музыка» и полный плейлист профиля
+CREATE TABLE mymusic      (u Utf8, id Utf8, title Utf8, artist Utf8, album Utf8, dur Int64, size Int64, mime Utf8, cover Int64, ts Int64, PRIMARY KEY (u, id));
+CREATE TABLE plist        (u Utf8, data Utf8, ts Int64, PRIMARY KEY (u));

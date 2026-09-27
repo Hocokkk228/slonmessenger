@@ -367,6 +367,7 @@ async function sendFcm(u, data, ttl = '3600s') {
 }
 
 // ════════ HTTP-маршруты ════════
+const MM_QUOTA = 5 * 1024 * 1024 * 1024, MM_SIZE = 60 * 1024 * 1024;
 const routes = {
   async 'POST /auth/login'(r, d) {
     const u = String(d.u || '').toLowerCase();
@@ -697,6 +698,55 @@ const routes = {
   },
   // ── Музыка профиля: свои треки. Лежат в pm/ — без автоудаления (правило 14 дней только для m/).
   // До PM_MAX треков по PM_SIZE на человека; обложка — отдельным файлом рядом.
+  // ── «Моя музыка»: личная фонотека, синхронизация между своими устройствами ──
+  // Файлы в mm/{u}/ — ключи случайные, список бакета закрыт; без автоудаления. Квота на человека MM_QUOTA.
+  async 'GET /mm/list'(r) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const rows = await q('SELECT id,title,artist,album,dur,size,mime,cover,ts FROM mymusic WHERE u=$u;', { u });
+    const base = `https://${S3_HOST}/${BUCKET}/mm/${u}/`;
+    let used = 0;
+    const tracks = rows.map(x => { used += x.size || 0; return { ...x, cover: !!x.cover, url: base + x.id, coverUrl: x.cover ? base + x.id + '.jpg' : '' }; });
+    tracks.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    return J({ ok: true, tracks, used, quota: MM_QUOTA });
+  },
+  async 'POST /mm/presign'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const size = +d.size || 0;
+    if (!(size > 0) || size > MM_SIZE) return E('too_large', 'Файл больше ' + (MM_SIZE >> 20) + ' МБ', 413);
+    if (!/^audio\//.test(String(d.mime || ''))) return E('bad', 'Нужен аудиофайл');
+    const used = await q('SELECT size FROM mymusic WHERE u=$u;', { u });
+    if (used.reduce((a, x) => a + (x.size || 0), 0) + size > MM_QUOTA) return E('quota', 'Облако заполнено (' + (MM_QUOTA >> 30) + ' ГБ) — трек останется только на этом устройстве', 409);
+    const id = rnd(20), key = 'mm/' + u + '/' + id, cv = d.cover ? 1 : 0;
+    await q('UPSERT INTO mymusic (u,id,title,artist,album,dur,size,mime,cover,ts) VALUES ($u,$i,$ti,$ar,$al,$du,$s,$m,$c,$t);', {
+      u, i: id, ti: String(d.title || '').slice(0, 200), ar: String(d.artist || '').slice(0, 200), al: String(d.album || '').slice(0, 200),
+      du: Math.round(+d.dur || 0), s: size, m: String(d.mime).slice(0, 60), c: cv, t: now() });
+    const base = `https://${S3_HOST}/${BUCKET}/${key}`;
+    return J({ ok: true, id, put: presign('PUT', key), url: base, putCover: cv ? presign('PUT', key + '.jpg') : '', coverUrl: cv ? base + '.jpg' : '' });
+  },
+  async 'POST /mm/delete'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const id = String(d.id || ''); if (!/^[A-Za-z0-9_-]{8,40}$/.test(id)) return E('bad', 'Неверный трек');
+    const x = await one('SELECT id FROM mymusic WHERE u=$u AND id=$i;', { u, i: id });
+    if (x) {
+      for (const k of ['mm/' + u + '/' + id, 'mm/' + u + '/' + id + '.jpg']) { try { await fetch(presign('DELETE', k), { method: 'DELETE' }); } catch (e) { } }
+      await q('DELETE FROM mymusic WHERE u=$u AND id=$i;', { u, i: id });
+    }
+    return J({ ok: true });
+  },
+  // полный плейлист профиля (в самом профиле — только первые 10)
+  async 'GET /plist'(r) {
+    const u = String(r.qs.get('u') || '').toLowerCase(); if (!validUser(u)) return E('bad', 'Неверный юзернейм');
+    const x = await one('SELECT data FROM plist WHERE u=$u;', { u });
+    let list = []; try { list = x ? JSON.parse(x.data) : []; } catch (e) { }
+    return J({ ok: true, list });
+  },
+  async 'POST /plist'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const list = Array.isArray(d.list) ? d.list.slice(0, 2000) : [];
+    const data = JSON.stringify(list); if (data.length > 1500000) return E('too_large', 'Плейлист слишком большой', 413);
+    await q('UPSERT INTO plist (u,data,ts) VALUES ($u,$d,$t);', { u, d: data, t: now() });
+    return J({ ok: true, n: list.length });
+  },
   // ── Стена профиля ──
   // Посты владельца (и гостей, если владелец разрешил), одна картинка (wp/, без автоудаления), лайки.
   async 'GET /wall'(r) {

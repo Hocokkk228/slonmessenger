@@ -1,0 +1,523 @@
+// ════════ «Моя музыка» — личная фонотека ════════
+// Треки лежат на устройстве (IndexedDB) и синхронизируются между своими устройствами через облако
+// (сервер: /mm/list, /mm/presign, /mm/delete; квота на человека). Другим людям файлы не раздаются:
+// в профиле гости слушают 30-секундные отрывки из каталога, полный трек можно только переслать в чате.
+const _mm={list:[],loaded:false,used:0,quota:0,q:'',queue:[],qi:-1,up:{},urls:{}};
+const _MM_ICO={
+  note:'<svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>',
+  cloud:'<svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.99 5.99 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM10 17l-3.5-3.5 1.41-1.41L10 14.17l5.18-5.18 1.41 1.41L10 17z"/></svg>',
+  cloudDl:'<svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.99 5.99 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/></svg>',
+  more:'<svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>',
+  play:'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>',
+  next:'<svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>',
+  shuffle:'<svg viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
+  plus:'<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>',
+  lyr:'<svg viewBox="0 0 24 24"><path d="M3 5h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-8v8.55A3.5 3.5 0 1 0 19 17V9h3V5h-5z"/></svg>',
+  x:'<svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
+};
+const _mmAudioRe=/\.(mp3|m4a|aac|ogg|oga|opus|flac|wav)$/i;
+const _mmSz=b=>b>=1<<30?(b/(1<<30)).toFixed(1)+' ГБ':Math.max(1,Math.round(b/(1<<20)))+' МБ';
+
+// ── IndexedDB ──
+let _mmDbP=null;
+function _mmDb(){
+  if(_mmDbP)return _mmDbP;
+  _mmDbP=new Promise((res,rej)=>{
+    const r=indexedDB.open('slon_music_'+myUsername,1);
+    r.onupgradeneeded=()=>{r.result.createObjectStore('tr',{keyPath:'id'});};
+    r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+  });
+  return _mmDbP;
+}
+async function _mmTx(mode,fn){
+  const db=await _mmDb();
+  return new Promise((res,rej)=>{const t=db.transaction('tr',mode),s=t.objectStore('tr');const r=fn(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);});
+}
+const _mmGetAll=()=>_mmTx('readonly',s=>s.getAll());
+const _mmPutRec=rec=>_mmTx('readwrite',s=>s.put(rec));
+const _mmDelRec=id=>_mmTx('readwrite',s=>s.delete(id));
+const _mmGetRec=id=>_mmTx('readonly',s=>s.get(id));
+
+// ── загрузка списка: локальные + облачные с других устройств ──
+let _mmUserLoaded=null;
+async function _mmLoad(force){
+  if(_mmUserLoaded!==myUsername){_mmDbP=null;_mm.list=[];_mm.loaded=false;_mmUserLoaded=myUsername;}
+  if(_mm.loaded&&!force)return _mm.list;
+  const local=await _mmGetAll().catch(()=>[]);
+  const byC=new Map(local.filter(r=>r.cid).map(r=>[r.cid,r]));
+  const list=local.map(r=>_mmItem(r));
+  if(typeof _apiToken==='function'&&_apiToken()){
+    try{
+      const d=await api('/mm/list');_mm.used=d.used||0;_mm.quota=d.quota||0;
+      for(const t of d.tracks||[]){
+        if(byC.has(t.id))continue;
+        list.push({id:t.id,cid:t.id,title:t.title,artist:t.artist,album:t.album,dur:t.dur,size:t.size,mime:t.mime,ts:t.ts,url:t.url,coverUrl:t.coverUrl,local:false});
+      }
+      // локальные треки, которых ещё нет в облаке — докачиваем
+      for(const it of list)if(it.local&&!it.cid&&!it.noCloud)_mmUpload(it.id);
+    }catch(e){}
+  }
+  list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  _mm.list=list;_mm.loaded=true;
+  return list;
+}
+function _mmItem(r){
+  if(r.cover&&!_mm.urls['c'+r.id])_mm.urls['c'+r.id]=URL.createObjectURL(r.cover);
+  return {id:r.id,cid:r.cid||'',title:r.title,artist:r.artist,album:r.album||'',dur:r.dur||0,size:r.size||0,mime:r.mime,ts:r.ts,
+    coverUrl:_mm.urls['c'+r.id]||r.coverUrl||'',url:r.url||'',local:!!r.audio,noCloud:!!r.noCloud};
+}
+const _mmFind=id=>_mm.list.find(x=>x.id===id||x.cid===id);
+
+// ── добавление файлов ──
+function _mmPick(){
+  const i=document.createElement('input');i.type='file';i.multiple=true;i.accept='audio/*,.mp3,.m4a,.ogg,.flac,.wav,.opus';
+  i.onchange=async()=>{const fs=[...(i.files||[])];if(!fs.length)return;
+    let n=0;for(const f of fs){_mmSay('Добавляем '+(++n)+' из '+fs.length+'…');try{await _mmAddBlob(f,f.name);}catch(e){toast(f.name+': '+(e.message||'не удалось'));}}
+    _mmSay('');toast(fs.length===1?'Трек добавлен':'Добавлено треков: '+fs.length);};
+  i.click();
+}
+async function _mmAddBlob(blob,name){
+  const mime=blob.type&&blob.type.startsWith('audio/')?blob.type:(/\.m4a$/i.test(name)?'audio/mp4':/\.ogg|\.oga|\.opus$/i.test(name)?'audio/ogg':/\.flac$/i.test(name)?'audio/flac':/\.wav$/i.test(name)?'audio/wav':'audio/mpeg');
+  const tags=_id3Read(await blob.slice(0,Math.min(blob.size,2*1024*1024)).arrayBuffer());
+  const base=String(name||'').replace(/\.[^.]+$/,''),m=base.split(/\s+[-–—]\s+/);
+  const title=(tags.title||(m[1]||base)||'Без названия').slice(0,200),artist=(tags.artist||(m[1]?m[0]:'')).slice(0,200);
+  const dup=_mm.list.find(x=>x.title===title&&x.artist===artist&&Math.abs((x.size||0)-blob.size)<1024);
+  if(dup)return dup;
+  const cover=tags.cover?await _pxCoverJpeg(tags.cover):null;
+  const audio=blob.type===mime?blob:new Blob([blob],{type:mime});
+  const rec={id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),cid:'',title,artist,album:tags.album||'',dur:await _pxDur(audio),size:audio.size,mime,cover,audio,ts:Date.now()};
+  await _mmPutRec(rec);
+  await _mmLoad();
+  const it=_mmItem(rec);_mm.list=[it,..._mm.list.filter(x=>x.id!==it.id)];
+  _mmPaint();_mmUpload(rec.id);
+  return it;
+}
+
+// ── облако ──
+async function _mmUpload(id){
+  if(_mm.up[id]!=null||typeof _apiToken!=='function'||!_apiToken())return;
+  const rec=await _mmGetRec(id).catch(()=>null);if(!rec||rec.cid||!rec.audio)return;
+  _mm.up[id]=0;_mmPaint();
+  try{
+    const d=await api('/mm/presign',{size:rec.size,mime:rec.mime,title:rec.title,artist:rec.artist,album:rec.album,dur:rec.dur,cover:!!rec.cover});
+    await _pxPut(d.put,rec.audio,p=>{_mm.up[id]=p;_mmRowUp(id);});
+    if(rec.cover&&d.putCover){try{await _pxPut(d.putCover,rec.cover);}catch(e){}}
+    rec.cid=d.id;await _mmPutRec(rec);
+    const it=_mmFind(id);if(it)it.cid=d.id;_mm.used+=rec.size;
+  }catch(e){
+    if(e.code==='quota'){rec.noCloud=true;await _mmPutRec(rec);const it=_mmFind(id);if(it)it.noCloud=true;toast(e.message);}
+  }
+  delete _mm.up[id];_mmPaint();
+}
+// ссылка для воспроизведения: с устройства, иначе из облака (и сохраняем на устройство)
+async function _mmSrc(it){
+  const rec=await _mmGetRec(it.id).catch(()=>null);
+  if(rec&&rec.audio){if(!_mm.urls['a'+it.id])_mm.urls['a'+it.id]=URL.createObjectURL(rec.audio);return _mm.urls['a'+it.id];}
+  if(it.url){_mmCache(it);return it.url;}
+  throw new Error('Трека нет ни на устройстве, ни в облаке');
+}
+const _mmCaching=new Set();
+async function _mmCache(it){
+  if(_mmCaching.has(it.id))return;_mmCaching.add(it.id);
+  try{
+    const b=await (await fetch(it.url)).blob();
+    let cover=null;if(it.coverUrl){try{cover=await (await fetch(it.coverUrl)).blob();}catch(e){}}
+    await _mmPutRec({id:it.id,cid:it.cid,title:it.title,artist:it.artist,album:it.album,dur:it.dur,size:b.size,mime:it.mime||b.type,cover,audio:new Blob([b],{type:it.mime||b.type}),ts:it.ts});
+    it.local=true;_mmPaint();
+  }catch(e){}
+  _mmCaching.delete(it.id);
+}
+
+// ── воспроизведение (через общий плеер профиля — работает караоке) ──
+const _mmTr=it=>({id:'mm_'+it.id,src:'file',url:'',title:it.title,artist:it.artist,cover:it.coverUrl||'',dur:it.dur,mm:it.id});
+async function _mmPlay(id,list){
+  const it=_mmFind(id);if(!it)return;
+  if(list){_mm.queue=list;_mm.qi=list.indexOf(id);}
+  else if(!_mm.queue.includes(id)){_mm.queue=_mmFiltered().map(x=>x.id);_mm.qi=_mm.queue.indexOf(id);}
+  else _mm.qi=_mm.queue.indexOf(id);
+  if(_pxAudio&&_pxAudioId==='mm_'+id){if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();return;}
+  try{const tr=_mmTr(it);tr.url=await _mmSrc(it);_mm.cur=tr;await _pxPlay(tr,null);_mmHook();}
+  catch(e){toast(e.message||'Не удалось включить');}
+  _mmBar();_mmPaint();
+}
+function _mmToggle(){if(!_pxAudio||!_mm.cur)return;if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();}
+function _mmStep(d){
+  if(!_mm.queue.length)return;
+  if(d<0&&_pxAudio&&_pxAudio.currentTime>4){_pxAudio.currentTime=0;return;}
+  const i=_mm.qi+d;if(i<0||i>=_mm.queue.length){if(d>0){_pxAudio?.pause();}return;}
+  _mmPlay(_mm.queue[i],_mm.queue);
+}
+function _mmShuffle(){const ids=_mmFiltered().map(x=>x.id);for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}if(ids.length)_mmPlay(ids[0],ids);}
+let _mmHooked=null;
+function _mmHook(){
+  if(!_pxAudio||_mmHooked===_pxAudio)return;_mmHooked=_pxAudio;
+  _pxAudio.addEventListener('ended',()=>{if(String(_pxAudioId).startsWith('mm_'))_mmStep(1);});
+  ['play','pause','ended'].forEach(ev=>_pxAudio.addEventListener(ev,()=>{_mmBar();_mmPaintPlay();}));
+  _pxAudio.addEventListener('timeupdate',_mmBarProg);
+  if('mediaSession' in navigator){
+    try{navigator.mediaSession.setActionHandler('nexttrack',()=>_mmStep(1));navigator.mediaSession.setActionHandler('previoustrack',()=>_mmStep(-1));}catch(e){}
+  }
+}
+function _mmMediaSession(tr){
+  if(!('mediaSession' in navigator)||!tr)return;
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:tr.title||'',artist:tr.artist||'',artwork:tr.cover?[{src:tr.cover,sizes:'300x300',type:'image/jpeg'}]:[]});}catch(e){}
+}
+// ════════ «Остров» сверху — плеер для всего, что играет (моя музыка, трек из чата, профиль) ════════
+// Свёрнут: пилюля с обложкой, названием и «эквалайзером». Нажатие — раскрывается: обложка, название,
+// полоса с точкой (перемотка), назад / пауза / вперёд, текст песни.
+let _islTr=null,_islOpen=false;
+{const f=_pxPlay;_pxPlay=async function(tr){const r=await f.apply(this,arguments);if(tr&&_pxAudio&&String(_pxAudioId)===String(tr.id)){_islTr=tr;_mmHook();_isl();}return r;};}
+const _islQueue=()=>_mm.cur&&_islTr&&_islTr.id===_mm.cur.id&&_mm.queue.length>1;
+function _isl(){
+  const on=_islTr&&_pxAudio&&String(_pxAudioId)===String(_islTr.id)&&(!_pxAudio.paused||_pxAudio.currentTime>0);
+  let w=$('slIsl');
+  if(!on){if(w){w.classList.add('bye');setTimeout(()=>w.remove(),250);}return;}
+  if(!w){w=document.createElement('div');w.id='slIsl';w.className='sl-isl';w.onclick=e=>{if(!_islOpen&&!e.target.closest('button,input')){_islOpen=true;_isl();}};document.body.appendChild(w);
+    document.addEventListener('pointerdown',_islOutside,true);}
+  w.classList.remove('bye');
+  const t=_islTr,pl=!_pxAudio.paused,q=_islQueue(),key=[t.id,pl,_islOpen,q].join('|');
+  w.classList.toggle('open',_islOpen);w.classList.toggle('playing',pl);
+  if(w.dataset.k!==key){
+    w.dataset.k=key;
+    const cv=t.cover?`<img src="${esc(t.cover)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`;
+    w.innerHTML=_islOpen?`<div class="isl-top">${cv}<div class="isl-t"><b>${esc(t.title||'')}</b><span>${esc(t.artist||'')}</span></div>
+        <button class="isl-ly" onclick="_pxLyrics(_islTr)" title="Текст">${_MM_ICO.lyr}</button></div>
+      <div class="isl-prog"><span id="islT">0:00</span><input type="range" id="islR" min="0" max="1000" value="0" oninput="_islSeek(this.value)"><span id="islD">0:00</span></div>
+      <div class="isl-ctl"><button onclick="_islStep(-1)"${q?'':' class="dim"'}>${_MM_ICO.prev}</button>
+        <button class="isl-pp" onclick="_islToggle()">${pl?_MM_ICO.pause:_MM_ICO.play}</button>
+        <button onclick="_islStep(1)"${q?'':' class="dim"'}>${_MM_ICO.next}</button></div>
+      <button class="isl-x" onclick="_islClose()" title="Остановить">${_MM_ICO.x}</button>`
+    :`${cv}<div class="isl-mt">${esc(t.title||'')}</div><span class="isl-eq"><i></i><i></i><i></i><i></i></span>`;
+    _mmMediaSession(t);
+  }
+  _islProg();
+}
+function _islProg(){
+  if(!_pxAudio)return;const d=_pxAudio.duration,t=_pxAudio.currentTime;
+  const r=$('islR');if(r&&!r.matches(':active')&&isFinite(d)&&d)r.value=Math.round(t/d*1000);
+  const a=$('islT');if(a)a.textContent=_rcFmt(t*1000);const b=$('islD');if(b)b.textContent=isFinite(d)?_rcFmt(d*1000):'';
+  const r2=$('islR');if(r2)r2.style.setProperty('--p',(r2.value/10)+'%');
+}
+function _islSeek(v){if(_pxAudio&&isFinite(_pxAudio.duration)){_pxAudio.currentTime=v/1000*_pxAudio.duration;_islProg();}}
+function _islToggle(){if(!_pxAudio)return;if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();}
+function _islStep(d){if(_islQueue())_mmStep(d);else if(_pxAudio){_pxAudio.currentTime=d<0?0:(_pxAudio.duration||0);}}
+function _islOutside(e){if(_islOpen&&!e.target.closest('#slIsl,#pxKara')){_islOpen=false;_isl();}}
+function _islClose(){_islOpen=false;_pxAudio?.pause();try{_pxAudio.currentTime=0;}catch(e){}_islTr=null;_mm.cur=null;_isl();_mmPaintPlay();_pxBtns();}
+function _mmBar(){_isl();}
+function _mmBarProg(){_islProg();}
+function _mmStop(){_islClose();}
+
+// ── страница «Моя музыка» в настройках ──
+{const f=_spRender;_spRender=function(){
+  const r=f.apply(this,arguments);
+  try{
+    const body=$('spBody'),wal=body?.querySelector('.wal-row');
+    if(body&&!body.querySelector('.mm-row')){
+      const row=`<div class="sp-row mm-row" onclick="_spMusic()"><div class="sp-ico mm-row-ico">${_MM_ICO.note}</div>
+        <div class="sp-row-txt"><div class="sp-row-title">Моя музыка</div></div><div class="sp-row-val mm-row-n"></div></div>`;
+      if(wal)wal.insertAdjacentHTML('afterend',row);else body.querySelector('.sp-card')?.insertAdjacentHTML('afterend',`<div class="sp-card">${row}</div>`);
+      _mmLoad().then(l=>{const n=body.querySelector('.mm-row-n');if(n)n.textContent=l.length||'';}).catch(()=>{});
+    }
+  }catch(e){console.warn('[mm] sp',e);}
+  return r;
+};}
+function _spMusic(){
+  const page=_spPush('Моя музыка',`<div class="mm-page">
+    <div class="mm-top">
+      <button class="wal-btn" onclick="_mmPick()">${_MM_ICO.plus} Добавить треки</button>
+      <button class="mm-ib" onclick="_mmShuffle()" title="Перемешать">${_MM_ICO.shuffle}</button>
+    </div>
+    <div class="mm-say" id="mmSay" style="display:none"></div>
+    <input class="lm-inp mm-q" id="mmQ" placeholder="Поиск по моей музыке" oninput="_mm.q=this.value;_mmPaint()">
+    <div class="mm-cloud" id="mmCloud"></div>
+    <div class="sp-card mm-list" id="mmList"><div class="px-empty">Загрузка…</div></div>
+    <div class="sp-hint">Треки хранятся на устройстве и в твоём облаке — появятся на всех твоих устройствах. Другие люди их не видят: в профиле для гостей играет отрывок из каталога, а полный трек можно переслать другу в чате.</div>
+  </div>`);
+  _mm.q='';
+  _mmLoad(true).then(_mmPaint).catch(e=>{const l=$('mmList');if(l)l.innerHTML='<div class="px-empty">Не удалось открыть фонотеку</div>';});
+  return page;
+}
+function _mmSay(t){const e=$('mmSay');if(e){e.textContent=t;e.style.display=t?'':'none';}}
+function _mmFiltered(){
+  const q=_mm.q.trim().toLowerCase();
+  return q?_mm.list.filter(x=>(x.title+' '+x.artist+' '+x.album).toLowerCase().includes(q)):_mm.list;
+}
+function _mmStatus(it){
+  if(_mm.up[it.id]!=null)return `<span class="mm-st up" title="Загружается в облако">${_mm.up[it.id]}%</span>`;
+  if(it.local&&it.cid)return `<span class="mm-st ok" title="На устройстве и в облаке">${_MM_ICO.cloud}</span>`;
+  if(!it.local)return `<span class="mm-st cl" title="В облаке — скачается при прослушивании">${_MM_ICO.cloudDl}</span>`;
+  return `<span class="mm-st lo" title="${it.noCloud?'Облако заполнено — только на этом устройстве':'Только на этом устройстве'}">${_MM_ICO.phone}</span>`;
+}
+function _mmPaint(){
+  const box=$('mmList');if(!box)return;
+  const l=_mmFiltered();
+  const c=$('mmCloud');
+  if(c)c.innerHTML=_mm.list.length?`<span>${_mm.list.length} ${_mmPlural(_mm.list.length)}</span>`+(_mm.quota?`<span>Облако: ${_mmSz(_mm.used)} из ${_mmSz(_mm.quota)}</span><div class="mm-cloud-bar"><i style="width:${Math.min(100,_mm.used/_mm.quota*100).toFixed(1)}%"></i></div>`:''):'';
+  box.innerHTML=l.length?l.map(it=>`<div class="mm-tr${_pxAudioId==='mm_'+it.id?' cur':''}" data-mm="${esc(it.id)}" onclick="_mmPlay('${esc(it.id)}')">
+      ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="" loading="lazy">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
+      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist||'Неизвестный исполнитель')}${it.dur?' · '+_rcFmt(it.dur*1000):''}</span></div>
+      ${_mmStatus(it)}
+      <button class="px-mini" onclick="event.stopPropagation();_mmMenu('${esc(it.id)}')" title="Ещё">${_MM_ICO.more}</button></div>`).join('')
+    :`<div class="px-empty">${_mm.list.length?'Ничего не нашли':'Здесь пока пусто. Добавь свои mp3 — они будут на всех твоих устройствах.'}</div>`;
+  _mmPaintPlay();
+}
+function _mmRowUp(id){const s=document.querySelector(`.mm-tr[data-mm="${CSS.escape(id)}"] .mm-st`);if(s&&_mm.up[id]!=null)s.textContent=_mm.up[id]+'%';}
+function _mmPaintPlay(){document.querySelectorAll('.mm-tr').forEach(r=>r.classList.toggle('cur',_pxAudioId==='mm_'+r.dataset.mm&&_pxAudio&&!_pxAudio.paused));}
+const _mmPlural=n=>{const a=n%10,b=n%100;return a===1&&b!==11?'трек':a>=2&&a<=4&&(b<12||b>14)?'трека':'треков';};
+
+// ── меню трека ──
+function _mmMenu(id){
+  const it=_mmFind(id);if(!it)return;
+  _pxSheet(`<div class="mm-sh-hd">${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}<div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></div>
+    <div class="mm-acts">
+      <button onclick="_pxSheetClose();_mmLyrics('${esc(id)}')">Текст песни</button>
+      <button onclick="_pxSheetClose();_mmToProfile(['${esc(id)}'])">Добавить в плейлист профиля</button>
+      <button onclick="_mmSendPick('${esc(id)}')">Отправить в чат</button>
+      <button class="danger" onclick="_pxSheetClose();_mmDelete('${esc(id)}')">Удалить</button>
+    </div>`);
+}
+async function _mmLyrics(id){
+  const it=_mmFind(id);if(!it)return;
+  if(_mm.cur&&_mm.cur.mm===id){_pxLyrics(_mm.cur);return;}
+  const tr=_mmTr(it);try{tr.url=await _mmSrc(it);}catch(e){}
+  _pxLyrics(tr);
+}
+async function _mmDelete(id){
+  const it=_mmFind(id);if(!it)return;
+  if(!confirm(`Удалить «${it.title}» из моей музыки на всех устройствах?`))return;
+  try{
+    if(it.cid)await api('/mm/delete',{id:it.cid});
+    await _mmDelRec(it.id).catch(()=>{});
+    _mm.list=_mm.list.filter(x=>x!==it);if(it.cid)_mm.used=Math.max(0,_mm.used-(it.size||0));
+    if(_mm.cur&&_mm.cur.mm===id)_mmStop();
+    _mmPaint();
+  }catch(e){toast(e.message||'Не удалось удалить');}
+}
+
+// ── отправить трек в чат (обычным файлом — у получателя будет плеер) ──
+function _mmChats(){
+  const ids=Object.keys(chatHist||{}).filter(x=>x!=='ai'&&x!=='saved'&&!(typeof _isChannelId==='function'&&_isChannelId(x)));
+  const g=Object.keys(typeof grpHist==='object'&&grpHist?grpHist:{}).filter(x=>x.startsWith('g_'));
+  const last=id=>{const h=(id.startsWith('g_')?grpHist:chatHist)[id]||[];return h.length?h[h.length-1].ts||0:0;};
+  return ['saved',...[...ids,...g].sort((a,b)=>last(b)-last(a))];
+}
+function _mmChatName(id){if(id==='saved')return 'Избранное';if(id.startsWith('g_'))return (groups[id]||{}).name||'Группа';return peerNames[id]||('@'+id);}
+function _mmSendPick(id){
+  _pxSheet(`<div class="px-sh-t">Отправить в чат</div><div class="mm-chats">${_mmChats().slice(0,60).map(c=>`<div class="mm-chat" onclick="_mmSendTo('${esc(id)}','${esc(c)}')">
+    <span class="mm-chat-av">${c==='saved'?`<span class="av-l" style="background:var(--accent)">${_ico('star')}</span>`:c.startsWith('g_')?_avHtml(c,_mmChatName(c)):(peerAvatars[c]?`<img src="${esc(peerAvatars[c])}" alt="">`:_avHtml(c,_mmChatName(c)))}</span>
+    <b>${esc(_mmChatName(c))}</b></div>`).join('')}</div>`);
+}
+async function _mmSendTo(id,chat){
+  const it=_mmFind(id);if(!it)return;
+  _pxSheetClose();
+  try{
+    toast('Готовим трек…');
+    const rec=await _mmGetRec(it.id).catch(()=>null);
+    const blob=rec&&rec.audio?rec.audio:await (await fetch(it.url)).blob();
+    const ext=/mp4|aac/.test(it.mime||'')?'.m4a':/ogg/.test(it.mime||'')?'.ogg':/flac/.test(it.mime||'')?'.flac':/wav/.test(it.mime||'')?'.wav':'.mp3';
+    const file=new File([blob],((it.artist?it.artist+' - ':'')+it.title).replace(/[\\/:*?"<>|]+/g,'_')+ext,{type:it.mime||blob.type||'audio/mpeg'});
+    if(typeof closeMyProfilePanel==='function')closeMyProfilePanel();
+    openChat(chat);
+    setTimeout(()=>handleFile({files:[file],value:''}),350);
+  }catch(e){toast('Не удалось отправить: '+(e.message||''));}
+}
+
+// ════════ Трек в чате: плеер вместо «файла» ════════
+const _mmMeta={};   // fdid → {title,artist,cover}
+async function _mmChatMeta(fdid,name){
+  if(_mmMeta[fdid])return _mmMeta[fdid];
+  const base=String(name||'').replace(/\.[^.]+$/,''),m=base.split(/\s+[-–—]\s+/);
+  const meta={title:m[1]||base,artist:m[1]?m[0]:'',cover:''};
+  try{
+    const src=await _resolveFileSrc(fdid);
+    if(src){
+      const b=await (await fetch(src)).blob();
+      const tags=_id3Read(await b.slice(0,Math.min(b.size,2*1024*1024)).arrayBuffer());
+      if(tags.title)meta.title=tags.title;if(tags.artist)meta.artist=tags.artist;
+      if(tags.cover){const c=await _pxCoverJpeg(tags.cover);if(c)meta.cover=URL.createObjectURL(c);}
+    }
+  }catch(e){}
+  _mmMeta[fdid]=meta;return meta;
+}
+const _mmChatTr=(msg,meta)=>({id:'ct_'+msg.id,src:'file',url:'',title:meta.title,artist:meta.artist,cover:meta.cover,fdid:msg.fileDataId,name:msg.fileInfo.name});
+{const f=appendMsg;appendMsg=function(msg,container){
+  const r=f.apply(this,arguments);
+  try{
+    if(msg&&msg.fileInfo&&msg.fileDataId&&_mmAudioRe.test(msg.fileInfo.name||'')){
+      const c=container||$('msgs');
+      const bub=c&&c.querySelector(`.msg[data-msg-id="${CSS.escape(String(msg.id))}"] .file-bub`);
+      if(bub)_mmChatBub(bub,msg);
+    }
+  }catch(e){console.warn('[mm] bub',e);}
+  return r;
+};}
+function _mmChatBub(bub,msg){
+  const prog=bub.querySelector('.upload-progress');
+  bub.className='mm-cb';bub.onclick=null;
+  const id='ct_'+msg.id;
+  bub.innerHTML=`<div class="mm-cb-row"><span class="mm-cb-cv"><span class="mm-cv-none">${_MM_ICO.note}</span></span>
+      <div class="mm-cb-t"><b>${esc(String(msg.fileInfo.name).replace(/\.[^.]+$/,''))}</b><span>${esc(msg.fileInfo.size||'')}</span></div>
+      <button class="mm-cb-pp" data-trplay="${esc(id)}">${_MM_ICO.play}</button></div>
+    <div class="mm-cb-bar"><input type="range" min="0" max="1000" value="0" class="mm-cb-r"><span class="mm-cb-time">0:00</span></div>
+    <div class="mm-cb-acts"><button class="mm-cb-ly">Текст</button><button class="mm-cb-add">${_MM_ICO.plus} В мою музыку</button></div>`;
+  if(prog)bub.appendChild(prog);
+  const tr={id,src:'file',url:'',title:'',artist:'',cover:''};
+  _mmChatMeta(msg.fileDataId,msg.fileInfo.name).then(m=>{
+    Object.assign(tr,{title:m.title,artist:m.artist,cover:m.cover});
+    bub.querySelector('.mm-cb-t b').textContent=m.title;
+    bub.querySelector('.mm-cb-t span').textContent=(m.artist||'')+(m.artist&&msg.fileInfo.size?' · ':'')+(msg.fileInfo.size||'');
+    if(m.cover)bub.querySelector('.mm-cb-cv').innerHTML=`<img src="${esc(m.cover)}" alt="">`;
+  });
+  const ensure=async()=>{if(!tr.url){tr.url=await _resolveFileSrc(msg.fileDataId);if(!tr.url)throw new Error('Файл недоступен');}};
+  bub.querySelector('.mm-cb-pp').onclick=async e=>{e.stopPropagation();try{await ensure();_mm.cur=null;await _pxPlay(tr,e.currentTarget);_mmChatHook();}catch(x){toast(x.message);}};
+  bub.querySelector('.mm-cb-ly').onclick=async e=>{e.stopPropagation();try{await ensure();}catch(x){}_pxLyrics(tr);};
+  bub.querySelector('.mm-cb-add').onclick=async e=>{e.stopPropagation();const b=e.currentTarget;if(b.disabled)return;b.disabled=true;
+    try{await ensure();const blob=await (await fetch(tr.url)).blob();await _mmLoad();await _mmAddBlob(blob,msg.fileInfo.name);b.innerHTML=_MM_ICO.cloud+' В моей музыке';toast('Трек добавлен в «Мою музыку»');}
+    catch(x){b.disabled=false;toast('Не удалось добавить: '+(x.message||''));}};
+  const rg=bub.querySelector('.mm-cb-r');
+  rg.oninput=e=>{e.stopPropagation();if(_pxAudio&&_pxAudioId===id&&isFinite(_pxAudio.duration))_pxAudio.currentTime=rg.value/1000*_pxAudio.duration;};
+  rg.onclick=e=>e.stopPropagation();
+  _pxBtns();
+}
+let _mmChatHooked=null;
+function _mmChatHook(){
+  if(!_pxAudio||_mmChatHooked===_pxAudio)return;_mmChatHooked=_pxAudio;
+  _pxAudio.addEventListener('timeupdate',()=>{
+    const id=String(_pxAudioId);if(!id.startsWith('ct_'))return;
+    const b=document.querySelector(`.msg[data-msg-id="${CSS.escape(id.slice(3))}"] .mm-cb`);if(!b)return;
+    const d=_pxAudio.duration,t=_pxAudio.currentTime;
+    const rg=b.querySelector('.mm-cb-r');if(rg&&!rg.matches(':active')&&isFinite(d))rg.value=Math.round(t/d*1000);
+    const tm=b.querySelector('.mm-cb-time');if(tm)tm.textContent=_rcFmt(t*1000)+(isFinite(d)?' / '+_rcFmt(d*1000):'');
+  });
+}
+
+// ════════ Плейлист профиля: безлимит + треки из «Моей музыки» ════════
+// В профиле трек из фонотеки — это найденная в каталоге версия (гости слушают отрывок),
+// а владелец на своих устройствах слышит свой полный файл (поле lib — только в личных данных).
+const _plFull={};    // owner → полный список (если больше 10)
+function _plStrip(list){return (list||[]).map(t=>{const x={...t};delete x.lib;delete x.url2;return x;});}
+{const f=_pxPublic;_pxPublic=function(){const d=f.apply(this,arguments);const pl=_pxMe().playlist||[];d.playlist=_plStrip(d.playlist);d.track=d.track?_plStrip([d.track])[0]:null;d.pln=pl.length;return d;};}
+{const f=_pxOf;_pxOf=function(owner){
+  const d=f.apply(this,arguments)||{};
+  if(owner===myUsername){const pl=_pxMe().playlist||[];if(pl.length>10)return {...d,playlist:_plStrip(pl)};return d;}
+  return _plFull[owner]?{...d,playlist:_plFull[owner]}:d;
+};}
+{const f=_pxPlaylist;_pxPlaylist=async function(owner){
+  const p=_pxOf(owner);
+  if(owner!==myUsername&&(p.pln||0)>(p.playlist||[]).length&&!_plFull[owner]){
+    try{const d=await api('/plist?u='+encodeURIComponent(owner));if(d.list&&d.list.length)_plFull[owner]=d.list;}catch(e){}
+  }
+  return f.apply(this,arguments);
+};}
+// свой трек из фонотеки для записи профиля (по id совпадает с опубликованной)
+function _plMine(tr){
+  if(!tr)return null;
+  const own=(_pxMe().playlist||[]).find(x=>String(x.id)===String(tr.id)&&x.lib);
+  if(!own)return null;
+  const it=_mmFind(own.lib);return it||null;
+}
+{const f=_pxPlay;_pxPlay=async function(tr,btn){
+  if(tr&&!tr.url&&(tr.src==='lib'||tr.lib||_plMine(tr))){
+    const it=_plMine(tr)||(tr.lib?_mmFind(tr.lib):null);
+    if(it){try{const t2={...tr,src:'file',url:await _mmSrc(it)};return await f.call(this,t2,btn);}catch(e){}}
+    if(tr.src==='lib'){toast('Этого трека нет в каталоге — отрывок недоступен');return;}
+  }
+  return f.apply(this,arguments);
+};}
+{const f=_pxLyrics;_pxLyrics=async function(tr){
+  if(tr&&!tr.url&&tr.src!=='file'){const it=_plMine(tr);if(it){try{return await f.call(this,{...tr,src:'file',url:await _mmSrc(it)});}catch(e){}}}
+  return f.apply(this,arguments);
+};}
+// найти трек в каталоге (для отрывка гостям и обложки)
+async function _plMatch(title,artist){
+  const norm=s=>String(s||'').toLowerCase().replace(/\(.*?\)|\[.*?\]/g,'').replace(/[^a-zа-яё0-9]+/gi,' ').trim();
+  try{
+    const r=await _dzSearch((artist?artist+' ':'')+title);
+    const nt=norm(title),na=norm(String(artist).split(/,|&| x | feat/i)[0]);
+    return r.find(x=>norm(x.title)===nt&&(!na||norm(x.artist).includes(na)))||r.find(x=>norm(x.title).includes(nt)||nt.includes(norm(x.title)))||null;
+  }catch(e){return null;}
+}
+async function _mmToProfile(ids){
+  await _mmLoad();
+  const p=_pxMe();const pl=p.playlist=p.playlist||[];
+  let n=0;
+  toast('Добавляем в профиль…');
+  for(const id of ids){
+    const it=_mmFind(id);if(!it)continue;
+    const lib=it.cid||it.id;
+    if(pl.some(x=>x.lib===lib))continue;
+    const hit=await _plMatch(it.title,it.artist);
+    const ex=hit&&pl.find(x=>String(x.id)===String(hit.id));if(ex){ex.lib=lib;n++;continue;}
+    pl.push(hit?{...hit,title:it.title,artist:it.artist||hit.artist,lib}:{id:'mm'+Math.random().toString(36).slice(2,10),src:'lib',title:it.title,artist:it.artist,cover:'',dur:it.dur,lib});
+    n++;
+  }
+  p.track=pl[0]||null;
+  _pxSave(true);_plPush();
+  try{if(typeof _publishMyProfile==='function')_publishMyProfile();}catch(e){}
+  toast(n?'В плейлисте профиля: '+pl.length:'Уже в профиле');
+}
+// полный список — на сервер (в самом профиле только первые 10)
+let _plT=0;
+function _plPush(){
+  clearTimeout(_plT);
+  _plT=setTimeout(()=>{if(typeof _apiToken==='function'&&_apiToken())api('/plist',{list:_plStrip(_pxMe().playlist||[])}).catch(()=>{});},800);
+}
+{const f=_spSaveCustom;_spSaveCustom=function(){const r=f.apply(this,arguments);_plPush();return r;};}
+
+// ── в редакторе профиля: «Из моей музыки» и импорт списком ──
+{const f=_pxEditHtml;_pxEditHtml=function(){
+  return f.apply(this,arguments).replace('<button class="lm-btn primary" onclick="_pxPickFile()">Загрузить свой трек</button>',
+    '<button class="lm-btn primary" onclick="_plFromLib()">Из моей музыки</button><button class="lm-btn" onclick="_plImport()">Импорт списком</button><button class="lm-btn" onclick="_pxPickFile()">Загрузить файл</button>')
+    .replace('Первая песня видна в профиле с обложкой, остальные — в плейлисте (до 10).','Первая песня видна в профиле с обложкой, остальные — в плейлисте, без ограничения. Треки из «Моей музыки» ты слышишь целиком, гости — отрывком из каталога.');
+};}
+async function _plFromLib(){
+  const l=await _mmLoad();
+  if(!l.length){toast('В «Моей музыке» пока пусто — добавь треки в настройках');return;}
+  const have=new Set((_pxDraft?.playlist||[]).map(x=>x.lib).filter(Boolean));
+  _pxSheet(`<div class="px-sh-t">Из моей музыки</div><div class="mm-pick">${l.map(it=>`<label class="mm-tr"><input type="checkbox" value="${esc(it.id)}"${have.has(it.cid||it.id)?' checked disabled':''}>
+      ${it.coverUrl?`<img src="${esc(it.coverUrl)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`}
+      <div class="mm-tr-t"><b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div></label>`).join('')}</div>
+    <div class="mm-pick-bar"><button class="lm-btn" onclick="document.querySelectorAll('.mm-pick input:not(:disabled)').forEach(i=>i.checked=true)">Выбрать все</button>
+      <button class="lm-btn primary" onclick="_plFromLibGo()">Добавить</button></div>`);
+}
+async function _plFromLibGo(){
+  const ids=[...document.querySelectorAll('.mm-pick input:checked:not(:disabled)')].map(i=>i.value);
+  _pxSheetClose();if(!ids.length)return;
+  const d=_pxDraft;if(!d)return _mmToProfile(ids);
+  const pl=d.playlist=d.playlist||[];
+  toast('Ищем треки в каталоге…');
+  for(const id of ids){
+    const it=_mmFind(id);if(!it)continue;const lib=it.cid||it.id;let n=0;
+    const hit=await _plMatch(it.title,it.artist);
+    const ex=hit&&pl.find(x=>String(x.id)===String(hit.id));if(ex){ex.lib=lib;n++;continue;}
+    pl.push(hit?{...hit,title:it.title,artist:it.artist||hit.artist,lib}:{id:'mm'+Math.random().toString(36).slice(2,10),src:'lib',title:it.title,artist:it.artist,cover:'',dur:it.dur,lib});
+  }
+  d.track=pl[0]||null;_pxEditPaint();_pxDirty();toast('Добавлено: '+ids.length);
+}
+function _plImport(){
+  _pxSheet(`<div class="px-sh-t">Импорт списком</div>
+    <div class="mm-imp-h">Вставь список песен — по одной в строке, «Исполнитель — Название». Например, скопируй из Спотифая или Яндекс Музыки.</div>
+    <textarea class="lm-inp mm-imp" id="plImpIn" rows="8" placeholder="9mice — 2017&#10;Kai Angel — LIPSTICK"></textarea>
+    <div class="mm-imp-st" id="plImpSt"></div>
+    <button class="gift-send" id="plImpGo" onclick="_plImportGo()">Найти и добавить</button>`);
+}
+async function _plImportGo(){
+  const lines=String($('plImpIn')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,300);
+  if(!lines.length||!_pxDraft)return;
+  const btn=$('plImpGo');if(btn)btn.disabled=true;
+  const pl=_pxDraft.playlist=_pxDraft.playlist||[],miss=[];let ok=0;
+  for(let i=0;i<lines.length;i++){
+    const st=$('plImpSt');if(st)st.textContent=`Ищем ${i+1} из ${lines.length}…`;
+    const m=lines[i].replace(/^\d+[.)]\s*/,'').split(/\s+[-–—]\s+/);
+    const artist=m.length>1?m[0]:'',title=m.length>1?m.slice(1).join(' - '):m[0];
+    const hit=await _plMatch(title,artist);
+    if(hit&&!pl.some(x=>String(x.id)===String(hit.id))){pl.push(hit);ok++;}else if(!hit)miss.push(lines[i]);
+  }
+  _pxDraft.track=pl[0]||null;_pxEditPaint();_pxDirty();
+  const st=$('plImpSt');if(st)st.innerHTML=`Добавлено: ${ok}`+(miss.length?`<br>Не нашли: ${miss.slice(0,20).map(esc).join(', ')}${miss.length>20?' …':''}`:'');
+  if(btn)btn.disabled=false;
+  if(!miss.length)setTimeout(_pxSheetClose,900);
+}

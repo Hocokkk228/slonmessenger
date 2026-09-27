@@ -234,7 +234,8 @@ function _pxSheetClose(){const w=$('pxSheet');if(!w)return;w.classList.remove('s
 // ════════ Блоки профиля (свой и собеседника) ════════
 function _pxTrackPill(tr,list,owner){
   if(!tr)return '';
-  const more=(list||[]).length>1?`<button class="px-pl-more" onclick="event.stopPropagation();_pxPlaylist('${owner}')">${list.length} в плейлисте</button>`:'';
+  const n=Math.max((list||[]).length,_pxOf(owner).pln||0);
+  const more=n>1?`<button class="px-pl-more" onclick="event.stopPropagation();_pxPlaylist('${owner}')">${n} в плейлисте</button>`:'';
   return `<div class="px-track" onclick="_pxLyrics(_pxTr('${owner}'))" title="Текст песни">
     ${tr.cover?`<img class="px-cover" src="${esc(tr.cover)}" alt="">`:'<span class="px-cover px-cover-none"></span>'}
     <div class="px-tr-t"><b>${esc(tr.title)}</b><span>${esc(tr.artist)}${_pxSrcTag(tr)}</span></div>${more}${_pxCanDl(tr)?`<button class="px-dl" title="Скачать" onclick="event.stopPropagation();_pxDownload(_pxTr('${owner}'))">${_PX_DL}</button>`:''}
@@ -402,7 +403,6 @@ async function _pxSearch(){
 function _pxAdd(i){
   const t=_pxRes[i];if(!t)return;
   const pl=_pxDraft.playlist=(_pxDraft.playlist||[]).filter(x=>x.id!==t.id);
-  if(pl.length>=10){toast('В плейлисте до 10 песен');return;}
   pl.push(t);_pxDraft.track=pl[0];
   _pxEditPaint();_pxDirty();toast(pl.length===1?'Песня в профиле':'Добавлено в плейлист');
 }
@@ -497,7 +497,6 @@ function _pxPickFile(){
 }
 async function _pxUploadFile(file){
   const pl=_pxDraft.playlist=_pxDraft.playlist||[];
-  if(pl.length>=10){toast('В плейлисте до 10 песен');return;}
   if(file.size>15*1024*1024){toast('Трек больше 15 МБ');return;}
   const st=$('pxUpSt');const say=t=>{if(st){st.textContent=t;st.style.display=t?'':'none';}};
   try{
