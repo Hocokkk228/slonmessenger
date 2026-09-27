@@ -164,7 +164,7 @@ async function _pxLyrics(tr){
   try{
     // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
     const q=(ar)=>fetch('https://lrclib.net/api/search?track_name='+encodeURIComponent(tr.title)+(ar?'&artist_name='+encodeURIComponent(ar):'')).then(r=>r.json()).catch(()=>[]);
-    const first=String(tr.artist||'').split(/s*(?:,|&|feat.?|ft.?|x|и)s*/i)[0];
+    const first=String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0];
     let j=await q(tr.artist);if(!(j||[]).length&&first&&first!==tr.artist)j=await q(first);
     const byDur=l=>tr.dur?l.slice().sort((x,y)=>Math.abs((x.duration||0)-tr.dur)-Math.abs((y.duration||0)-tr.dur)):l;
     const hit=byDur((j||[]).filter(x=>x.syncedLyrics))[0]||(j||[]).find(x=>x.plainLyrics)||null;
