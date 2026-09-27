@@ -438,7 +438,7 @@ function _obBadge(){
   let b=document.getElementById('obWait');
   if(!n){b&&b.remove();return;}
   if(!b){b=document.createElement('div');b.id='obWait';b.className='ob-wait';el.parentNode.insertBefore(b,el.nextSibling);}
-  b.textContent='⏳ Ждут отправки: '+n+' — отправим, как появится связь';
+  b.textContent='Ждут отправки: '+n+' — отправим, как появится связь';
 }
 
 // Оборачиваем _mlPost: нет связи с хабом — кладём в очередь вместо потери

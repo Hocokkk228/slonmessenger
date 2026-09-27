@@ -92,7 +92,7 @@ function mailer() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
   const port = +SMTP_PORT || 465;
-  _mailer = require('nodemailer').createTransport({ host: SMTP_HOST, port, secure: port === 465, auth: { user: SMTP_USER, pass: SMTP_PASS } });
+  _mailer = require('nodemailer').createTransport({ host: SMTP_HOST, port, secure: port === 465, auth: { user: SMTP_USER.trim(), pass: SMTP_PASS.replace(/\s+/g, '') } });   // пароль приложения Google вводят с пробелами — убираем
   return _mailer;
 }
 async function sendCodeMail(to, code, why) {
@@ -128,6 +128,7 @@ const mailErr = e => e.code === 'mail_off' || e.code === 'wait' ? E(e.code, e.me
 // Кэш «кто онлайн» в памяти функции на 5 секунд: одно сообщение раньше читало это из базы 2–3 раза.
 // Сбрасывается при подключении/отключении и когда сокет оказался мёртвым.
 const _connCache = new Map();
+const _connRow = new Map();   // conn_id → {u,bg,drained,t}
 const connDrop = u => _connCache.delete(u);
 async function liveConns(u) {
   const c = _connCache.get(u);
@@ -153,9 +154,9 @@ async function bcast(u, obj, exceptConn, conns) {
   await Promise.all(cs.map(c => wsSend(c.conn_id, obj)));
   return cs;
 }
-async function setPresence(u, online) {
-  const r = await one('SELECT ls FROM hub_ls WHERE u=$u;', { u });
-  const lsAllowed = !r || r.ls !== '0', t = now();
+async function setPresence(u, online, ls) {
+  if (ls === undefined) { const r = await one('SELECT ls FROM hub_ls WHERE u=$u;', { u }); ls = r ? r.ls : '1'; }
+  const lsAllowed = ls !== '0', t = now();
   await q('UPSERT INTO presence (username,online,ts,ls) VALUES ($u,$o,$t,$l);', { u, o: online ? 1 : 0, t, l: lsAllowed ? t : 0 });
 }
 async function deliver(from, to, payload) {
@@ -171,15 +172,15 @@ async function deliver(from, to, payload) {
     await sendFcm(to, { type: 'call_end', peer: from, title: '@' + from }, '60s');
   return false;
 }
-async function mlPut(u, key, rec, exceptConn) {
-  const old = await one('SELECT rec FROM ml WHERE u=$u AND k=$k;', { u, k: key });
+async function mlPut(u, key, rec, exceptConn, fresh) {
+  const old = fresh ? null : await one('SELECT rec FROM ml WHERE u=$u AND k=$k;', { u, k: key });
   if (old) { try { const o = JSON.parse(old.rec); if (o.del || o.gone) return; } catch (e) { } }
   const t = now();
   await q('UPSERT INTO ml (u,k,rec,upd) VALUES ($u,$k,$r,$t);', { u, k: key, r: JSON.stringify(rec), t });
   const conns = await liveConns(u);
   await bcast(u, { t: 'ml', key, rec, upd: t }, exceptConn, conns);
   if (!old && !rec.out && rec.chat !== 'saved' && !conns.some(c => !c.bg)) {
-    const lbl = { photo: '📷 Фото', voice: '🎙️ Голосовое', slon: '🐘 Слонкружок', file: '📎 Файл', e2e: 'Новое сообщение' };
+    const lbl = { photo: 'Фото', voice: 'Голосовое сообщение', slon: 'Слонкружок', file: 'Файл', e2e: 'Новое сообщение' };
     const body = lbl[rec.k] || (rec.text ? String(rec.text).slice(0, 200) : 'Новое сообщение');
     const data = { type: 'msg', chat: rec.chat, title: rec.nick || ('@' + rec.chat), body };
     if (rec.n) { const n = JSON.stringify(rec.n); if (n.length < 3500) data.n = n; }
@@ -220,7 +221,7 @@ async function handleMsg(me, m, connId) {
     case 'self': await bcast(me, { t: 'self', payload: m.payload }, connId); return null;
     case 'ml_post': {
       const { key, rec, chat } = m; if (!key || !rec || !chat) return null;
-      await mlPut(me, key, { ...rec, chat, out: true, from: me }, connId);
+      await mlPut(me, key, { ...rec, chat, out: true, from: me }, connId, !m.retry);
       if (chat !== 'saved' && validUser(chat)) { await mlPut(chat, key, { ...(m.recPeer || rec), chat: me, out: false, from: me }); return { t: 'ml_ack', key }; }
       return null;
     }
@@ -287,14 +288,16 @@ async function onWs(event) {
     if (!u) return { statusCode: 401 };
     const bg = qs.bg === '1' ? 1 : 0;
     await q('UPSERT INTO conns (conn_id,u,dev,bg,at_ts,drained) VALUES ($c,$u,$d,$b,$t,0);', { c: connId, u, d: String(qs.dev || '').slice(0, 40), b: bg, t: now() });
-    await q('UPSERT INTO hub_ls (u,ls) VALUES ($u,$l);', { u, l: qs.ls === '0' ? '0' : '1' });
+    const ls = qs.ls === '0' ? '0' : '1';
+    await q('UPSERT INTO hub_ls (u,ls) VALUES ($u,$l);', { u, l: ls });
     connDrop(u);
-    if (!bg) await setPresence(u, true);
+    if (!bg) await setPresence(u, true, ls);
     return { statusCode: 200 };
   }
   if (type === 'DISCONNECT') {
     const row = await one('SELECT u,bg FROM conns WHERE conn_id=$c;', { c: connId });
     await q('DELETE FROM conns WHERE conn_id=$c;', { c: connId });
+    _connRow.delete(connId);
     if (row) connDrop(row.u);
     if (row && !row.bg) { const left = (await liveConns(row.u)).filter(c => !c.bg && c.conn_id !== connId); if (!left.length) await setPresence(row.u, false); }
     return { statusCode: 200 };
@@ -302,9 +305,13 @@ async function onWs(event) {
   // MESSAGE
   let m; try { m = JSON.parse(event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : (event.body || '')); } catch (e) { return { statusCode: 200 }; }
   if (m && m.t === 'ping') return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: '{"t":"pong"}' };   // пинг — без базы
-  const row = await one('SELECT u,bg,drained FROM conns WHERE conn_id=$c;', { c: connId });
+  let row = _connRow.get(connId);
+  if (!row || now() - row.t > 60000) {
+    row = await one('SELECT u,bg,drained FROM conns WHERE conn_id=$c;', { c: connId });
+    if (row) { row.t = now(); _connRow.set(connId, row); if (_connRow.size > 2000) _connRow.delete(_connRow.keys().next().value); }
+  }
   if (!row) return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: '{"t":"reauth"}' };
-  if (!row.bg && !row.drained) { await q('UPDATE conns SET drained=1 WHERE conn_id=$c;', { c: connId }); await drainQueue(row.u, connId); }
+  if (!row.bg && !row.drained) { row.drained = 1; await q('UPDATE conns SET drained=1 WHERE conn_id=$c;', { c: connId }); await drainQueue(row.u, connId); }
   const reply = await handleMsg(row.u, m, connId);
   return reply ? { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reply) } : { statusCode: 200 };
 }

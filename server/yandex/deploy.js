@@ -6,6 +6,15 @@ const cfg={
   fn:'slon-api', db:'/ru-central1/b1gkhvfs1t0gmfb4pdcm/etne7nmkdme0cnk61i32',
   bucket:fs.readFileSync(path.join(process.env.TEMP,'slon-bucket.txt'),'utf8').trim(),
 };
+// свежий архив кода: dist/ ← index.js, db.js, package*.json (зависимости Яндекс ставит сам по package.json)
+{
+  const dist=path.join(__dirname,'dist'),files=['index.js','db.js','package.json','package-lock.json'];
+  fs.mkdirSync(dist,{recursive:true});
+  for(const f of files)fs.copyFileSync(path.join(__dirname,f),path.join(dist,f));
+  const zip=path.join(__dirname,'slon-fn.zip');if(fs.existsSync(zip))fs.unlinkSync(zip);
+  const r=spawnSync(path.join(process.env.SystemRoot||'C:\Windows','System32','tar.exe'),['-a','-c','-f',zip,'-C',dist,...files],{encoding:'utf8'});
+  if(r.status!==0){console.log('не собрался архив:',(r.stderr||'').slice(0,300));process.exit(1);}
+}
 const key=JSON.parse(fs.readFileSync(path.join(process.env.USERPROFILE,'.slon','yc-s3.json'),'utf8'));
 const sa=JSON.parse(yc(['iam','service-account','get','slon-fn','--format','json'])).id;
 let fn;try{fn=JSON.parse(yc(['serverless','function','get',cfg.fn,'--format','json']));}catch(e){fn=JSON.parse(yc(['serverless','function','create','--name',cfg.fn,'--description','SLON API + WebSocket','--format','json']));}
