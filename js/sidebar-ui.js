@@ -437,6 +437,8 @@ async function _runGlobalSearch(q){
     // профиль опубликован — такие тоже должны находиться
     let prof=null;
     try{prof=(await _fbOnce('profiles/'+q))?.val()||null;}catch(e){}
+    // «а также @…»: это дополнительный юзернейм — показываем основной профиль
+    if(prof&&prof.redirectTo&&prof.redirectTo!==q){q=prof.redirectTo;try{prof=(await _fbOnce('profiles/'+q))?.val()||null;}catch(e){}}
     const userExists=!!prof||await _fbAccountExists(q);
     if(userExists&&q!==myUsername){
       results.push({type:'user',id:q,title:prof?.nick||('@'+q),sub:'@'+q,avatar:prof?.avatar||null});

@@ -465,6 +465,7 @@ const routes = {
     const u = String(d.u || '').toLowerCase();
     if (!validUser(u) || !validHash(d.h)) return E('bad_request', 'Юзернейм: 3–20 символов, латиница, цифры и _');
     if (await getUser(u)) return E('taken', 'Юзернейм занят — выбери другой или войди', 409);
+    if (await one('SELECT u FROM aliases WHERE alias=$a;', { a: u })) return E('taken', 'Юзернейм занят — выбери другой', 409);
     if (await fbGet('auth/' + u)) return E('taken', 'Юзернейм занят — выбери другой или войди', 409);
     await setPassword(u, d.h, false); await fbPut('auth/' + u, { migrated: true, ts: now() });
     return J({ ok: true, token: await newSession(u, d.device) });
@@ -487,7 +488,28 @@ const routes = {
     await q('DELETE FROM sessions WHERE username=$u;', { u });
     return J({ ok: true, token: await newSession(u, d.device) });
   },
-  async 'GET /auth/me'(r) { if (!r.user) return E('unauthorized', 'Войди заново', 401); return J({ ok: true, username: r.user, admin: await isAdmin(r.user) }); },
+  async 'GET /auth/me'(r) {
+    if (!r.user) return E('unauthorized', 'Войди заново', 401);
+    const x = await one('SELECT created FROM users WHERE username=$u;', { u: r.user });
+    return J({ ok: true, username: r.user, admin: await isAdmin(r.user), created: x?.created || 0 });
+  },
+  // Дополнительные юзернеймы («а также @…»): бронь, чтобы их не заняли другие. До 5 штук.
+  async 'POST /aliases'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const want = [...new Set((Array.isArray(d.aliases) ? d.aliases : []).map(x => String(x || '').toLowerCase().replace(/^@/, '')))].filter(Boolean);
+    if (want.length > 5) return E('limit', 'Не больше 5 дополнительных юзернеймов');
+    for (const a of want) {
+      if (!validUser(a)) return E('bad', '@' + a + ': 3–20 символов, латиница, цифры и _');
+      if (a === u) return E('bad', '@' + a + ' — это твой основной юзернейм');
+      const own = await one('SELECT u FROM aliases WHERE alias=$a;', { a });
+      if (own && own.u !== u) return E('taken', '@' + a + ' уже занят', 409);
+      if (!own && (await getUser(a) || await fbGet('auth/' + a))) return E('taken', '@' + a + ' уже занят', 409);
+    }
+    const old = await q('SELECT alias FROM aliases VIEW idx_u WHERE u=$u;', { u });
+    for (const o of old) if (!want.includes(o.alias)) await q('DELETE FROM aliases WHERE alias=$a;', { a: o.alias });
+    for (const a of want) await q('UPSERT INTO aliases (alias,u,ts) VALUES ($a,$u,$t);', { a, u, t: now() });
+    return J({ ok: true, aliases: want, removed: old.map(o => o.alias).filter(a => !want.includes(a)) });
+  },
   async 'POST /auth/logout'(r) {
     const tok = bearer(r.hd);
     if (tok) {
@@ -530,7 +552,8 @@ const routes = {
   async 'GET /auth/exists'(r) {
     const u = String(r.qs.get('u') || '').toLowerCase();
     if (!validUser(u)) return J({ ok: true, exists: false });
-    return J({ ok: true, exists: !!(await getUser(u)) || !!(await fbGet('auth/' + u)) });
+    const al = await one('SELECT u FROM aliases WHERE alias=$a;', { a: u });
+    return J({ ok: true, exists: !!al || !!(await getUser(u)) || !!(await fbGet('auth/' + u)), aliasOf: al ? al.u : undefined });
   },
   async 'GET /turn'(r) {
     if (!r.user) return E('unauthorized', 'Войди заново', 401);

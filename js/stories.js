@@ -33,13 +33,40 @@ async function _stLoadUser(u){
   const now=Date.now(),list=[];
   if(v)Object.keys(v).forEach(id=>{const s=v[id];if(!s||!s.ts)return;
     if(now-s.ts<ST_TTL)list.push({id,ts:s.ts,cap:s.cap||'',thumb:s.thumb||''});
-    else if(u===myUsername){ // своё просроченное — удаляем
-      window._fbRemove?.(window._fbRef(window._fbDb,'stories/'+u+'/'+id));
-      window._fbRemove?.(window._fbRef(window._fbDb,'story_media/'+u+'/'+id));
-      window._fbRemove?.(window._fbRef(window._fbDb,'story_views/'+u+'/'+id)); }
+    // старше суток — не удаляем: уходит в «Публикации» профиля (архив)
   });
+  _stArchSet(u,v);
   list.sort((a,b)=>a.ts-b.ts);
   if(list.length)_stAll[u]=list;else delete _stAll[u];
+}
+// ── Архив: истории старше 24 часов остаются в профиле («Публикации»), смотреть может любой ──
+const ST_ARCH_MAX=60;
+let _stArch={};           // {user:[{id,ts,cap,thumb}]} — все, по возрастанию времени
+function _stArchSet(u,v){
+  const all=[];if(v)Object.keys(v).forEach(id=>{const s=v[id];if(s&&s.ts)all.push({id,ts:s.ts,cap:s.cap||'',thumb:s.thumb||''});});
+  all.sort((a,b)=>a.ts-b.ts);
+  // своё: храним не больше ST_ARCH_MAX, самые старые убираем
+  if(u===myUsername&&all.length>ST_ARCH_MAX){
+    for(const s of all.splice(0,all.length-ST_ARCH_MAX)){
+      window._fbRemove?.(window._fbRef(window._fbDb,'stories/'+u+'/'+s.id));
+      window._fbRemove?.(window._fbRef(window._fbDb,'story_media/'+u+'/'+s.id));
+      window._fbRemove?.(window._fbRef(window._fbDb,'story_views/'+u+'/'+s.id));
+    }
+  }
+  _stArch[u]=all.filter(s=>Date.now()-s.ts>=ST_TTL);
+}
+async function _stArchive(u){
+  if(!_stArch[u]){try{await _stLoadUser(u);}catch(e){}}
+  return _stArch[u]||[];
+}
+// просмотр архива тем же окном историй: на время подменяем список этого человека
+let _stArchSwap=null;
+function _stOpenArchive(u,idx){
+  const list=_stArch[u];if(!list||!list.length)return;
+  _stArchSwap={u,prev:_stAll[u]};
+  _stAll[u]=list;
+  _stOpen(u);
+  if(_stV){_stV.users=[u];_stV.si=Math.max(0,Math.min(idx|0,list.length-1));_stShow();}
 }
 async function _stLoad(){
   if(!myUsername||!window._fbDb)return;
@@ -387,6 +414,7 @@ function _stNextUser(){ if(!_stV)return; if(_stV.ui>=_stV.users.length-1){_stClo
 function _stPrevUser(toLast){ if(!_stV||_stV.ui<=0)return; _stV.ui--;
   _stV.si=toLast?(_stAll[_stV.users[_stV.ui]]||[1]).length-1:0;_stShow(-1); }
 function _stClose(){
+  if(_stArchSwap){const {u,prev}=_stArchSwap;_stArchSwap=null;if(prev)_stAll[u]=prev;else delete _stAll[u];setTimeout(()=>{try{_stRender();}catch(e){}},0);}
   if(!_stV)return;const v=_stV.el;cancelAnimationFrame(_stV.raf);_stV=null;
   document.removeEventListener('keydown',_stKey);
   v.classList.remove('show');setTimeout(()=>v.remove(),300);_stRender();

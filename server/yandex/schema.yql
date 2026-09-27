@@ -21,3 +21,5 @@ CREATE TABLE conns        (conn_id Utf8, u Utf8, dev Utf8, bg Int64, at_ts Int64
 CREATE TABLE user_email   (username Utf8, email Utf8, twofa Int64, PRIMARY KEY (username));
 CREATE TABLE email_owner  (email Utf8, username Utf8, PRIMARY KEY (email));
 CREATE TABLE email_codes  (k Utf8, code_hash Utf8, email Utf8, expires Int64, tries Int64, sent Int64, PRIMARY KEY (k));
+-- дополнительные юзернеймы: бронь «а также @…»
+CREATE TABLE aliases      (alias Utf8, u Utf8, ts Int64, PRIMARY KEY (alias), INDEX idx_u GLOBAL ON (u));
