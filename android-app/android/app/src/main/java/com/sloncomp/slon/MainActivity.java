@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Свой плагин: работа в фоне, фоновая связь с сервером, автозапуск
         registerPlugin(SlonSystemPlugin.class);
+        registerPlugin(SlonMediaPlugin.class);   // музыка в шторке / на экране блокировки
         super.onCreate(savedInstanceState);
         SlonSystemPlugin.onLaunchIntent(getIntent());
         if (!getSharedPreferences(SlonBgService.PREFS, MODE_PRIVATE).getString("token", "").isEmpty())

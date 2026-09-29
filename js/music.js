@@ -212,6 +212,7 @@ function _mmHook(){
     h('seekforward',d=>{if(_pxAudio)_pxAudio.currentTime=Math.min(_pxAudio.duration||1e9,_pxAudio.currentTime+((d&&d.seekOffset)||10));});
     ['play','pause'].forEach(ev=>_pxAudio.addEventListener(ev,()=>{try{ms.playbackState=_pxAudio.paused?'paused':'playing';}catch(e){}_msPos(true);}));
   }
+  ['play','pause','seeked','loadedmetadata'].forEach(ev=>_pxAudio.addEventListener(ev,()=>_nmSync()));
 }
 function _mmMediaSession(tr){
   if(!('mediaSession' in navigator)||!tr)return;
@@ -260,7 +261,7 @@ function _islSeek(v){if(_pxAudio&&isFinite(_pxAudio.duration)){_pxAudio.currentT
 function _islToggle(){if(!_pxAudio)return;if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();}
 function _islStep(d){if(_islQueue())_mmStep(d);else if(_pxAudio){_pxAudio.currentTime=d<0?0:(_pxAudio.duration||0);}}
 function _islOutside(e){if(_islOpen&&!e.target.closest('#slIsl,#pxKara')){_islOpen=false;_isl();}}
-function _islClose(){_islOpen=false;_pxAudio?.pause();try{_pxAudio.currentTime=0;}catch(e){}_islTr=null;_mm.cur=null;_isl();_mmPaintPlay();_pxBtns();}
+function _islClose(){setTimeout(_nmSync,0);_islOpen=false;_pxAudio?.pause();try{_pxAudio.currentTime=0;}catch(e){}_islTr=null;_mm.cur=null;_isl();_mmPaintPlay();_pxBtns();}
 function _mmBar(){_isl();}
 function _mmBarProg(){_islProg();}
 function _mmStop(){_islClose();}
@@ -1126,3 +1127,25 @@ function _fpLine(i){
 }
 document.addEventListener('touchmove',e=>{const b=e.target.closest&&e.target.closest('#fpLy');if(b)b._u=Date.now();},{passive:true});
 document.addEventListener('wheel',e=>{const b=e.target.closest&&e.target.closest('#fpLy');if(b)b._u=Date.now();},{passive:true});
+
+// ════════ Android: системный плеер (шторка, экран блокировки) через SlonMedia (APK 1.6.4+) ════════
+const _NM=()=>typeof IS_NATIVE!=='undefined'&&IS_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.SlonMedia;
+let _nmKey='',_nmLis=false;
+async function _nmCoverOf(src){
+  if(!src)return '';if(/^(https?:|data:)/.test(src))return src;
+  try{const b=await (await fetch(src)).blob();return await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r('');f.readAsDataURL(b);});}catch(e){return '';}
+}
+async function _nmSync(){
+  const P=_NM();if(!P)return;
+  if(!_nmLis){_nmLis=true;
+    try{P.addListener('media',e=>{const a=e&&e.action;
+      if(a==='play')_pxAudio&&_pxAudio.play().catch(()=>{});else if(a==='pause')_pxAudio&&_pxAudio.pause();
+      else if(a==='next')_islStep(1);else if(a==='prev')_islStep(-1);
+      else if(a==='seek'&&_pxAudio)_pxAudio.currentTime=(e.pos||0)/1000;else if(a==='stop')_islClose();});}catch(e){}}
+  const t=_islTr;
+  if(!t||!_pxAudio||String(_pxAudioId)!==String(t.id)){if(_nmKey){_nmKey='';P.stop().catch(()=>{});}return;}
+  const k=String(t.id);let cover;
+  if(k!==_nmKey){_nmKey=k;cover=await _nmCoverOf(t.cover);}
+  const d=_pxAudio.duration;
+  P.update(Object.assign({title:t.title||'',artist:t.artist||'',playing:!_pxAudio.paused,pos:Math.round((_pxAudio.currentTime||0)*1000),dur:isFinite(d)?Math.round(d*1000):0},cover!==undefined?{cover}:{})).catch(()=>{});
+}

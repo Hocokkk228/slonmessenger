@@ -621,12 +621,29 @@ const _asrJobs={};
 let _asrLoadPct=null;   // null — модель готова/не грузится; число — прогресс первой загрузки
 function _asrGetWorker(){
   if(_asrWorker)return _asrWorker;
+  const LOCAL=(typeof IS_NATIVE!=='undefined'&&IS_NATIVE)?location.origin+'/asr/':'';
   const code=`
+    const LOCAL='${LOCAL}';
     let asr=null,loading=null;const files={};
     async function load(){
       if(asr)return asr;
       if(!loading)loading=(async()=>{
-        const {pipeline}=await import('${ASR_LIB}');
+        // в приложении модель и движок лежат внутри APK — без скачивания и без сети
+        let lib=null;
+        if(LOCAL){try{lib=await import(LOCAL+'transformers.js');}catch(e){lib=null;}}
+        if(!lib)lib=await import('${ASR_LIB}');
+        const {pipeline,env}=lib;
+        if(LOCAL&&env){
+          try{
+            const f0=env.fetch;
+            env.useBrowserCache=false;env.useWasmCache=false;
+            env.backends.onnx.wasm.wasmPaths={wasm:LOCAL+'ort/ort-wasm-simd-threaded.asyncify.wasm',mjs:LOCAL+'ort/ort-wasm-simd-threaded.asyncify.js'};
+            env.fetch=async(u,o)=>{const s=String(u&&u.url||u),K='/whisper-base/resolve/',k=s.indexOf(K);
+              if(k>=0){const rest=s.slice(k+K.length),file=rest.slice(rest.indexOf('/')+1);
+                try{const r=await fetch(LOCAL+'whisper-base/'+file);if(r.ok)return r;}catch(e){}}
+              return f0(u,o);};
+          }catch(e){}
+        }
         asr=await pipeline('automatic-speech-recognition','${ASR_MODEL}',{progress_callback:p=>{
           if(p.file&&p.total){files[p.file]=[p.loaded||0,p.total];
             let l=0,t=0;for(const k in files){l+=files[k][0];t+=files[k][1];}

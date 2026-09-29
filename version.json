@@ -1,9 +1,9 @@
 {
   "android": {
-    "version": "1.6.3",
-    "size": "5,5 МБ",
+    "version": "1.6.4",
+    "size": "65 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Музыка работает без интернета, новый плеер на телефоне"
+    "notes": "Музыка в шторке и на экране блокировки, игра в фоне; расшифровка голосовых и шрифты внутри приложения — работают без интернета"
   },
   "windows": {
     "version": "1.0.0",

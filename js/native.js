@@ -290,3 +290,8 @@ if(IS_NATIVE&&window.caches){
     }catch(e){}
   },20000);
 }
+
+// Шрифт Roboto — из APK (без загрузки с Google Fonts; в старых APK файла нет — останется сетевой)
+if(IS_NATIVE){
+  const l=document.createElement('link');l.rel='stylesheet';l.href=location.origin+'/fonts/roboto.css';document.head.appendChild(l);
+}
