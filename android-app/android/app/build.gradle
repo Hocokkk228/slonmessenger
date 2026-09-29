@@ -33,6 +33,10 @@ android {
                 keyAlias slonKeyProps['keyAlias']
                 keyPassword slonKeyProps['keyPassword']
             }
+            // все схемы подписи: без v1 часть установщиков/файловых менеджеров пишет «no signature files»
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
         }
     }
     buildTypes {
