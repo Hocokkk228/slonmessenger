@@ -1089,6 +1089,7 @@ function _fpProg(){
 function _fpLyToggle(){
   const w=$('mmFp');if(!w)return;
   _fpLyOn=!_fpLyOn;w.classList.toggle('ly',_fpLyOn);$('fpLyB')?.classList.toggle('on',_fpLyOn);
+  if(_fpLyOn)_fpLyLoop();
   if(_fpLyOn){if(!_fpLines)_fpLyLoad();else{_fpIdx=-2;_fpLyTick(true);}}
 }
 function _fpOff(){   // сдвиг: полный трек — 0, отрывок — если подстраивали в караоке
@@ -1183,13 +1184,27 @@ function _npUrl(it){
 function _npCover(it){
   if(!it)return '';
   if(/^https?:/.test(it.coverUrl||''))return it.coverUrl;
-  if(it.cid&&_mm.base&&it.coverUrl)return _mm.base+it.cid+'.jpg';
-  return '';
+  return _npCovC[it.id]||'';
+}
+const _npCovC={};
+// обложки с устройства (blob:) → маленький JPEG 256px в data: (Media3 берёт картинку прямо из данных трека)
+async function _npCoversPrep(items){
+  await Promise.all(items.map(async it=>{
+    if(!it||_npCovC[it.id]||!it.coverUrl||/^https?:/.test(it.coverUrl))return;
+    try{
+      const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=it.coverUrl;});
+      const k=256/Math.max(img.naturalWidth,img.naturalHeight,1),c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.naturalWidth*Math.min(1,k)));c.height=Math.max(1,Math.round(img.naturalHeight*Math.min(1,k)));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);_npCovC[it.id]=c.toDataURL('image/jpeg',.82);
+    }catch(e){}
+  }));
 }
 function _npListen(){
   const P=_NPL();if(!P||_npLis)return;_npLis=true;
   P.addListener('state',st=>{
     const was=_npa._st,idCh=st.id&&st.id!==was.id;
+    const pred=_npa.currentTime*1000;
+    if(!idCh&&st.playing&&was.playing&&Math.abs(pred-st.pos)<600)st=Object.assign({},st,{pos:pred+(st.pos-pred)*0.25});
     _npa._st=st;_npa._stT=Date.now();
     if(_pxAudio!==_npa)return;
     if(idCh){                                           // натив сам перешёл к другому треку
@@ -1234,6 +1249,7 @@ function _npListen(){
   const tr=_mmTr(it);tr.url=_npUrl(it);_mm.cur=tr;_islTr=tr;_pxAudioId=tr.id;
   _npa._ids=ids;_npa._st=Object.assign({},_npa._st,{id:it.id,pos:0,dur:(it.dur||0)*1000,want:true,playing:false});_npa._stT=Date.now();
   if($('pxKara')){const lp=_pxLyrics(tr);$('pxKara')?.classList.add('swap');await Promise.race([lp,new Promise(r=>setTimeout(r,12000))]);}
+  await _npCoversPrep(items);
   await P.setQueue({items:items.map(x=>({id:x.id,url:_npUrl(x),title:x.title||'',artist:x.artist||'',cover:_npCover(x)})),
     index:ids.indexOf(id),pos:0,play:true,shuffle:!!_mm.shuffle,repeat:'off'}).catch(e=>toast('Плеер: '+(e.message||e)));
   _npa._fire('play');_isl();_mmBar();_mmPaint();
@@ -1241,7 +1257,11 @@ function _npListen(){
 // назад / вперёд / перемешивание / стоп — командами нативному плееру
 {const f=_mmStep;_mmStep=function(d){
   const P=_NPL();
-  if(P&&_pxAudio===_npa){if(d>0)P.next().catch(()=>{});else P.prev().catch(()=>{});return;}
+  if(P&&_pxAudio===_npa){
+    (d>0?P.next():P.prev()).then(()=>P.play()).catch(()=>{});
+    _npa._st=Object.assign({},_npa._st,{want:true});_npa._fire('play');
+    return;
+  }
   return f.apply(this,arguments);
 };}
 {const f=_mmShufToggle;_mmShufToggle=function(){const r=f.apply(this,arguments);const P=_NPL();if(P&&_pxAudio===_npa)P.setShuffle({on:!!_mm.shuffle}).catch(()=>{});return r;};}
@@ -1274,3 +1294,11 @@ function _npSayProg(){const n=_mm._npTodo||0,d=_mm._npDone||0;_mmSay(n&&d<n?'С�
   if(_NPL()&&it&&it.ncached&&_mm.up[it.id]==null)return `<span class="mm-st ok" title="На устройстве">${_MM_ICO.cloud}</span>`;
   return f.apply(this,arguments);
 };}
+
+// текст в полноэкранном плеере обновляется каждый кадр — заливка строки плавная, строки не запаздывают
+let _fpRaf=0;
+function _fpLyLoop(){
+  cancelAnimationFrame(_fpRaf);
+  const step=()=>{if(!_fpLyOn||!$('mmFp'))return;try{_fpLyTick();}catch(e){}_fpRaf=requestAnimationFrame(step);};
+  _fpRaf=requestAnimationFrame(step);
+}

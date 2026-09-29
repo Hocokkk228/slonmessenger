@@ -5,7 +5,7 @@
 
 const _MX_ICO={
   home:'<svg viewBox="0 0 24 24"><path d="M12 3 3 10.5V21h6.5v-6h5v6H21V10.5z"/></svg>',
-  search:'<svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
   lib:'<svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>',
   heart:'<svg viewBox="0 0 24 24"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z"/></svg>',
   heartO:'<svg viewBox="0 0 24 24"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg>',
@@ -15,7 +15,7 @@ const _MX_ICO={
   repeat1:'<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2zm-4-2V9h-1l-2 1v1h1.5v4z"/></svg>',
   queue:'<svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4v6.18A3 3 0 1 0 19 19V12h3v-2z"/></svg>',
   edit:'<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zm17.7-10.2a1 1 0 0 0 0-1.42l-2.33-2.33a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75z"/></svg>',
-  lyrics:'<svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM6 9h12v2H6zm8 5H6v-2h8zm4-6H6V6h12z"/></svg>',
+  lyrics:'<svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-5 14H7v-2h7zm3-4H7v-2h10zm0-4H7V7h10z"/></svg>',
   imp:'<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/></svg>'
 };
 const _mxS={tab:'lib',chip:'all',q:'',edit:false};
@@ -311,4 +311,14 @@ function _fpExtraPaint(){
 {const f=_mmShufToggle;_mmShufToggle=function(){const r=f.apply(this,arguments);_fpExtraPaint();return r;};}
 // большая круглая «Играть» — только значок (▶ / ❚❚)
 {const f=_mmPlayBtns;_mmPlayBtns=function(){const r=f.apply(this,arguments);
-  document.querySelectorAll('.mx-play[data-mmsrc]').forEach(b=>{b.innerHTML=b.dataset.st==='p'?_MM_ICO.pause:_MM_ICO.play;});return r;};}
+  document.querySelectorAll('.mx-play[data-mmsrc]').forEach(b=>{const st=b.dataset.st==='p'?'p':'l';if(b._st!==st){b._st=st;b.innerHTML=st==='p'?_MM_ICO.pause:_MM_ICO.play;}});return r;};}
+
+// анимации кнопок плеера: нажатие — «пружинка», назад/вперёд — толчок в сторону, смена ▶/❚❚ — плавная подмена
+document.addEventListener('pointerdown',e=>{
+  const b=e.target.closest&&e.target.closest('.fp-cap button,.mm-mini-pp,.isl-ctl button,.mx-play,.px-kara-ctl button,.mm-cb-pp');
+  if(!b)return;
+  const oc=b.getAttribute('onclick')||'';
+  const cls=/Step\(1\)|KaraStep\(1\)/.test(oc)?'tap-r':/Step\(-1\)|KaraStep\(-1\)/.test(oc)?'tap-l':'tap';
+  b.classList.remove('tap','tap-r','tap-l');void b.offsetWidth;b.classList.add(cls);
+  setTimeout(()=>b.classList.remove(cls),420);
+},true);
