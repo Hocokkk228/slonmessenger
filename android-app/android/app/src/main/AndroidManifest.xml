@@ -37,6 +37,15 @@
             android:name=".SlonCallService"
             android:exported="false"
             android:foregroundServiceType="microphone|camera" />
+        <!-- Музыка: системный плеер Media3 (ExoPlayer) — шторка, экран блокировки, острова оболочек -->
+        <service
+            android:name=".SlonPlayerService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
         <!-- Музыка: плеер в шторке и на экране блокировки, игра в фоне -->
         <service
             android:name=".SlonMediaService"

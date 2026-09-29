@@ -995,6 +995,7 @@ function _miniPos(){
   const m=$('mmMini');if(!m)return;
   const r=document.querySelector('.inp-row');let b=12;
   if(r&&r.offsetParent!==null){const rc=r.getBoundingClientRect();if(rc.top<innerHeight&&rc.bottom>0)b=Math.max(12,innerHeight-rc.top+8);}
+  const nv=document.querySelector('.mx-nav');if(nv&&nv.offsetParent!==null){const rc=nv.getBoundingClientRect();if(rc.top<innerHeight&&rc.bottom>0)b=Math.max(b,innerHeight-rc.top+8);}   // над навигацией музыки
   if(m._b!==b){m._b=b;m.style.bottom='calc('+b+'px + env(safe-area-inset-bottom))';}
 }
 setInterval(()=>{if($('mmMini'))_miniPos();},700);
@@ -1149,3 +1150,127 @@ async function _nmSync(){
   const d=_pxAudio.duration;
   P.update(Object.assign({title:t.title||'',artist:t.artist||'',playing:!_pxAudio.paused,pos:Math.round((_pxAudio.currentTime||0)*1000),dur:isFinite(d)?Math.round(d*1000):0},cover!==undefined?{cover}:{})).catch(()=>{});
 }
+
+// ════════ Android: музыка играет нативным плеером (Media3/ExoPlayer, APK 1.6.7+) ════════
+// Весь интерфейс (остров, плеер снизу, полноэкранный, текст) работает с _pxAudio — подставляем ему
+// «нативную обёртку» с тем же поведением (play/pause/currentTime/duration/события), а звук и очередь
+// плейлиста живут в системном плеере Android: его видят шторка, экран блокировки и острова оболочек
+// (ColorOS, HyperOS, OriginOS, MagicOS, HarmonyOS); следующий трек включается сам при погашенном экране.
+// Треки, которых ещё нет в облаке (только на этом устройстве), и треки из чатов играют как раньше.
+const _NPL=()=>typeof IS_NATIVE!=='undefined'&&IS_NATIVE&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.SlonPlayer;
+let _webAudio=null,_npLis=false;const _npBad=new Set();
+const _npa={
+  _on:{},_st:{playing:false,want:false,pos:0,dur:0,id:''},_stT:Date.now(),_ids:[],
+  onplay:null,onpause:null,onended:null,playbackRate:1,volume:1,muted:false,src:'native',
+  get paused(){return !this._st.want;},
+  get currentTime(){return (this._st.pos+(this._st.playing?Date.now()-this._stT:0))/1000;},
+  set currentTime(v){const P=_NPL();if(P)P.seek({pos:Math.max(0,Math.round(v*1000))}).catch(()=>{});this._st.pos=v*1000;this._stT=Date.now();this._fire('seeked');this._fire('timeupdate');},
+  get duration(){return this._st.dur?this._st.dur/1000:(_mm.cur&&_mm.cur.dur)||NaN;},
+  play(){const P=_NPL();if(P)P.play().catch(()=>{});this._st.want=true;this._fire('play');return Promise.resolve();},
+  pause(){const P=_NPL();if(P)P.pause().catch(()=>{});this._st.want=false;this._fire('pause');},
+  addEventListener(e,f){(this._on[e]=this._on[e]||[]).push(f);},
+  removeEventListener(e,f){this._on[e]=(this._on[e]||[]).filter(x=>x!==f);},
+  _fire(e){for(const f of this._on[e]||[])try{f({type:e});}catch(x){}const h=this['on'+e];if(typeof h==='function')try{h({type:e});}catch(x){}}
+};
+_npa.onplay=_npa.onpause=_npa.onended=()=>{try{_pxBtns();}catch(e){}};
+// ссылка на трек для нативного плеера: облако (своё или друга) — да; только на устройстве — нет
+function _npUrl(it){
+  if(!it||_npBad.has(it.id))return null;
+  if(it.url&&/^https?:/.test(it.url))return it.url;
+  if(it.cid&&_mm.base)return _mm.base+it.cid;
+  return null;
+}
+function _npCover(it){
+  if(!it)return '';
+  if(/^https?:/.test(it.coverUrl||''))return it.coverUrl;
+  if(it.cid&&_mm.base&&it.coverUrl)return _mm.base+it.cid+'.jpg';
+  return '';
+}
+function _npListen(){
+  const P=_NPL();if(!P||_npLis)return;_npLis=true;
+  P.addListener('state',st=>{
+    const was=_npa._st,idCh=st.id&&st.id!==was.id;
+    _npa._st=st;_npa._stT=Date.now();
+    if(_pxAudio!==_npa)return;
+    if(idCh){                                           // натив сам перешёл к другому треку
+      const it=_mmFind(st.id);
+      if(it){const tr=_mmTr(it);tr.url=_npUrl(it)||'';_mm.cur=tr;_islTr=tr;_pxAudioId=tr.id;_mm.qi=_mm.queue.indexOf(it.id);
+        _npa._fire('loadedmetadata');_isl();_mmPaint();
+        if($('pxKara')&&typeof _kr!=='undefined'&&_kr&&_kr.tr&&_kr.tr.mm!==it.id)_pxLyrics(tr);}
+    }
+    if(!!st.want!==!!was.want)_npa._fire(st.want?'play':'pause');
+    if(st.ended&&!was.ended)_npa._fire('ended');
+    _npa._fire('timeupdate');
+  });
+  P.addListener('error',e=>{                             // нет сети и трек не скачан — пробуем с устройства
+    const it=e&&_mmFind(e.id);if(!it)return;
+    _npBad.add(it.id);
+    if(it.local){toast('Нет сети — включаю с устройства');_mmPlay(it.id,_mm.queue);}
+    else toast('Трек не скачан на устройство — нужна сеть');
+  });
+  P.addListener('cached',e=>{
+    if(!e||!e.ok)return;const it=_mm.list.find(x=>_npUrl(x)===e.url);if(it&&!it.ncached){it.ncached=true;_mm._npDone=(_mm._npDone||0)+1;_npSayProg();_mmPaint();}
+  });
+}
+// запуск списка (плейлист, моя музыка, фонотека друга)
+{const f=_mmPlay;_mmPlay=async function(id,list){
+  const P=_NPL();
+  const ids=list||(_mm.queue.includes(id)?_mm.queue:_mmFiltered().map(x=>x.id));
+  const items=P?ids.map(x=>_mmFind(x)).filter(Boolean):[];
+  const ok=P&&items.length&&items.every(x=>_npUrl(x));
+  if(!ok){
+    if(_pxAudio===_npa){try{P&&P.pause();}catch(e){}_pxAudio=_webAudio;}
+    return f.apply(this,arguments);
+  }
+  _npListen();
+  const it=_mmFind(id);if(!it)return;
+  if(!_mm.fromHist&&_mm.cur&&_mm.cur.mm&&_mm.cur.mm!==id){_mm.hist.push(_mm.cur.mm);if(_mm.hist.length>200)_mm.hist.shift();}
+  _mm.fromHist=false;
+  if(list&&_mm.src==null)_mm.src='lib';
+  _mm.queue=ids;_mm.qi=ids.indexOf(id);
+  if(_pxAudio===_npa&&_npa._st.id===it.id&&_npa._ids.join()===ids.join()){if(_npa.paused)_npa.play();else _npa.pause();return;}
+  if(_pxAudio&&_pxAudio!==_npa){try{_pxAudio.pause();}catch(e){}_webAudio=_pxAudio;}
+  _pxAudio=_npa;_mmHook();
+  const tr=_mmTr(it);tr.url=_npUrl(it);_mm.cur=tr;_islTr=tr;_pxAudioId=tr.id;
+  _npa._ids=ids;_npa._st=Object.assign({},_npa._st,{id:it.id,pos:0,dur:(it.dur||0)*1000,want:true,playing:false});_npa._stT=Date.now();
+  if($('pxKara')){const lp=_pxLyrics(tr);$('pxKara')?.classList.add('swap');await Promise.race([lp,new Promise(r=>setTimeout(r,12000))]);}
+  await P.setQueue({items:items.map(x=>({id:x.id,url:_npUrl(x),title:x.title||'',artist:x.artist||'',cover:_npCover(x)})),
+    index:ids.indexOf(id),pos:0,play:true,shuffle:!!_mm.shuffle,repeat:'off'}).catch(e=>toast('Плеер: '+(e.message||e)));
+  _npa._fire('play');_isl();_mmBar();_mmPaint();
+};}
+// назад / вперёд / перемешивание / стоп — командами нативному плееру
+{const f=_mmStep;_mmStep=function(d){
+  const P=_NPL();
+  if(P&&_pxAudio===_npa){if(d>0)P.next().catch(()=>{});else P.prev().catch(()=>{});return;}
+  return f.apply(this,arguments);
+};}
+{const f=_mmShufToggle;_mmShufToggle=function(){const r=f.apply(this,arguments);const P=_NPL();if(P&&_pxAudio===_npa)P.setShuffle({on:!!_mm.shuffle}).catch(()=>{});return r;};}
+{const f=_islClose;_islClose=function(){const P=_NPL();if(P&&_pxAudio===_npa){P.stop().catch(()=>{});_pxAudio=_webAudio;}return f.apply(this,arguments);};}
+// другой звук (трек из чата, отрывок в профиле) — нативный плеер на паузу, дальше играет браузер
+{const f=_pxPlay;_pxPlay=async function(){
+  const P=_NPL();
+  if(P&&_pxAudio===_npa){try{P.pause();}catch(e){}_pxAudio=_webAudio;}
+  return f.apply(this,arguments);
+};}
+// старое «зеркало» плеера в шторке не нужно, когда играет настоящий нативный плеер
+{const f=_nmSync;_nmSync=async function(){
+  if(_NPL()&&_pxAudio===_npa){const M=_NM();if(M&&_nmKey){_nmKey='';M.stop().catch(()=>{});}return;}
+  return f.apply(this,arguments);
+};}
+// без сети: в приложении треки скачиваются в кеш нативного плеера (а не в IndexedDB — без дублей на телефоне)
+function _npSayProg(){const n=_mm._npTodo||0,d=_mm._npDone||0;_mmSay(n&&d<n?'Скачиваем музыку на устройство: '+d+' из '+n:'');}
+{const f=_mmSyncAll;_mmSyncAll=async function(){
+  const P=_NPL();if(!P)return f.apply(this,arguments);
+  _npListen();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
+  const urls=_mm.list.filter(x=>!x.friend).map(_npUrl).filter(Boolean);if(!urls.length)return;
+  let have=[];try{have=(await P.cached({urls})).urls||[];}catch(e){}
+  const hs=new Set(have);for(const it of _mm.list)if(hs.has(_npUrl(it)))it.ncached=true;
+  const todo=urls.filter(u=>!hs.has(u));_mm._npTodo=todo.length;_mm._npDone=0;
+  if(todo.length){toast('Скачиваем на устройство треков: '+todo.length);_npSayProg();P.cache({urls:todo}).catch(()=>{});}
+  _mmPaint();
+};}
+{const f=_mmStatus;_mmStatus=function(it){
+  if(_NPL()&&it&&it.ncached&&_mm.up[it.id]==null)return `<span class="mm-st ok" title="На устройстве">${_MM_ICO.cloud}</span>`;
+  return f.apply(this,arguments);
+};}
