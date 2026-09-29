@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 // Ключ подписи хранится вне репозитория: %USERPROFILE%/.slon/keystore.properties
 def slonKeyProps = new Properties()
@@ -85,3 +86,6 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+// Kotlin — под ту же версию Java, что и остальной проект
+kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21 } }

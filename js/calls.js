@@ -143,7 +143,17 @@ async function _micDeviceC(){
   return undefined;
 }
 // Android: режим связи на время звонка (без него WebView на части телефонов пишет с микрофона тишину)
-function _nativeAudio(mode){try{const p=window.Capacitor?.Plugins?.SlonSystem;if(p&&p.audioMode)p.audioMode({mode}).catch(()=>{});}catch(e){}}
+// APK 1.6.6+: нативный звонок (SlonCall) — служба в фоне, ухо/динамик/Bluetooth, датчик приближения
+function _nativeAudio(mode){try{
+  const P=window.Capacitor?.Plugins,C=P?.SlonCall;
+  if(C){
+    if(mode==='call'){const pid=activeCall?.peerId;
+      C.start({title:pid?('Звонок с '+(peerNames[pid]||('@'+pid))):'Звонок SLON',video:!!activeCall?.isVideo}).then(_callRoutesPaint).catch(()=>{});}
+    else{C.stop().catch(()=>{});_callRoutesPaint(null);}
+    return;
+  }
+  const p=P?.SlonSystem;if(p&&p.audioMode)p.audioMode({mode}).catch(()=>{});
+}catch(e){}}
 
 async function permDoRequest(){
   const isVideo=_permIsVideo;
@@ -742,6 +752,7 @@ function _fmtCallDur(sec){
 }
 function startCallTimer(){
   if(callTimer)return;callSecs=0;
+  if(window.Capacitor?.Plugins?.SlonCall)_nativeAudio('call');   // в шторке — «Звонок с …» (теперь известно, с кем)
   callTimer=setInterval(()=>{
     callSecs++;
     const s=_fmtCallDur(callSecs);

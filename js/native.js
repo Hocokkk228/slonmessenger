@@ -295,3 +295,42 @@ if(IS_NATIVE&&window.caches){
 if(IS_NATIVE){
   const l=document.createElement('link');l.rel='stylesheet';l.href=location.origin+'/fonts/roboto.css';document.head.appendChild(l);
 }
+
+// ════════ Звонок на Android: куда идёт звук (ухо / динамик / наушники / Bluetooth) ════════
+const _ROUTE={
+  earpiece:{t:'Ухо',i:'<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>'},
+  speaker:{t:'Динамик',i:'<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>'},
+  wired:{t:'Наушники',i:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h3v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h3c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z"/></svg>'},
+  bluetooth:{t:'Bluetooth',i:'<svg viewBox="0 0 24 24"><path d="M17.7 7.7 12 2h-1v7.6L6.4 5 5 6.4l5.6 5.6L5 17.6 6.4 19l4.6-4.6V22h1l5.7-5.7-4.3-4.3 4.3-4.3zM13 5.8l1.9 1.9L13 9.6V5.8zm1.9 10.5L13 18.2v-3.8l1.9 1.9z"/></svg>'}
+};
+let _callRoutes=null,_callRouteLis=false;
+function _callRoutesPaint(st){
+  const C=window.Capacitor?.Plugins?.SlonCall;
+  if(C&&!_callRouteLis){_callRouteLis=true;
+    try{C.addListener('routes',_callRoutesPaint);C.addListener('call',e=>{if(e&&e.action==='hangup'&&typeof endCall==='function')endCall();});}catch(e){}}
+  _callRoutes=st;
+  let w=document.getElementById('routeWrap');
+  if(!st||!st.current){if(w)w.style.display='none';document.getElementById('routeMenu')?.remove();return;}
+  if(!w){
+    const end=document.querySelector('#callScreen .cbtn.end')?.closest('.cbtn-wrap');if(!end)return;
+    end.insertAdjacentHTML('beforebegin','<div class="cbtn-wrap" id="routeWrap"><button class="cbtn" id="routeBtn" onclick="_callRouteMenu()"></button><div class="cbtn-lbl" id="routeLbl"></div></div>');
+    w=document.getElementById('routeWrap');
+  }
+  w.style.display='';
+  const r=_ROUTE[st.current]||_ROUTE.earpiece;
+  document.getElementById('routeBtn').innerHTML=r.i;document.getElementById('routeLbl').textContent=r.t;
+  document.getElementById('routeBtn').classList.toggle('on',st.current==='speaker');
+  if(document.getElementById('routeMenu'))_callRouteMenu(true);
+}
+function _callRouteMenu(refresh){
+  const st=_callRoutes;if(!st)return;
+  let m=document.getElementById('routeMenu');
+  if(m&&!refresh){m.remove();return;}
+  if(!m){m=document.createElement('div');m.id='routeMenu';m.className='route-menu';document.body.appendChild(m);
+    setTimeout(()=>document.addEventListener('pointerdown',function f(e){if(!e.target.closest('#routeMenu,#routeBtn')){document.getElementById('routeMenu')?.remove();document.removeEventListener('pointerdown',f,true);}},true),0);}
+  m.innerHTML=(st.routes||[]).map(k=>{const r=_ROUTE[k];if(!r)return '';return '<button class="'+(k===st.current?'sel':'')+'" onclick="_callSetRoute(\''+k+'\')">'+r.i+'<span>'+r.t+'</span></button>';}).join('');
+}
+function _callSetRoute(k){
+  const C=window.Capacitor?.Plugins?.SlonCall;if(!C)return;
+  C.setRoute({route:k}).then(st=>{_callRoutesPaint(st);document.getElementById('routeMenu')?.remove();}).catch(()=>{});
+}
