@@ -92,3 +92,15 @@ self.addEventListener('notificationclick',e=>{
     await self.clients.openWindow(self.registration.scope+q);
   })());
 });
+
+// Офлайн: файлы самого сайта (страница, скрипты, стили, картинки) — сначала из сети (и в кеш), без сети — из кеша.
+// Чужие адреса (сервер, Firebase, хранилище) не трогаем.
+const SHELL='slon-shell-v1';
+self.addEventListener('fetch',e=>{
+  const r=e.request;if(r.method!=='GET')return;
+  const u=new URL(r.url);if(u.origin!==self.location.origin||r.headers.has('range'))return;
+  e.respondWith(fetch(r).then(res=>{
+    if(res.ok&&res.type==='basic'){const cp=res.clone();caches.open(SHELL).then(c=>c.put(r,cp)).catch(()=>{});}
+    return res;
+  }).catch(()=>caches.match(r,{ignoreSearch:true}).then(m=>m||(r.mode==='navigate'?caches.match(new URL('index.html',self.registration.scope).href):null)).then(m=>m||Response.error())));
+});

@@ -269,3 +269,24 @@ if(IS_NATIVE){
   // Android 13+: без этого разрешения уведомлений нет вообще — спрашиваем сразу
   setTimeout(()=>{_NP.SlonSystem?.diag().then(d=>{if(!d.notifEnabled)_NP.SlonSystem.requestNotifPermission();}).catch(()=>{});},3000);
 }
+
+// Офлайн-копия интерфейса для приложения: index.html + все скрипты и стили сайта → Cache Storage «slon-shell».
+// Загрузчик APK (1.6.3+) открывает её, когда нет сети, — вместо старой встроенной копии.
+if(IS_NATIVE&&window.caches){
+  setTimeout(async function _shellSave(){
+    try{
+      if(!navigator.onLine)return;
+      const SITE=document.baseURI.replace(/[^/]*$/,'');
+      if(!/^https:\/\/[^/]+\.github\.io\//.test(SITE))return;          // работаем с сайта, а не со своей копии
+      const html=await (await fetch(SITE+'index.html',{cache:'no-cache'})).text();
+      if(!html.includes('js/core.js'))return;
+      const urls=[...html.matchAll(/<(?:script[^>]+src|link[^>]+href)="([^"]+)"/g)].map(m=>m[1]).filter(u=>!/^(data:|blob:|https?:)/.test(u));
+      const c=await caches.open('slon-shell');
+      for(const u of [...new Set([...urls,'img/gifts/plush.webp'])]){
+        const abs=new URL(u,SITE).href;
+        try{const r=await fetch(abs,{cache:'no-cache'});if(r.ok)await c.put(abs,r);else if(/\.js$/.test(u))return;}catch(e){if(/\.js$/.test(u))return;}
+      }
+      await c.put(SITE+'index.html',new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}}));   // последним — копия целая
+    }catch(e){}
+  },20000);
+}

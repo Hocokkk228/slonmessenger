@@ -7,7 +7,8 @@
 // Загрузчик SLON: интерфейс приходит с сайта (обновления без RuStore/стора — сразу после публикации на сайте).
 // Страница остаётся на своём адресе приложения (https://localhost) — поэтому вход, ключи шифрования и
 // история, сохранённые на устройстве, никуда не деваются. Скрипты и стили берутся с сайта через <base>.
-// Нет сети / сайт недоступен — открываем встроенную в APK копию (app.html).
+// Нет сети / сайт недоступен — открываем последнюю сохранённую версию сайта (её складывает сам SLON
+// в Cache Storage «slon-shell»: index.html + скрипты и стили), а если её нет — встроенную в APK копию (app.html).
 (function(){
   var SITE='https://hocokkk228.github.io/slonmessenger/';
   var done=false;
@@ -16,10 +17,27 @@
     if(base)html=html.replace(/<head([^>]*)>/i,'<head$1><base href="'+base+'">');
     document.open();document.write(html);document.close();
   }
-  function local(){
+  function builtin(){
     if(done)return;
     fetch('app.html').then(function(r){return r.text();}).then(function(h){show(h,'');})
       .catch(function(){location.replace('app.html');});
+  }
+  var trying=false;
+  function local(){
+    if(done||trying)return;trying=true;
+    if(!window.caches){builtin();return;}
+    caches.open('slon-shell').then(function(c){
+      return c.match(SITE+'index.html').then(function(r){if(!r)throw new Error('no shell');return r.text();}).then(function(h){
+        var re=/(<(?:script[^>]+src|link[^>]+href)=")([^"]+)(")/g,urls=[],m;
+        while((m=re.exec(h)))if(!/^(data:|blob:|https?:)/.test(m[2]))urls.push(m[2]);
+        var map={};
+        return Promise.all(urls.map(function(u){return c.match(new URL(u,SITE).href).then(function(r){return r?r.blob().then(function(b){map[u]=URL.createObjectURL(b);}):null;});}))
+          .then(function(){
+            if(urls.some(function(u){return !map[u]&&/\.js$/.test(u);}))throw new Error('shell incomplete');
+            show(h.replace(re,function(a,p,u,s){return map[u]?p+map[u]+s:a;}),SITE);
+          });
+      });
+    }).catch(builtin);
   }
   var t=setTimeout(local,5000);
   fetch(SITE+'index.html',{cache:'no-cache'})
