@@ -1,9 +1,9 @@
 {
   "android": {
-    "version": "1.6.4",
+    "version": "1.6.5",
     "size": "65 МБ",
     "url": "https://github.com/Hocokkk228/slonmessenger/releases/latest/download/SLON.apk",
-    "notes": "Музыка в шторке и на экране блокировки, игра в фоне; расшифровка голосовых и шрифты внутри приложения — работают без интернета"
+    "notes": "Мгновенные уведомления через Google (как в Telegram), музыка в шторке и в фоне, расшифровка голосовых без интернета"
   },
   "windows": {
     "version": "1.0.0",
