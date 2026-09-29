@@ -168,7 +168,14 @@ async function deliver(from, to, payload) {
   const conns = await liveConns(to);
   // доставлено, только если хотя бы одно открытое приложение реально приняло (мёртвый сокет → очередь и пуш)
   const sent = await Promise.all(conns.map(c => wsSend(c.conn_id, item)));
-  if (conns.some((c, i) => !c.bg && sent[i])) return true;
+  const live = conns.some((c, i) => !c.bg && sent[i]);
+  if (live) {
+    if (payload.type === 'call_incoming')
+      await sendFcm(to, { type: 'call', peer: from, title: payload.nick || ('@' + from), callId: payload.callId || '', video: payload.isVideo ? '1' : '0' }, '45s');
+    else if (payload.type === 'call_cancel' || payload.type === 'call_end')
+      await sendFcm(to, { type: 'call_end', peer: from, title: '@' + from }, '60s');
+    return true;
+  }
   if (QUEUE_TYPES.has(payload.type))
     await q('UPSERT INTO queue (u,id,msg,ts) VALUES ($u,$i,$m,$t);', { u: to, i: String(now()).padStart(15, '0') + rnd(4), m: JSON.stringify(item), t: now() });
   if (payload.type === 'call_incoming')
@@ -184,7 +191,7 @@ async function mlPut(u, key, rec, exceptConn, fresh) {
   await q('UPSERT INTO ml (u,k,rec,upd) VALUES ($u,$k,$r,$t);', { u, k: key, r: JSON.stringify(rec), t });
   const conns = await liveConns(u);
   await bcast(u, { t: 'ml', key, rec, upd: t }, exceptConn, conns);
-  if (!old && !rec.out && rec.chat !== 'saved' && !conns.some(c => !c.bg)) {
+  if (!old && !rec.out && rec.chat !== 'saved') {   // пуш всегда: телефон сам не покажет, если SLON у него на экране
     const lbl = { photo: 'Фото', voice: 'Голосовое сообщение', slon: 'Слонкружок', file: 'Файл', e2e: 'Новое сообщение' };
     const body = lbl[rec.k] || (rec.text ? String(rec.text).slice(0, 200) : 'Новое сообщение');
     const data = { type: 'msg', chat: rec.chat, title: rec.nick || ('@' + rec.chat), body };
