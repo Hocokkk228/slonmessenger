@@ -214,9 +214,11 @@ function fit(items, toJson) {
 }
 async function presenceOf(us) {
   if (!us.length) return {};
-  const rows = await q('SELECT username,online,ts,ls FROM presence WHERE username IN $us;', { us });
+  const [rows, np] = await qAll('SELECT username,online,ts,ls FROM presence WHERE username IN $us; SELECT u,data,until FROM nowplay WHERE u IN $us;', { us });
   const out = {};
   for (const r of rows) out[r.username] = { online: !!r.online && r.ts > now() - CONN_TTL, ts: r.ts, ls: r.ls };
+  // «Сейчас слушает» — только пока трек идёт (until) и человек в сети
+  for (const r of np) { const p = out[r.u]; if (p && p.online && r.until > now()) { try { p.np = JSON.parse(r.data); } catch (e) { } } }
   return out;
 }
 
@@ -579,6 +581,15 @@ const routes = {
       return J({ ok: true, iceServers: [{ urls, username: TURN_USER, credential: TURN_PASS }], ttl: 86400 });
     }
     return E('no_turn', 'TURN не настроен', 503);
+  },
+  // «Сейчас слушает»: что играет у пользователя (включается им самим в настройках музыки)
+  async 'POST /np'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    if (d.clear || !d.t) { await q('DELETE FROM nowplay WHERE u=$u;', { u }); return J({ ok: true }); }
+    const c = String(d.c || ''), data = JSON.stringify({ t: String(d.t).slice(0, 120), a: String(d.a || '').slice(0, 120), c: /^https:\/\//.test(c) ? c.slice(0, 400) : '' });
+    const left = Math.max(30, Math.min(900, Math.round(+d.left || 240)));          // сколько ещё играть трекe (сек)
+    await q('UPSERT INTO nowplay (u,data,until) VALUES ($u,$d,$t);', { u, d: data, t: now() + (left + 30) * 1000 });
+    return J({ ok: true });
   },
   async 'GET /presence'(r) {
     const us = String(r.qs.get('u') || '').toLowerCase().split(',').filter(validUser).slice(0, 200);
