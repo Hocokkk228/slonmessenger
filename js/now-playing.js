@@ -55,7 +55,7 @@ function _npStatusHtml(np){return `<span class="np-st">${_NP_ICO}<span>Слуш�
 {const f=updateChatHeader;updateChatHeader=function(){
   const r=f.apply(this,arguments);
   try{const pid=activeChat,np=pid&&!pid.startsWith('g_')&&_npOf(pid),st=$('chStatus');
-    if(np&&st){st.innerHTML=_npStatusHtml(np);st.className='ch-status on np';}}catch(e){}
+    if(np&&st){st.innerHTML=_npStatusHtml(np);st.className='ch-status is-np';}}catch(e){}
   return r;
 };}
 // статус «слушает» поменялся — обновляем шапку (сам статус «в сети» по-прежнему перерисовывает её только при смене)

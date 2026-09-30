@@ -95,7 +95,7 @@ function _mxRefresh(){
 const _mxCard=(on,cv,title,sub,extra)=>`<div class="mx-card" onclick="${on}">${cv}<div class="mx-card-t"><b>${esc(title)}</b><span>${sub}</span></div>${extra||''}</div>`;
 function _mxLib(){
   const chips=[['all','Все'],['pl','Плейлисты'],['art','Исполнители'],['alb','Альбомы'],['tracks','Треки']];
-  let h=`<div class="mx-chips">${chips.map(([k,t])=>`<button class="${_mxS.chip===k?'on':''}" onclick="_mxS.chip='${k}';_mxRefresh()">${t}</button>`).join('')}</div>`;
+  let h=`<div class="mx-chips">${chips.map(([k,t])=>`<button class="${_mxS.chip===k?'on':''}" onclick="_mxChipGo('${k}')">${t}</button>`).join('')}</div>`;
   const c=_mxS.chip;
   if(c==='all'||c==='pl'){
     if(c==='all')h+=`<div class="mx-imp" onclick="_mxImport()"><div><b>Импортировать треки</b><span>Свои файлы и плейлист списком из Спотифая или Яндекс Музыки</span></div>${_MX_ICO.imp}</div>`;
@@ -322,3 +322,15 @@ document.addEventListener('pointerdown',e=>{
   b.classList.remove('tap','tap-r','tap-l');void b.offsetWidth;b.classList.add(cls);
   setTimeout(()=>b.classList.remove(cls),420);
 },true);
+
+// смена категории в медиатеке: содержимое уезжает в сторону, новое приезжает с другой (как вкладки в ОС)
+const _MX_CHIPS=['all','pl','art','alb','tracks'];
+function _mxChipGo(k){
+  if(k===_mxS.chip)return;
+  const dir=_MX_CHIPS.indexOf(k)>_MX_CHIPS.indexOf(_mxS.chip)?1:-1;
+  _mxS.chip=k;_mxS.chipDir=dir;_mxRefresh();
+  const b=$('mxBody');if(!b)return;
+  const chips=b.querySelector('.mx-chips');
+  chips&&chips.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
+  [...b.children].forEach(el=>{if(el===chips)return;el.classList.remove('mx-in-l','mx-in-r');void el.offsetWidth;el.classList.add(dir>0?'mx-in-r':'mx-in-l');});
+}

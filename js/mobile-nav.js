@@ -61,3 +61,16 @@ setInterval(()=>{
   const cp=document.getElementById('contactsPanel');
   if(cp&&!cp.classList.contains('show')){const on=bar.querySelector('button.on');if(on&&on.dataset.t==='contacts')_tabGo('chats');}
 },1500);
+
+// ── телефон: поиск и истории прокручиваются вместе со списком ──
+(function _sbScrollWrap(){
+  if(window.innerWidth>640)return;
+  const sb=document.getElementById('sidebar'),search=sb&&sb.querySelector('.sb-search'),list=document.getElementById('sbList');
+  if(!sb||!search||!list){setTimeout(_sbScrollWrap,300);return;}
+  if(document.getElementById('sbScroll'))return;
+  const w=document.createElement('div');w.id='sbScroll';w.className='sb-scroll';
+  search.parentNode.insertBefore(w,search);
+  // всё от поиска до кнопки «+» (глобальный поиск, истории, список, архив) — внутрь прокрутки
+  let n=w.nextSibling;
+  while(n){const nx=n.nextSibling;if(n.nodeType===1&&(n.classList.contains('fab-wrap')||n.id==='sbTabbar'||n.classList.contains('contacts-panel')))break;w.appendChild(n);n=nx;}
+})();
