@@ -3642,3 +3642,67 @@ video.mv-media{cursor:default;}
 @keyframes btnL{0%{transform:none}35%{transform:translateX(-6px) scale(.9)}100%{transform:none}}
 .fp-pp svg,.mm-mini-pp svg,.isl-pp svg,.mx-play svg,.px-kara-pp svg,.mm-bar-pp svg{animation:ppIn .28s cubic-bezier(.2,1.4,.3,1);}
 @keyframes ppIn{from{transform:scale(.5) rotate(-30deg);opacity:0}to{transform:none;opacity:1}}
+
+/* ════════ Телефон: раскладка как в Telegram (ПК не трогаем) ════════ */
+@media(max-width:640px){
+  :root{--sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));}
+  /* всё во весь экран: без карточек, отступов и скруглений по краям */
+  .main{padding:0!important;gap:0!important;}
+  .sidebar{left:0!important;right:0!important;top:0!important;bottom:0!important;border:none!important;border-radius:0!important;box-shadow:none!important;padding-top:var(--sat);box-sizing:border-box;}
+  .chat{border:none!important;border-radius:0!important;box-shadow:none!important;}
+  .sb-overlay{display:none!important;}
+  /* шапка чата — пристыкована к верху во всю ширину; под статус-баром телефона — плотная подложка цвета темы */
+  .chat-hdr{position:absolute!important;top:0!important;left:0!important;right:0!important;width:100%!important;max-width:none!important;margin:0!important;
+    height:calc(56px + var(--sat))!important;padding:var(--sat) 4px 0 0!important;border-radius:0!important;border:none!important;
+    background:var(--bg2)!important;box-shadow:0 1px 0 var(--border),0 2px 8px rgba(0,0,0,.12)!important;z-index:6!important;box-sizing:border-box!important;}
+  .chat-hdr::before,.chat-hdr::after{display:none!important;}
+  .chat-hdr .ch-back{width:44px;height:44px;margin-left:2px;}
+  .chat-hdr .ch-av{width:40px!important;height:40px!important;flex-shrink:0;}
+  .chat-hdr .ch-av img{width:40px!important;height:40px!important;}
+  .ch-info{flex:1;min-width:0;overflow:hidden;}
+  .ch-name,.ch-status{display:block;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .ch-name{font-size:16.5px;font-weight:700;line-height:1.25;}
+  .ch-status{font-size:13.5px;line-height:1.3;}
+  .pinned-bar{top:calc(56px + var(--sat))!important;left:0!important;right:0!important;width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important;box-shadow:0 1px 0 var(--border)!important;z-index:5!important;}
+  .msgs{padding-top:calc(64px + var(--sat))!important;}
+  .pinned-bar.show~.msgs{padding-top:calc(114px + var(--sat))!important;}
+  /* поле ввода — над жестовой полоской телефона */
+  .inp-wrap{margin-bottom:calc(6px + var(--sab))!important;}
+  /* фото и видео — без рамок: картинка до краёв пузыря, как в Telegram */
+  .photo-bub{padding:0!important;background:none!important;border:none!important;box-shadow:none!important;border-radius:16px!important;}
+  .photo-bub img{border-radius:16px!important;}
+  .msg.out .photo-bub img{border-bottom-right-radius:6px!important;}
+  .msg.inc .photo-bub img{border-bottom-left-radius:6px!important;}
+  .video-bub{border-radius:16px!important;}
+  /* мини-плеер снизу не закрывает последние сообщения — под ним место в ленте */
+  body.mm-mini-on .msgs{padding-bottom:78px!important;}
+  body.mm-mini-on .msgs .typing-wrap{margin-bottom:0;}
+  /* список чатов — во всю ширину, без рамок у строк */
+  .sb-item{border-radius:0!important;margin:0!important;}
+}
+@media(max-width:640px){
+  /* чат — поверх списка и въезжает справа; список под ним чуть сдвигается влево и темнеет */
+  .main .sidebar{transform:translateX(-25%);z-index:90;transition:transform .34s cubic-bezier(.2,.9,.25,1);}
+  .main .sidebar.open{transform:none;}
+  .sidebar::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--mnav-dim,.45);pointer-events:none;transition:opacity .34s;z-index:50;}
+  .sidebar.open::after{opacity:0;}
+  #chatPane.chat{position:fixed!important;inset:0!important;z-index:95!important;transition:transform .34s cubic-bezier(.2,.9,.25,1);will-change:transform;box-shadow:-6px 0 24px rgba(0,0,0,.25)!important;}
+  .sidebar.open~#chatPane.chat{transform:translateX(100%);box-shadow:none!important;}
+  .sidebar.mnav-drag,#chatPane.mnav-drag{transition:none!important;}
+  .sidebar.mnav-drag::after{transition:none;}
+}
+@media(max-width:640px){
+  /* чат лежит поверх списка — ему нужен свой непрозрачный фон: берём фон страницы (цвет темы и обои) */
+  .app,.main{background:inherit!important;}
+  #chatPane.chat{background:inherit!important;}
+}
+/* системные панели телефона (Capacitor передаёт --safe-area-inset-*; в браузере — env()) */
+:root{--sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));}
+@media(max-width:640px){
+  .sp-panel{padding-top:var(--sat);box-sizing:border-box;}
+  .mm-fp{padding-top:calc(8px + var(--sat))!important;padding-bottom:calc(18px + var(--sab))!important;}
+  .px-kara{padding-top:var(--sat);box-sizing:border-box;}
+  .lg-doc-hd{padding-top:calc(10px + var(--sat))!important;}
+  .mx-nav{bottom:calc(10px + var(--sab))!important;}
+  .mm-mini{bottom:calc(12px + var(--sab));}
+}

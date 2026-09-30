@@ -24,7 +24,7 @@ function _updShow(on){
   clearTimeout(_updT);
   if(on){
     if(_updOn)return;
-    _updT=setTimeout(()=>{_updOn=true;_updSince=Date.now();el.classList.remove('done');el.classList.add('on');},350);   // быстро догнали — не мигаем
+    _updT=setTimeout(()=>{_updOn=true;_updSince=Date.now();el.classList.remove('done');el.classList.add('on');},2500);  // быстро догнали — плашку не показываем вовсе
   }else{
     if(!_updOn)return;
     _updT=setTimeout(()=>{

@@ -257,7 +257,7 @@ function _presApply(pid){
   const was=_fbConns[pid];
   _fbConns[pid]=online;
   if(was!==online)setSbStatus(pid,online);
-  if(activeChat===pid){updateChatHeader();updateReconBanner();}
+  if(activeChat===pid&&was!==online){updateChatHeader();updateReconBanner();}
 }
 
 function _checkFirebaseRules(){

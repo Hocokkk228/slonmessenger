@@ -117,7 +117,7 @@ function sendMsg(){
   chatHist[activeChat].push(msg);appendMsg(msg);scrollDown();
   updatePreview(activeChat,'Вы: '+txt.slice(0,28));saveAll();
   if(activeChat==='ai'){
-    $('typing').classList.add('show');scrollDown();
+    $('typing').classList.add('show');scrollDown('soft');
     const delay=300+Math.random()*300; // короткая задержка + реальное время ответа API
     setTimeout(async()=>{
       const replyText=await aiReply(txt); // ждём реальный ответ от Hugging Face (с фолбэком)
@@ -710,7 +710,7 @@ function showChatDeleteMenu(){
 
 function showRemoteTyping(pid){
   if(activeChat!==pid)return;
-  $('typing').classList.add('show');scrollDown();
+  $('typing').classList.add('show');scrollDown('soft');
   clearTimeout(typingTimers[pid]);
   typingTimers[pid]=setTimeout(()=>$('typing').classList.remove('show'),2800);
 }
@@ -914,7 +914,8 @@ function scrollDown(force){
   const last=m.lastElementChild;
   const nearBottom=m.scrollHeight-m.scrollTop-m.clientHeight<160;
   // человек листает историю — новое входящее не должно дёргать его вниз (как в Telegram)
-  if(!force&&!nearBottom&&!(last&&last.classList.contains('out')))return;
+  if(force==='soft'){if(!nearBottom)return;}                 // «печатает…» и подобное — только если и так внизу
+  else if(!force&&!nearBottom&&!(last&&last.classList.contains('out')))return;
   requestAnimationFrame(()=>{m.scrollTop=m.scrollHeight;});
 }
 

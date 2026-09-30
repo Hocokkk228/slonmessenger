@@ -974,6 +974,7 @@ const _FP_ICO={
   ok:'<svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>'
 };
 function _mini(on){
+  document.body.classList.toggle('mm-mini-on',!!on);   // место под плеер в ленте сообщений
   let m=$('mmMini');
   if(!on){if(m){m.classList.remove('show');clearTimeout(m._t);m._t=setTimeout(()=>{if(!m.classList.contains('show'))m.remove();},300);}return;}
   if(!m){m=document.createElement('div');m.id='mmMini';m.className='mm-mini';
