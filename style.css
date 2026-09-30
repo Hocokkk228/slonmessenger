@@ -3731,3 +3731,38 @@ video.mv-media{cursor:default;}
 .np-share-sw{width:44px;height:26px;border-radius:13px;background:var(--hover);position:relative;flex-shrink:0;transition:background .2s;}
 .np-share-sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;}
 .np-share-sw.on{background:#1ed760;}.np-share-sw.on i{transform:translateX(18px);}
+
+/* ПК: обёртка аватарки и имени в шапке ничего не меняет */
+.ch-pill{display:contents;}
+/* ════════ Телефон: шапка чата как в Telegram — стеклянные «таблетки» ════════
+   слева круглая «назад», по центру аватар + имя + статус, справа звонок и меню; сверху мягкое затемнение цвета темы */
+@media(max-width:640px){
+  .chat-hdr{top:calc(6px + var(--sat))!important;height:52px!important;padding:0 10px!important;gap:8px!important;
+    background:transparent!important;box-shadow:none!important;border:none!important;pointer-events:none;}
+  .chat-hdr>*,.ch-pill>*{pointer-events:auto;}
+  .chat-hdr .ch-back,.ch-pill,.chat-hdr .ch-acts{
+    background:color-mix(in srgb,var(--bg2) 72%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+    border:1px solid color-mix(in srgb,var(--text1) 9%,transparent);box-shadow:0 4px 18px rgba(0,0,0,.22);}
+  .chat-hdr .ch-back{width:52px!important;height:52px!important;margin:0!important;border-radius:50%!important;flex-shrink:0;display:flex!important;align-items:center;justify-content:center;}
+  .chat-hdr .ch-back svg{width:24px;height:24px;}
+  .ch-pill{display:flex!important;align-items:center;gap:10px;flex:1;min-width:0;height:52px;padding:0 14px 0 6px;border-radius:26px;box-sizing:border-box;cursor:pointer;}
+  .ch-pill .ch-info{flex:1;min-width:0;}
+  .chat-hdr .ch-acts{display:flex!important;align-items:center;height:52px;padding:0 4px;border-radius:26px;flex-shrink:0;box-sizing:border-box;}
+  .chat-hdr .ch-acts:not(:has(>*:not([style*="display:none"]):not([style*="display: none"])))
+    {display:none!important;}
+  .chat-hdr .ch-act,.chat-hdr .ch-more-btn{width:44px;height:44px;border-radius:50%;}
+  /* затемнение сверху: статус-бар и шапка не налезают на сообщения под ними */
+  #chatPane.chat::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(var(--sat) + 74px);z-index:5;pointer-events:none;
+    background:linear-gradient(to bottom,var(--bg1) 0%,var(--bg1) calc(var(--sat) + 4px),color-mix(in srgb,var(--bg1) 65%,transparent) calc(var(--sat) + 40px),transparent 100%);}
+  .pinned-bar{top:calc(64px + var(--sat))!important;left:10px!important;right:10px!important;width:auto!important;border-radius:18px!important;
+    background:color-mix(in srgb,var(--bg2) 72%,transparent)!important;-webkit-backdrop-filter:blur(22px) saturate(1.5)!important;backdrop-filter:blur(22px) saturate(1.5)!important;
+    border:1px solid color-mix(in srgb,var(--text1) 9%,transparent)!important;box-shadow:0 4px 18px rgba(0,0,0,.22)!important;}
+  .msgs{padding-top:calc(70px + var(--sat))!important;}
+  .pinned-bar.show~.msgs{padding-top:calc(124px + var(--sat))!important;}
+}
+@media(max-width:640px){
+  /* блики «стекла» тёмных тем были на всей полосе шапки — на телефоне у шапки фона нет, стекло только у таблеток */
+  body #chatHdr.chat-hdr{box-shadow:none!important;background:transparent!important;}
+  body #pinnedBar.pinned-bar{box-shadow:0 4px 18px rgba(0,0,0,.22)!important;}
+  #chSearchBtn{display:none!important;}
+}
