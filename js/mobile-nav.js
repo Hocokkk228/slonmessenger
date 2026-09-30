@@ -41,3 +41,23 @@
 })();
 // назад к списку: подсветку «открытого» чата на телефоне не держим (как в Telegram)
 {const f=backToList;backToList=function(){const r=f.apply(this,arguments);if(window.innerWidth<=640)document.querySelectorAll('.sb-item.active').forEach(el=>el.classList.remove('active'));return r;};}
+
+// ── телефон: нижняя панель вкладок списка чатов ──
+function _tabGo(t){
+  if(t==='chats'){if(typeof closeContactsPanel==='function')closeContactsPanel();if(document.getElementById('spPanel')?.classList.contains('open'))closeMyProfilePanel();}
+  else if(t==='contacts'){if(typeof _showContactsList==='function')_showContactsList();}
+  else if(t==='music'){openMyProfilePanel();setTimeout(()=>{if(typeof _spMusic==='function')_spMusic();},60);}
+  else if(t==='settings'){openMyProfilePanel();}
+  document.querySelectorAll('#sbTabbar button').forEach(b=>b.classList.toggle('on',b.dataset.t===(t==='music'||t==='settings'?'chats':t)));
+}
+// счётчик непрочитанных и аватарка на вкладке «Настройки»
+setInterval(()=>{
+  const bar=document.getElementById('sbTabbar');if(!bar||window.innerWidth>640)return;
+  let n=0;document.querySelectorAll('[id^="badge-"]').forEach(e=>{const v=parseInt(e.textContent,10);if(v>0)n+=v;});
+  const b=document.getElementById('sbtBadge');if(b){const s=n>99?'99+':n?String(n):'';if(b.textContent!==s)b.textContent=s;}
+  const av=document.getElementById('sbtAv');
+  if(av&&typeof myAvatar!=='undefined'&&myAvatar&&av.dataset.src!==myAvatar){av.dataset.src=myAvatar;av.innerHTML='<img src="'+myAvatar+'" alt="">';}
+  // панель контактов закрылась — снова «Чаты»
+  const cp=document.getElementById('contactsPanel');
+  if(cp&&!cp.classList.contains('show')){const on=bar.querySelector('button.on');if(on&&on.dataset.t==='contacts')_tabGo('chats');}
+},1500);

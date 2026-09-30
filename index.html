@@ -533,6 +533,8 @@
         </div>
         </div>
       </div>
+      <!-- телефон: крупный заголовок, как в Telegram -->
+      <div class="sb-mtitle">SLON</div>
       <div class="sb-search">
         <button class="sb-hamburger" onclick="toggleHamburgerMenu(event)" title="Меню">
           <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
@@ -587,6 +589,13 @@
       </div>
       <div class="sb-archive" id="archiveList"></div>
 
+      <!-- телефон: нижняя панель вкладок, как в Telegram -->
+      <nav class="sb-tabbar" id="sbTabbar">
+        <button class="on" data-t="chats" onclick="_tabGo('chats')"><span class="sbt-ico"><svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg><b class="sbt-badge" id="sbtBadge"></b></span><span>Чаты</span></button>
+        <button data-t="contacts" onclick="_tabGo('contacts')"><span class="sbt-ico"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span><span>Контакты</span></button>
+        <button data-t="music" onclick="_tabGo('music')"><span class="sbt-ico"><svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg></span><span>Музыка</span></button>
+        <button data-t="settings" onclick="_tabGo('settings')"><span class="sbt-ico sbt-av" id="sbtAv"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.14 7.14 0 0 0 0-1.88l2.03-1.58-1.92-3.32-2.39.96a7 7 0 0 0-1.63-.94L14.9 3.5h-3.8l-.37 2.68c-.59.24-1.13.55-1.63.94l-2.39-.96-1.92 3.32 2.03 1.58a7.14 7.14 0 0 0 0 1.88L4.79 14.5l1.92 3.32 2.39-.96c.5.39 1.04.7 1.63.94l.37 2.7h3.8l.37-2.7c.59-.24 1.13-.55 1.63-.94l2.39.96 1.92-3.32zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></span><span>Настройки</span></button>
+      </nav>
       <div class="fab-wrap">
         <div class="fab-menu" id="fabMenu">
           <button class="fab-menu-item" style="animation-delay:.03s" onclick="closeFabMenu();openWizard('channel')">
