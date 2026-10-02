@@ -134,7 +134,7 @@ function sendMsg(){
     const c=conns[activeChat];
     if(_fbMode||c?.open){
       // при шифровании открытый текст не шлём: сообщение идёт зашифрованным в журнале
-      if(!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp))
+      if(!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp)&&!(typeof _e2eMust==='function'&&_e2eMust(activeChat)))
         sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null,reply:reply||undefined});
       // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
       if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts,reply:reply||undefined});
@@ -154,6 +154,8 @@ function recvMsg(pid,text,nick,avatar,mid,ts,reply){
   const msgTs=ts||Date.now();
   const msg={id:msgId,sender:'inc',senderId:pid,name:peerNames[pid]||('@'+pid),avatar:avatar||peerAvatars[pid]||null,text,ts:msgTs,time:fmtTime(msgTs)};
   if(reply&&reply.id)msg.reply={id:String(reply.id),name:String(reply.name||''),text:String(reply.text||'').slice(0,120)};
+  // собеседник на шифровании, а это пришло открытым текстом — помечаем (могли подсунуть)
+  if(typeof _e2eMust==='function'&&_e2eMust(pid))msg.unenc=true;
   chatHist[pid].push(msg);
   // Отправляем read receipt если чат открыт
   if(activeChat===pid)setTimeout(()=>_sendRead(pid),50);
@@ -284,8 +286,10 @@ function appendMsg(msg,container){
   let statusIcon='';
   // старые записи о звонках — без статуса: ответил/отклонил → видел, иначе доставлено
   if(isOut&&msg.type==='call'&&!msg.status)msg.status=(msg.callOutcome==='answered'||msg.callOutcome==='declined')?'read':'delivered';
+  if(!isOut&&msg.unenc)statusIcon=' <span class="ticks unenc" title="Пришло без сквозного шифрования">⚠︎</span>';
   if(isOut){
-    if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
+    if(msg.status==='wait') statusIcon=' <span class="ticks wait" title="Ждёт шифрования — уйдёт, когда появится связь">🕓︎</span>';
+    else if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
     else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
     else statusIcon=' <span class="ticks sent">✓</span>';
   }
@@ -489,6 +493,7 @@ function _updateMsgStatus(mid,status){
   if(el){
     if(status==='read'){el.textContent='✓✓';el.className='ticks read';}
     else if(status==='delivered'){el.textContent='✓✓';el.className='ticks';}
+    else if(status==='wait'){el.textContent='🕓︎';el.className='ticks wait';}
     else{el.textContent='✓';el.className='ticks sent';}
   }
 }

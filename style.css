@@ -3864,3 +3864,7 @@ video.mv-media{cursor:default;}
 /* остров: плавное сворачивание */
 .sl-isl.closing{transition:height .3s cubic-bezier(.3,1,.4,1),width .3s cubic-bezier(.3,1,.4,1),border-radius .3s,padding .3s!important;border-radius:19px!important;overflow:hidden;}
 .sl-isl.closing>*{opacity:0;transition:opacity .15s;}
+
+/* сообщение ждёт шифрования / пришло без шифрования */
+.ticks.wait{opacity:.75}
+.ticks.unenc{color:#e5a23b;font-weight:700}

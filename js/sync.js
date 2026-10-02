@@ -183,10 +183,15 @@ function _mlPost(chat,rec){
   if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId?.(chat))return null;
   const key=_mlKey(rec.ts,rec.id);
   const clean={};for(const k in rec)if(rec[k]!==undefined&&rec[k]!==null)clean[k]=rec[k];
-  // Сквозное шифрование (Signal): получилось — всё; у собеседника старая версия — как раньше
-  if(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp&&!clean._plain){
+  // Сквозное шифрование (Signal): получилось — всё. Собеседник уже на шифровании, а сейчас оно
+  // недоступно — сообщение ждёт в очереди (не уходит открытым текстом). Открыто — только тем,
+  // у кого шифрования никогда не было (старая версия).
+  const must=typeof _e2eMust==='function'&&_e2eMust(chat==='saved'?myUsername:chat);
+  const ready=typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp;
+  if((ready||must)&&!clean._plain){
     return (async()=>{
-      if(await _e2ePost(chat,key,clean))return;
+      if(ready&&await _e2ePost(chat,key,clean))return;
+      if(must||_e2eMust(chat==='saved'?myUsername:chat)){_e2eOutboxAdd(chat,key,clean);return;}
       if((clean.k||'text')==='text'&&chat!=='saved')
         sendData(conns[chat]||chat,{type:'msg',id:clean.id,text:clean.text,ts:clean.ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
       return _mlPost(chat,{...clean,_plain:1,mk:undefined});
@@ -219,6 +224,8 @@ function _mlEdit(chat,id,patch){
   const key=_mlFindKey(chat,id);if(!key)return;
   const em=(chatHist[chat]||[]).find(x=>x.id===id);
   if(em?._e2e&&typeof _e2eOn!=='undefined'&&_e2eOn&&patch.text!=null){_e2eEdit(chat,key,em,patch.text);return;}
+  // зашифрованное сообщение открытым текстом не правим
+  if(patch.text!=null&&(em?._e2e||(typeof _e2eMust==='function'&&_e2eMust(chat==='saved'?myUsername:chat)))){toast('Нет связи с сервером — правка не отправлена');return;}
   if(typeof _hubSend==='function'&&_hubSend({t:'ml_patch',chat,key,patch}))return;
   window._fbRef(window._fbDb,'ml/'+myUsername+'/'+key).update(patch).catch(()=>{});
   if(chat!=='saved')window._fbRef(window._fbDb,'ml/'+chat+'/'+key).update(patch).catch(()=>{});
@@ -240,6 +247,8 @@ async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
   try{
     // На наш сервер; если у устройства ещё нет токена — по-старому, в Firebase
     let m,mk;
+    const must=typeof _e2eMust==='function'&&_e2eMust(chat==='saved'?myUsername:chat);
+    if(must&&!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _apiToken==='function'&&_apiToken())){toast('Шифрование ещё не готово — попробуй через пару секунд');return false;}
     if(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _apiToken==='function'&&_apiToken()){
       const enc=await _e2eEncryptMedia(dataUrl,meta.mime);
       mk=enc.mk;m=await _srvUploadBlob(enc.blob,'application/octet-stream','',onProg);
@@ -268,6 +277,7 @@ async function _mlMaterialize(key,r0){
   else base.status='delivered';
   if(r.edited)base.edited=true;
   if(e2e){base._e2e=true;base._ev=r.ev||0;}
+  else if(!out&&typeof _e2eMust==='function'&&_e2eMust(chat))base.unenc=true;
   const k=r.k||'text';
   if(k==='gift')return {...base,gift:{id:r.gift,gid:r.gid||'',text:r.text||'',price:r.price||0}};
   if(k==='text')return {...base,text:r.text||'',...(r.reply&&r.reply.id?{reply:{id:String(r.reply.id),name:String(r.reply.name||''),text:String(r.reply.text||'').slice(0,120)}}:{})};

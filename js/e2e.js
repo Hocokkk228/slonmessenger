@@ -16,7 +16,16 @@ let _e2eUser=null,_e2eIniting=false;
 const _e2eDevCache={};             // user -> {ts, list:[{d,ik}]}
 const _e2eWaiting={};              // ключ журнала -> запись, которую пока нечем расшифровать
 let _e2eChain=Promise.resolve();   // все операции с сессиями — строго по очереди (храповик не терпит гонок)
-const _e2eQ=fn=>{const p=_e2eChain.then(fn,fn);_e2eChain=p.catch(()=>{});return p;};
+// Две вкладки с одним состоянием храповика = повтор ключей сообщений. Поэтому замок общий для всех
+// вкладок (Web Locks), а ключи устройства перечитываются из IDB под замком (другая вкладка могла
+// потратить одноразовый предключ или сменить подписанный).
+const _e2eQ=fn=>{
+  const run=async()=>{
+    const go=async()=>{if(_e2eMe&&_e2eUser===myUsername){const f=await _e2eLoad();if(f&&f.deviceId===_e2eMe.deviceId)_e2eMe=f;}return fn();};
+    return navigator.locks?navigator.locks.request('slon-e2e:'+myUsername,go):go();
+  };
+  const p=_e2eChain.then(run,run);_e2eChain=p.catch(()=>{});return p;
+};
 const _e2eK=k=>'e2e:'+myUsername+':'+k;
 const _e2eAddr=(u,d)=>u+':'+d;
 const _e2eEnc=o=>E2E.te.encode(JSON.stringify(o));
@@ -45,7 +54,8 @@ async function _e2eVerifyReg(){
   // сообщения, которые не расшифровались, — просим отправителей перешифровать
   for(const [k,rec] of Object.entries(_e2eWaiting)){delete _e2eAsked[k];_e2eAskResend(k,rec);}
 }
-async function _e2eTopUp(){
+const _e2eTopUp=()=>_e2eQ(_e2eTopUp0);          // меняет ключи устройства — только под общим замком
+async function _e2eTopUp0(){
   const c=await api('/e2e/count?d='+_e2eMe.deviceId);
   if(!c.registered){await _e2eRegister();return;}
   if(c.count>=20)return;
@@ -56,8 +66,9 @@ async function _e2eTopUp(){
   await api('/e2e/prekeys',{deviceId:_e2eMe.deviceId,opks:fresh.map(k=>({id:k.id,pub:E2E.b64(k.pub)}))});
 }
 // Подписанный предключ меняем раз в неделю (старый держим месяц — для запоздалых первых сообщений)
-async function _e2eRotateSpk(){
-  if(Date.now()-(_e2eMe.spk.ts||0)<7*864e5)return;
+const _e2eRotateSpk=()=>_e2eQ(_e2eRotateSpk0);
+async function _e2eRotateSpk0(){
+  if(_e2eMe.spk.v===2&&Date.now()-(_e2eMe.spk.ts||0)<7*864e5)return;
   const spk=await E2E.newSignedPreKey(_e2eMe.identity,_e2eMe.spk.id+1);
   _e2eMe.oldSpks=[_e2eMe.spk,...(_e2eMe.oldSpks||[])].filter(k=>Date.now()-(k.ts||0)<35*864e5).slice(0,5);
   _e2eMe.spk=spk;await _e2eSave();
@@ -226,11 +237,35 @@ function _e2ePreviewOf(p){
   return {photo:'Фото',voice:'Голосовое сообщение',slon:'Слонкружок',file:''+(p.name||'Файл')}[k]||'Новое сообщение';
 }
 
+// ── Закреплённые ключи (как в Signal) ──
+// pins[user][device]={ik,v2}: ключ устройства с тем же номером смениться не может (переустановка даёт
+// новый номер) — если сервер вдруг отдал другой ключ, это подмена, шифровать не будем.
+// «must»: у собеседника было шифрование — значит, открытым текстом ему больше не пишем никогда
+// (иначе сервер «потеряет» его ключи и получит переписку в открытую).
+let _e2ePins=null;
+async function _e2ePinsLoad(){if(!_e2ePins)_e2ePins=(await _idb.get(_e2eK('pins')))||{};return _e2ePins;}
+async function _e2ePinsSave(){await _idb.put(_e2eK('pins'),_e2ePins);}
+function _e2eMust(u){try{return !!u&&localStorage.getItem(_e2eK('must:'+u))==='1';}catch(e){return false;}}
+function _e2eSetMust(u){try{if(u&&!_e2eMust(u))localStorage.setItem(_e2eK('must:'+u),'1');}catch(e){}}
+const _e2eKeyAlert={};             // user -> true: сервер отдал другой ключ для известного устройства
+async function _e2ePinCheck(u,list){
+  const pins=await _e2ePinsLoad(),p=pins[u]||(pins[u]={});let ch=false;
+  const ok=[];
+  for(const x of list){
+    const was=p[x.d];
+    if(was&&was.ik!==x.ik){console.warn('[e2e] ключ устройства',u,x.d,'изменился — не доверяем');_e2eKeyAlert[u]=true;continue;}
+    if(!was){p[x.d]={ik:x.ik,ts:Date.now()};ch=true;}
+    ok.push(x);
+  }
+  if(ch)await _e2ePinsSave();
+  if(list.length)_e2eSetMust(u);
+  return ok;
+}
 async function _e2eDevices(users){
   const need=users.filter(u=>!_e2eDevCache[u]||Date.now()-_e2eDevCache[u].ts>60000);
   if(need.length){
     const d=await api('/e2e/devices?u='+need.join(','));
-    for(const u of need)_e2eDevCache[u]={ts:Date.now(),list:d.devices?.[u]||[]};
+    for(const u of need)_e2eDevCache[u]={ts:Date.now(),list:await _e2ePinCheck(u,d.devices?.[u]||[])};
   }
   const out={};for(const u of users)out[u]=_e2eDevCache[u].list;
   return out;
@@ -246,7 +281,10 @@ async function _e2eEncryptTo(u,d,ik,bytes){
   if(!arr.length){
     const b=await api('/e2e/bundle?u='+encodeURIComponent(u)+'&d='+d);
     if(b.bundle.ik!==ik)throw new Error('ключ устройства изменился');
-    arr=[await E2E.initiate(_e2eMe.identity,b.bundle)];
+    const pins=await _e2ePinsLoad(),pin=pins[u]&&pins[u][d];
+    const st=await E2E.initiate(_e2eMe.identity,b.bundle,{v2only:!!(pin&&pin.v2)});
+    if(pin&&st.spkV===2&&!pin.v2){pin.v2=1;await _e2ePinsSave();}
+    arr=[st];
   }
   const msg=await E2E.encrypt(arr[0],bytes);
   await _e2eSetSessions(addr,arr);
@@ -286,13 +324,23 @@ async function _e2eDecryptFrom(from,msg){
   }
   if(!msg.x)throw new Error('нет сессии');
   const x=msg.x;
+  // отправитель (from) — это устройство из справочника, и его ключ личности совпадает с присланным
+  delete _e2eDevCache[from.u];
+  const dv=((await _e2eDevices([from.u]))[from.u]||[]).find(v=>+v.d===+from.d);
+  if(!dv||dv.ik!==x.ik)throw new Error('ключ отправителя не совпадает со справочником');
+  // повтор первого сообщения (без одноразового ключа его можно переиграть) — один ek = одна сессия
+  const seen=_e2eMe.seenEk||(_e2eMe.seenEk={});
+  if(seen[x.ek])throw new Error('повтор первого сообщения');
   const spk=[_e2eMe.spk,...(_e2eMe.oldSpks||[])].find(k=>k.id===x.spk);
   if(!spk)throw new Error('подписанный предключ устарел');
   const opk=x.opk!=null?_e2eMe.opks[x.opk]:null;
   if(x.opk!=null&&!opk)throw new Error('одноразовый предключ уже использован');
   const st=await E2E.respond(_e2eMe.identity,spk,opk,x);
   const r=await E2E.decrypt(st,msg);
-  if(x.opk!=null){delete _e2eMe.opks[x.opk];await _e2eSave();_e2eTopUp().catch(()=>{});}
+  seen[x.ek]=Date.now();
+  for(const [k,t] of Object.entries(seen))if(Date.now()-t>40*864e5)delete seen[k];   // дольше жизни предключа не нужно
+  if(x.opk!=null){delete _e2eMe.opks[x.opk];_e2eTopUp().catch(()=>{});}
+  await _e2eSave();
   arr.unshift(r.st);await _e2eSetSessions(addr,arr);
   return r.plain;
 }
@@ -470,10 +518,39 @@ async function _e2eLogout(){
 
 // Код безопасности с собеседником (сравнить при встрече — как в Signal)
 async function _e2eSafetyCode(peer){
-  const devs=(await _e2eDevices([peer]))[peer];
-  if(!devs.length||!_e2eMe)return null;
-  return E2E.fingerprint(E2E.b64(_e2eMe.identity.sign.pub),devs[0].ik);
+  delete _e2eDevCache[peer];delete _e2eDevCache[myUsername];
+  const devs=await _e2eDevices([peer,myUsername]);
+  if(!devs[peer].length||!_e2eMe)return null;
+  const mine=devs[myUsername].map(x=>x.ik),me=E2E.b64(_e2eMe.identity.sign.pub);
+  if(!mine.includes(me))mine.push(me);
+  return E2E.fingerprint(mine,devs[peer].map(x=>x.ik));
 }
+
+// ── Очередь «ждёт шифрования» ──
+// Шифрование сейчас недоступно (нет связи с сервером, ключи ещё грузятся, ключей собеседника не видно),
+// а собеседник уже на шифровании — сообщение ждёт, а не уходит открытым текстом.
+const _e2eObKey=()=>_e2eK('outbox');
+function _e2eObGet(){try{return JSON.parse(localStorage.getItem(_e2eObKey())||'[]');}catch(e){return [];}}
+function _e2eObSet(a){try{localStorage.setItem(_e2eObKey(),JSON.stringify(a.slice(-300)));}catch(e){}}
+function _e2eOutboxAdd(chat,key,rec){
+  const a=_e2eObGet();if(!a.some(x=>x.key===key))a.push({chat,key,rec});_e2eObSet(a);
+  const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);if(m){m.status='wait';if(typeof _updateMsgStatus==='function')_updateMsgStatus(rec.id,'wait');}
+}
+let _e2eObBusy=false;
+async function _e2eOutboxFlush(){
+  if(_e2eObBusy||!_e2eOn||typeof _hubUp==='undefined'||!_hubUp||!myUsername)return;
+  const a=_e2eObGet();if(!a.length)return;
+  _e2eObBusy=true;
+  try{
+    for(const it of a){
+      if(!await _e2ePost(it.chat,it.key,it.rec).catch(()=>false))continue;
+      _e2eObSet(_e2eObGet().filter(x=>x.key!==it.key));
+      const m=(chatHist[it.chat]||[]).find(x=>x.id===it.rec.id);
+      if(m&&m.status==='wait'){m.status='sent';_updateMsgStatus(it.rec.id,'sent');saveAll();}
+    }
+  }finally{_e2eObBusy=false;}
+}
+setInterval(()=>{_e2eOutboxFlush().catch(()=>{});},4000);
 
 setInterval(()=>{if(_fbMode&&myUsername&&!_e2eOn)_e2eInit();},5000);
 // нет ключа бэкапа — периодически просим у своих устройств (вдруг другое устройство появилось в сети)
