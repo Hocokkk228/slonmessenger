@@ -227,7 +227,8 @@ const _islQueue=()=>_mm.cur&&_islTr&&_islTr.id===_mm.cur.id&&_mm.queue.length>1;
 function _isl(){
   const on=_islTr&&_pxAudio&&String(_pxAudioId)===String(_islTr.id)&&(!_pxAudio.paused||_pxAudio.currentTime>0);
   let w=$('slIsl');
-  if(_mobPl()){if(w)w.remove();_mini(on);return;}   // на телефоне вместо острова — плеер снизу
+  if(_mobPl()&&!_mobChat()){if(w)w.remove();_mini(on);return;}   // телефон, список/настройки — плеер снизу над доком
+  if(_mobPl()&&on){const m=$('mmMini');if(m&&m.classList.contains('show')&&!m.classList.contains('suck')){m.classList.add('suck');document.body.classList.remove('mm-mini-on');setTimeout(()=>m.remove(),420);}}
   $('mmMini')?.remove();
   if(!on){if(w&&!w.classList.contains('bye')){w.classList.add('bye');clearTimeout(w._byeT);w._byeT=setTimeout(()=>{if(w.classList.contains('bye'))w.remove();},250);}return;}
   if(!w){w=document.createElement('div');w.id='slIsl';w.className='sl-isl';w.onclick=e=>{if(!_islOpen&&!e.target.closest('button,input')){_islOpen=true;_isl();}};document.body.appendChild(w);
@@ -260,7 +261,15 @@ function _islProg(){
 function _islSeek(v){if(_pxAudio&&isFinite(_pxAudio.duration)){_pxAudio.currentTime=v/1000*_pxAudio.duration;_islProg();}}
 function _islToggle(){if(!_pxAudio)return;if(_pxAudio.paused)_pxAudio.play().catch(()=>{});else _pxAudio.pause();}
 function _islStep(d){if(_islQueue())_mmStep(d);else if(_pxAudio){_pxAudio.currentTime=d<0?0:(_pxAudio.duration||0);}}
-function _islOutside(e){if(_islOpen&&!e.target.closest('#slIsl,#pxKara')){_islOpen=false;_isl();}}
+function _islOutside(e){if(_islOpen&&!e.target.closest('#slIsl,#pxKara'))_islCollapse();}
+// плавно сворачиваем: содержимое гаснет, остров сжимается до пилюли, потом подменяем содержимое
+function _islCollapse(){
+  const w=$('slIsl');if(!w||!_islOpen||w.classList.contains('closing')){_islOpen=false;_isl();return;}
+  const r=w.getBoundingClientRect();
+  w.style.height=r.height+'px';w.style.width=r.width+'px';w.classList.add('closing');void w.offsetWidth;
+  w.style.height='38px';w.style.width='min(260px,calc(100% - 20px))';
+  setTimeout(()=>{_islOpen=false;w.classList.remove('closing');w.style.height='';w.style.width='';w.dataset.k='';_isl();},320);
+}
 function _islClose(){setTimeout(_nmSync,0);_islOpen=false;_pxAudio?.pause();try{_pxAudio.currentTime=0;}catch(e){}_islTr=null;_mm.cur=null;_isl();_mmPaintPlay();_pxBtns();}
 function _mmBar(){_isl();}
 function _mmBarProg(){_islProg();}
@@ -1303,3 +1312,8 @@ function _fpLyLoop(){
   const step=()=>{if(!_fpLyOn||!$('mmFp'))return;try{_fpLyTick();}catch(e){}_fpRaf=requestAnimationFrame(step);};
   _fpRaf=requestAnimationFrame(step);
 }
+
+// телефон: открыт ли чат (список спрятан)
+function _mobChat(){const sb=document.getElementById('sidebar');return !!sb&&!sb.classList.contains('open');}
+// переходы чат ↔ список: плеер сам переезжает (остров сверху / плеер снизу)
+setInterval(()=>{if(_mobPl()&&typeof _islTr!=='undefined'&&_islTr){const want=_mobChat()?'isl':'mini';if(window._mmWhere!==want){window._mmWhere=want;_isl();}}},300);

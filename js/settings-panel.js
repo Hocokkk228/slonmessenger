@@ -283,6 +283,7 @@ async function _spCheckUpdate(quiet){
   const el=$('spVerTxt');
   try{
     const m=await (await fetch(location.origin+'/app-version.json')).json();
+    if(typeof _fromStore==='function'&&await _fromStore()){if(el)el.textContent='Версия '+m.version+' · обновления через '+(_storeInfo==='rustore'?'RuStore':'магазин приложений');if(!quiet)toast('Обновления SLON приходят через '+(_storeInfo==='rustore'?'RuStore':'магазин приложений'));return;}
     const v=await (await fetch(APP_SITE+'version.json?'+Date.now(),{cache:'no-store'})).json();
     const a=v.android||{},old=_verNewer(a.version,m.version);
     if(el)el.textContent='Версия '+m.version+(old?' · доступна '+a.version+' — нажми, чтобы обновить':' · актуальная');

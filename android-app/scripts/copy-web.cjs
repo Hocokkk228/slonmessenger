@@ -12,7 +12,8 @@ fs.renameSync(path.join(www,'index.html'),path.join(www,'app.html'));
 fs.copyFileSync(path.join(__dirname,'loader.html'),path.join(www,'index.html'));
 // версия сборки — приложение сравнивает её с version.json на сайте и предлагает обновиться
 const ver=require('../package.json').version;
-fs.writeFileSync(path.join(www,'app-version.json'),JSON.stringify({version:ver,build:Date.now()}));
+const store=process.env.SLON_STORE||'';   // rustore — сборка для RuStore: без предложений скачать APK с сайта
+fs.writeFileSync(path.join(www,'app-version.json'),JSON.stringify({version:ver,build:Date.now(),store}));
 console.log('www готов, версия',ver);
 // большие ресурсы внутрь APK: расшифровка голосовых, шрифты
 require('child_process').execFileSync(process.execPath,[require('path').join(__dirname,'fetch-assets.cjs')],{stdio:'inherit'});

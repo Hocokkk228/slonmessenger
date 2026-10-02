@@ -3849,3 +3849,18 @@ video.mv-media{cursor:default;}
   /* капля заметнее: светлое стекло с акцентом */
   .sdock-ind{background:radial-gradient(120% 90% at 50% 8%,rgba(255,255,255,.34),rgba(255,255,255,.1) 62%),color-mix(in srgb,var(--accent) 34%,transparent)!important;}
 }
+
+@media(max-width:640px){
+  /* кнопки «сохранить»/действий в настройках — над доком, а не под ним */
+  .sp-fab{bottom:calc(96px + var(--sab))!important;}
+  .sp-page-body,.sp-scroll{padding-bottom:calc(100px + var(--sab));box-sizing:border-box;}
+  /* остров в чате: в полосе статус-бара (у камеры), как Dynamic Island */
+  .sl-isl{top:max(4px,calc(var(--sat) / 2 - 19px))!important;z-index:10070;}
+  .sl-isl.open{width:calc(100% - 20px)!important;max-width:none!important;}
+  /* мини-плеер «всасывается» вверх, когда открываешь чат */
+  .mm-mini.suck{animation:mmSuck .42s cubic-bezier(.5,0,.75,0) forwards;pointer-events:none;}
+  @keyframes mmSuck{0%{transform:none;opacity:1;border-radius:16px}60%{opacity:.9}100%{transform:translateY(calc(-100vh + 120px)) scaleX(.45) scaleY(.4);opacity:0;border-radius:40px}}
+}
+/* остров: плавное сворачивание */
+.sl-isl.closing{transition:height .3s cubic-bezier(.3,1,.4,1),width .3s cubic-bezier(.3,1,.4,1),border-radius .3s,padding .3s!important;border-radius:19px!important;overflow:hidden;}
+.sl-isl.closing>*{opacity:0;transition:opacity .15s;}

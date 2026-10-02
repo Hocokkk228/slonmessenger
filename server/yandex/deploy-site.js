@@ -3,7 +3,7 @@
 const { spawnSync } = require('child_process'), fs = require('fs'), path = require('path'), os = require('os');
 const YC = path.join(process.env.USERPROFILE, 'yandex-cloud', 'bin', 'yc.exe');
 const ROOT = path.resolve(__dirname, '..', '..'), BUCKET = 'slonmessenger';
-const files = ['style.css', 'manifest.json', 'sw.js', 'version.json'];
+const files = ['style.css', 'manifest.json', 'sw.js', 'version.json', 'privacy.html', 'terms.html'];
 (function walk(d) { for (const f of fs.readdirSync(path.join(ROOT, d))) { const p = path.join(d, f); fs.statSync(path.join(ROOT, p)).isDirectory() ? walk(p) : files.push(p); } })('js');
 (function walk(d) { for (const f of fs.readdirSync(path.join(ROOT, d))) { const p = path.join(d, f); fs.statSync(path.join(ROOT, p)).isDirectory() ? walk(p) : files.push(p); } })('icons');
 const tmp = path.join(os.tmpdir(), 'slon-index.html');

@@ -202,15 +202,25 @@ if(IS_NATIVE){
     try{
       const mine=await (await fetch(location.origin+'/app-version.json')).json();
       const site=await (await fetch(APP_SITE+'version.json?'+Date.now(),{cache:'no-store'})).json();
+      if(await _fromStore())return;                       // из магазина — обновления через магазин
       if(site.android&&site.android.version&&site.android.version!==mine.version&&_verNewer(site.android.version,mine.version)){
         setTimeout(()=>_offerUpdate(site.android),4000);
       }
     }catch(e){}
   })();
 }
+// Установлено из магазина (RuStore / Google Play) или это сборка для магазина — обновления только через магазин
+var _storeInfo=null;
+async function _fromStore(){
+  if(_storeInfo!=null)return _storeInfo;
+  let s='';
+  try{const m=await (await fetch(location.origin+'/app-version.json')).json();if(m&&m.store)s=m.store;}catch(e){}
+  if(!s){try{const r=await window.Capacitor?.Plugins?.SlonSystem?.installer();const p=r&&r.pkg||'';if(p==='ru.vk.store')s='rustore';else if(p==='com.android.vending')s='play';}catch(e){}}
+  return _storeInfo=s;
+}
 function _verNewer(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)>(y[i]||0);}return false;}
 function _offerUpdate(info){
-  if($('updAsk'))return;
+  if($('updAsk')||_storeInfo)return;
   const el=document.createElement('div');el.id='updAsk';el.className='notif-ask';
   el.innerHTML=`<div class="na-ico"><img src="icons/icon-96.png" alt=""></div>
     <div class="na-txt"><b>Доступна новая версия ${esc(info.version)}</b><span>${esc(info.notes||'Исправления и улучшения')}</span></div>
@@ -228,6 +238,7 @@ const APK_URL='https://github.com/Hocokkk228/slonmessenger/releases/latest/downl
 const EXE_URL='https://github.com/Hocokkk228/slonmessenger/releases/download/desktop-v1.0.0/SLON-Setup.exe';
 function downloadWindowsApp(){location.href=EXE_URL;toast('Скачивается SLON-Setup.exe — запусти его, чтобы установить',6000);}
 function downloadAndroidApp(){
+  if(typeof IS_NATIVE!=='undefined'&&IS_NATIVE&&_storeInfo){toast(_storeInfo==='rustore'?'Обновления SLON приходят через RuStore':'Обновления SLON приходят через магазин приложений');return;}
   const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
   if(ios){toast('Для iPhone: Safari → «Поделиться» → «На экран Домой»',6000);return;}
   location.href=APK_URL;

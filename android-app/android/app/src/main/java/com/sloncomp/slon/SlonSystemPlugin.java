@@ -229,4 +229,18 @@ public class SlonSystemPlugin extends Plugin {
             getContext().startActivity(i);
         } catch (Exception ignored) { }
     }
+
+    // Откуда установлено приложение: ru.vk.store (RuStore), com.android.vending (Google Play), иначе — APK с сайта.
+    // Из магазина обновления приходят через магазин — своё предложение «скачать APK» не показываем (правила RuStore).
+    @PluginMethod
+    public void installer(PluginCall call) {
+        String pkg = null;
+        try {
+            if (Build.VERSION.SDK_INT >= 30) pkg = getContext().getPackageManager().getInstallSourceInfo(getContext().getPackageName()).getInstallingPackageName();
+            else pkg = getContext().getPackageManager().getInstallerPackageName(getContext().getPackageName());
+        } catch (Exception ignored) { }
+        JSObject o = new JSObject();
+        o.put("pkg", pkg == null ? "" : pkg);
+        call.resolve(o);
+    }
 }
