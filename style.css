@@ -3868,3 +3868,16 @@ video.mv-media{cursor:default;}
 /* сообщение ждёт шифрования / пришло без шифрования */
 .ticks.wait{opacity:.75}
 .ticks.unenc{color:#e5a23b;font-weight:700}
+
+/* резервный сервер: плашка и вход */
+.fo-badge{position:fixed;left:50%;transform:translateX(-50%);top:calc(6px + var(--sat,0px));z-index:10060;background:rgba(229,162,59,.92);color:#1b1300;font:600 11px/1 inherit;padding:5px 10px;border-radius:999px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25);pointer-events:auto}
+.fo-login{position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.fo-card{background:var(--bg2,#1e2733);color:var(--text,#fff);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.fo-card b{font-size:17px}
+.fo-card p{margin:8px 0 14px;font-size:14px;opacity:.8;line-height:1.45}
+.fo-card input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:var(--bg3,rgba(255,255,255,.06));color:inherit;font-size:15px;outline:none}
+.fo-err{color:#ff6b6b;font-size:13px;min-height:18px;margin-top:6px}
+.fo-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.fo-btns button{border:0;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer;background:transparent;color:var(--accent,#3390ec)}
+.fo-btns .fo-go{background:var(--accent,#3390ec);color:#fff}
+.fo-btns button:disabled{opacity:.5}

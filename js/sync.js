@@ -160,7 +160,7 @@ const _srvCache={};
 function _srvDownload(mid){
   if(_srvCache[mid])return _srvCache[mid];
   const p=(async()=>{
-    const r=await fetch(_mediaUrl(mid));
+    const r=await _mediaFetch(mid);
     if(!r.ok)throw new Error('медиа не найдено');
     const b=await r.blob();
     return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});

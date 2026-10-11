@@ -118,8 +118,10 @@ async function _e2eUnwrap(password,wrapped){
 // Вход / регистрация / новый пароль после сброса: пароль известен — открываем или создаём ключ
 async function _e2eOnPassword(password){
   try{
+    if(!_e2eVk&&myUsername)_e2eVk=(await _idb.get(_e2eK('vk')))||null;   // свой ключ уже есть — не теряем
     const d=await api('/e2e/vaultkey');
     if(d.wrapped){_e2eVk=await _e2eUnwrap(password,d.wrapped);}
+    else if(_e2eVk){await api('/e2e/vaultkey',{wrapped:await _e2eWrapWith(password)});}
     else{
       _e2eVk=await E2E.randomKey();
       const r=await api('/e2e/vaultkey',{wrapped:await _e2eWrapWith(password)});
@@ -502,7 +504,7 @@ async function _e2eEncryptMedia(dataUrl,mime){
   return {mk,blob:new Blob([sealed],{type:'application/octet-stream'}),mime};
 }
 async function _e2eFetchMedia(mid,mk,mime){
-  const r=await fetch(_mediaUrl(mid));
+  const r=await _mediaFetch(mid);
   if(!r.ok)throw new Error('медиа не найдено');
   const plain=await E2E.openBytes(mk,new Uint8Array(await r.arrayBuffer()),'media');
   const blob=new Blob([plain],{type:mime||'application/octet-stream'});

@@ -14,27 +14,41 @@ const SLON_YC={
   gw:'https://d5ddipguuif2klnc52cm.fovt0b64.apigw.yandexcloud.net',
   media:'https://storage.yandexcloud.net/slon-media-86ea6642/m/'
 };
+// Резервный режим: Яндекс не отвечает — временно работаем через Cloudflare (метку ставит failover.js,
+// живёт 12 ч; ручной выбор sl_srv главнее). Токен резерва хранится отдельно — токен Яндекса не трогаем.
+const SLON_CF='https://slon-api.hopasup789.workers.dev';
+const SRV_FO=(()=>{try{const o=JSON.parse(localStorage.getItem('sl_srv')||'null');if(o==='yc'||o==='cf')return false;
+  const f=+localStorage.getItem('sl_srv_fo')||0;return f>0&&Date.now()-f<12*3600e3;}catch(e){return false;}})();
 // Какой сервер: 'yc' (Яндекс) или 'cf' (Cloudflare). Можно задать вручную: localStorage['sl_srv']='"yc"'.
 const SRV_KIND=(()=>{
   try{const o=JSON.parse(localStorage.getItem('sl_srv')||'null');if(o==='yc'||o==='cf')return o;}catch(e){}
+  if(SRV_FO)return 'cf';
   if(window.SLON_SRV==='yc'||window.SLON_SRV==='cf')return window.SLON_SRV;   // копия сайта задаёт сама
   return 'yc';                     // основной сервер — Яндекс (работает в РФ без VPN); Cloudflare — только вручную
 })();
 const API_URL=(()=>{
   if(SRV_KIND==='yc')return SLON_YC.api;
+  if(SRV_FO)return SLON_CF;
   try{const o=localStorage.getItem('sl_api');if(o)return String(JSON.parse(o)||o).replace(/\/+$/,'');}catch(e){}
   try{
     const h=location.hostname;
     if(location.protocol!=='file:'&&h&&!/(^|\.)github\.io$/i.test(h)&&!/^(localhost|127\.|\[?::1)/i.test(h))
       return location.origin;      // свой сервер: и сайт, и API тут же
   }catch(e){}
-  return 'https://slon-api.hopasup789.workers.dev';
+  return SLON_CF;
 })();
 
 // Адреса под выбранный сервер
 function _apiUrl(path){return SRV_KIND==='yc'?API_URL+'?p='+encodeURIComponent(path):API_URL+path;}
 function _wsUrl(){return (SRV_KIND==='yc'?SLON_YC.gw:API_URL).replace(/^http/,'ws')+'/ws';}
 function _mediaUrl(id){return SRV_KIND==='yc'?SLON_YC.media+id:API_URL+'/media/'+id;}
+// В резерве старые медиа лежат в хранилище Яндекса (оно живо), новые — на Cloudflare: пробуем оба
+async function _mediaFetch(id){
+  const r=await fetch(_mediaUrl(id)).catch(()=>null);
+  if((!r||!r.ok)&&SRV_FO){const y=await fetch(SLON_YC.media+id).catch(()=>null);if(y&&y.ok)return y;}
+  if(!r)throw new Error('нет сети');
+  return r;
+}
 // фоновой службе Android нужен адрес, у которого есть /ws и /push/fcm — у Яндекса это шлюз
 const _BG_API=SRV_KIND==='yc'?SLON_YC.gw:API_URL;
 
@@ -42,8 +56,11 @@ const _BG_API=SRV_KIND==='yc'?SLON_YC.gw:API_URL;
 // (считает облачным токеном и отвечает 403) — поэтому там свой заголовок X-Slon-Auth.
 function _authHeader(tok){return SRV_KIND==='yc'?{'X-Slon-Auth':tok}:{Authorization:'Bearer '+tok};}
 
-function _apiToken(u){try{return JSON.parse(localStorage.getItem('sl_tok_'+(u||myUsername)))||'';}catch(e){return '';}}
-function _apiSetToken(u,t){try{if(t)localStorage.setItem('sl_tok_'+u,JSON.stringify(t));else localStorage.removeItem('sl_tok_'+u);}catch(e){}}
+function _apiToken(u){
+  u=u||myUsername;
+  try{if(SRV_FO){const c=localStorage.getItem('sl_tok_cf_'+u);if(c!=null)return JSON.parse(c)||'';}return JSON.parse(localStorage.getItem('sl_tok_'+u))||'';}catch(e){return '';}
+}
+function _apiSetToken(u,t){const k=(SRV_FO?'sl_tok_cf_':'sl_tok_')+u;try{if(t)localStorage.setItem(k,JSON.stringify(t));else localStorage.removeItem(k);}catch(e){}}
 
 // Запрос к API. Ошибки бросаются как Error с .code и понятным .message
 // Сбои сервера/сети — повторяем (все наши запросы безопасно повторять)
@@ -81,7 +98,7 @@ async function _apiEnsureToken(){
     const d=await api('/auth/login',{u:myUsername,h:cached,device:_apiDevice()},{token:''});
     if(d.status==='ok'&&d.token){_apiSetToken(myUsername,d.token);try{localStorage.removeItem('sl_pass_'+myUsername);}catch(e){}}
   }catch(e){
-    if(e.code==='wrong_password'){toast('Пароль изменён — войди снова',5000);setTimeout(()=>doLogout(),2000);}
+    if(e.code==='wrong_password'){if(SRV_FO){_foNeedLogin();return;}toast('Пароль изменён — войди снова',5000);setTimeout(()=>doLogout(),2000);}
   }
 }
 // Токен отозван (сменили пароль / сброс админом / выход на другом устройстве)
@@ -90,6 +107,8 @@ async function _apiCheckSession(){
   if(!_apiToken()){await _apiEnsureToken();return;}
   try{await api('/auth/me');}
   catch(e){
+    // в резерве сессии с Яндекса может не быть — входим туда паролем, а не выходим из аккаунта (ключи бы стёрлись)
+    if(e.status===401&&SRV_FO){_foNeedLogin();return;}
     if(e.status===401){_apiSetToken(myUsername,'');toast('Сессия завершена — войди снова',5000);setTimeout(()=>doLogout(),2000);}
   }
 }
