@@ -15,7 +15,10 @@
     catch(e){return false;}
     finally{clearTimeout(t);}
   }
-  const YC=SLON_YC.api+'?p=/ping',CF=SLON_CF+'/ping';
+  const CF=SLON_CF+'/ping';
+  // Яндекс жив, только если отвечают И функция (HTTP), И шлюз (через него сокет — сообщения):
+  // бывает, что функция поднялась, а шлюз ещё лежит
+  const ycAlive=async ms=>{const [f,g]=await Promise.all([alive(SLON_YC.api+'?p=/ping',ms),alive(SLON_YC.gw+'/ping',ms)]);return f&&g;};
   const busy=()=>!!(typeof activeCall!=='undefined'&&activeCall)||!!(typeof _gc!=='undefined'&&_gc);
 
   if(!SRV_FO){
@@ -23,7 +26,7 @@
     let fails=0,going=false;
     async function chk(){
       if(going)return;
-      if(await alive(YC,8000)){fails=0;return;}
+      if(await ycAlive(10000)){fails=0;return;}
       if(++fails<2){setTimeout(chk,4000);return;}
       if(!await alive(CF,8000))return;
       going=true;
@@ -39,7 +42,7 @@
   // ── Мы на резерве ──
   let back=false;
   setInterval(async()=>{
-    if(back||!await alive(YC,8000))return;
+    if(back||!await ycAlive(10000))return;
     back=true;
     try{localStorage.removeItem('sl_srv_fo');}catch(e){}
     if(typeof toast==='function')toast('Основной сервер снова работает — возвращаемся',4000);
