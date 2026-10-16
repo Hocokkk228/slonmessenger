@@ -105,7 +105,7 @@ function _mxLib(){
   }
   if(c==='all'||c==='art'){
     const A=_mxGroups('artist');
-    h+=A.slice(0,c==='all'?12:500).map(g=>_mxCard(`_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxCv(g.cover,'round'),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
+    h+=A.slice(0,c==='all'?12:500).map(g=>_mxCard(`_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxArtCv(g),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
   }
   if(c==='alb'){
     const A=_mxGroups('album');
@@ -143,7 +143,7 @@ function _mxHome(){
     .map(x=>`<div class="mx-tile" onclick="${x.on}">${x.cv}<b>${esc(x.t)}</b></div>`).join('')+`</div>`;
   if(rec.length)h+=`<div class="mx-h2">Недавно слушал</div><div class="mx-row">${rec.slice(0,12).map(it=>`<div class="mx-sq" onclick="_mm.src='lib';_mmPlay('${esc(it.id)}',_mxRecentGet().map(k=>(_mm.list.find(x=>x.id===k||x.cid===k)||{}).id).filter(Boolean))">${_mxCv(it.coverUrl)}<b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>`).join('')}</div>`;
   const A=_mxGroups('artist');
-  if(A.length)h+=`<div class="mx-h2">Твои исполнители</div><div class="mx-row">${A.slice(0,12).map(g=>`<div class="mx-sq art" onclick="_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})">${_mxCv(g.cover,'round')}<b>${esc(g.name)}</b></div>`).join('')}</div>`;
+  if(A.length)h+=`<div class="mx-h2">Твои исполнители</div><div class="mx-row">${A.slice(0,12).map(g=>`<div class="mx-sq art" onclick="_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})">${_mxArtCv(g)}<b>${esc(g.name)}</b></div>`).join('')}</div>`;
   const fresh=_mm.list.slice(0,12);
   h+=`<div class="mx-h2">Недавно добавлены</div><div class="mx-row">${fresh.map(it=>`<div class="mx-sq" onclick="_mm.src='lib';_mmPlay('${esc(it.id)}',_mm.list.map(x=>x.id))">${_mxCv(it.coverUrl)}<b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>`).join('')}</div>`;
   return h;
@@ -158,7 +158,7 @@ async function _mxSearchRun(){
   const ar=_mxGroups('artist').filter(g=>g.name.toLowerCase().includes(q)).slice(0,8);
   const pl=_mmPls().filter(p=>p.name.toLowerCase().includes(q));
   let h='';
-  if(ar.length)h+=`<div class="mx-h2">Исполнители</div>`+ar.map(g=>_mxCard(`_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxCv(g.cover,'round'),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
+  if(ar.length)h+=`<div class="mx-h2">Исполнители</div>`+ar.map(g=>_mxCard(`_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxArtCv(g),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
   if(pl.length)h+=`<div class="mx-h2">Плейлисты</div>`+pl.map(p=>_mxCard(`_mxRqAdd();_spMusicPl('${esc(p.id)}')`,_mmPlCover(p),p.name,'Плейлист · '+_mxN(_mmPlItems(p).length))).join('');
   if(tr.length)h+=`<div class="mx-h2">Мои треки</div>`+tr.map(it=>_mxTrRow(it,`_mxRqAdd();_mm.src='lib';_mmPlay('${esc(it.id)}',${esc(JSON.stringify(tr.map(x=>x.id))).replace(/"/g,'&quot;')})`)).join('');
   h+=`<div class="mx-h2">В каталоге <i>отрывки</i></div><div id="mxDz"><div class="px-empty">Ищем…</div></div>`;
@@ -238,8 +238,9 @@ function _mxOpenGroup(kind,name){
   const g=_mxGroups(kind).find(x=>x.name===name);if(!g)return;
   _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>');
   const b=$('mxGroup');
-  b.innerHTML=_mxListPage({title:name,cover:g.cover,round:kind==='artist',items:g.items,src:kind+':'+name});
-  _mxHeroColor(g.cover,'#mxGroup .mx-hero');_mmPaintPlay();
+  const cv=kind==='artist'?(_mxArtPic(name)||g.cover):g.cover;
+  b.innerHTML=_mxListPage({title:name,cover:cv,round:kind==='artist',items:g.items,src:kind+':'+name});
+  _mxHeroColor(cv,'#mxGroup .mx-hero');_mmPaintPlay();
 }
 // меню трека: + «В любимые»
 {const f=_mmMenu;_mmMenu=function(id){
@@ -333,4 +334,57 @@ function _mxChipGo(k){
   const chips=b.querySelector('.mx-chips');
   chips&&chips.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
   [...b.children].forEach(el=>{if(el===chips)return;el.classList.remove('mx-in-l','mx-in-r');void el.offsetWidth;el.classList.add(dir>0?'mx-in-r':'mx-in-l');});
+}
+
+
+// ════════ Фото исполнителей (картинка артиста из каталога Deezer) вместо обложки альбома ════════
+// Кэш в localStorage на 30 дней; берём только точное совпадение имени — чтобы не подсунуть чужое лицо.
+// Нет фото у артиста (у Deezer пустая заглушка) — остаётся обложка.
+const _ART_K='sl_artpic',_ART_TTL=30*864e5;
+let _artMap=null,_artBusy=0;const _artQ=[],_artNames={},_artWait={};
+function _artLoad(){if(!_artMap){try{_artMap=JSON.parse(localStorage.getItem(_ART_K)||'{}')||{};}catch(e){_artMap={};}}return _artMap;}
+const _artKey=n=>String(n||'').toLowerCase().replace(/\s+/g,' ').trim();
+const _artNorm=n=>_artKey(n).replace(/^the /,'').replace(/[^\p{L}\p{N}]/gu,'');
+function _mxArtPic(name){
+  const k=_artKey(name);if(!k)return '';
+  const v=_artLoad()[k];
+  if(!v||Date.now()-v.ts>_ART_TTL)_artFetch(name);
+  return v&&v.u||'';
+}
+function _artFetch(name){
+  const k=_artKey(name);if(_artWait[k])return;
+  _artWait[k]=1;_artNames[k]=name;_artQ.push(k);_artPump();
+}
+function _artPump(){
+  while(_artBusy<2&&_artQ.length){
+    const k=_artQ.shift();_artBusy++;
+    (async()=>{
+      let u='',ok=false;
+      try{
+        const d=await _dzJsonp('/search/artist?q='+encodeURIComponent(_artNames[k])+'&limit=8');
+        const want=_artNorm(_artNames[k]);
+        const hit=((d&&d.data)||[]).find(x=>_artNorm(x.name)===want);
+        const p=hit&&(hit.picture_xl||hit.picture_big)||'';
+        if(p&&!/\/artist\/\//.test(p))u=p;      // у Deezer «нет фото» — ссылка с пустым хешем
+        ok=true;
+      }catch(e){}
+      _artBusy--;delete _artWait[k];
+      if(ok){
+        _artLoad()[k]={u,ts:Date.now()};
+        try{localStorage.setItem(_ART_K,JSON.stringify(_artMap));}catch(e){}
+        if(u)document.querySelectorAll('[data-art]').forEach(el=>{
+          if(el.dataset.art!==k)return;
+          if(el.tagName==='IMG')el.src=u;
+          else el.outerHTML='<img class="round" data-art="'+esc(k)+'" src="'+esc(u)+'" alt="" loading="lazy">';
+        });
+      }
+      _artPump();
+    })();
+  }
+}
+// кружок исполнителя: фото артиста, пока нет — обложка (подменится, когда фото придёт)
+function _mxArtCv(g){
+  const k=_artKey(g.name),u=_mxArtPic(g.name)||g.cover;
+  return u?'<img class="round" data-art="'+esc(k)+'" src="'+esc(u)+'" alt="" loading="lazy">'
+    :'<span class="mm-cv-none round" data-art="'+esc(k)+'">'+_MM_ICO.note+'</span>';
 }

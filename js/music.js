@@ -1134,13 +1134,13 @@ function _fpLyTick(jump){
 // строка → слова (заливка идёт по словам, а не одним градиентом по блоку: иначе перенесённая строка
 // заливалась обеими половинами сразу и «обгоняла» пение)
 function _fpWords(t){
-  const ws=String(t).split(/(s+)/);let n=0;const cnt=ws.filter(w=>w&&!/^s+$/.test(w)).length;
-  return ws.map(w=>{if(!w)return '';if(/^s+$/.test(w))return ' ';
+  const ws=String(t).split(/(\s+)/);let n=0;const cnt=ws.filter(w=>w&&!/^\s+$/.test(w)).length;
+  return ws.map(w=>{if(!w)return '';if(/^\s+$/.test(w))return ' ';
     const d=(-(1-n/Math.max(1,cnt))*1.1).toFixed(2);n++;
     return `<span class="kw" style="animation-delay:${d}s">${esc(w)}</span>`;}).join('');
 }
 // сколько строку реально поют: по длине текста (~13 знаков/с), но не дольше паузы до следующей строки
-function _fpSungDur(text,gap){const n=String(text||'').replace(/s+/g,'').length;return Math.max(.7,Math.min(gap*.92,n/13+.35));}
+function _fpSungDur(text,gap){const n=String(text||'').replace(/\s+/g,'').length;return Math.max(.7,Math.min(gap*.92,n/13+.35));}
 // заливка текущей строки по словам (общая для полного плеера на телефоне и окна караоке на ПК)
 function _kwFill(cur,L,i,tl){
   const nx=(L[i+1]?.t)??(L[i].t+4),dur=_fpSungDur(L[i].text,Math.max(.3,nx-L[i].t));
