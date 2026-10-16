@@ -4197,3 +4197,10 @@ body.fx-hit #fpCover,body.fx-hit .px-kara-art,body.fx-hit #mmMini{animation:fxHi
 body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animation:fxPulse .5s cubic-bezier(.2,.9,.3,1);}
 .fx-flash[style*="opacity"]{animation:fxFlashSoft .8s ease-out forwards;}
 @keyframes fxFlashSoft{0%{opacity:0}8%{opacity:.5}100%{opacity:0}}
+/* вспышка — цветом текста (цвет обложки) */
+.fx-flash{background:radial-gradient(70% 60% at 50% 40%,color-mix(in srgb,var(--kara,#fff) 65%,transparent),color-mix(in srgb,var(--kara,#fff) 18%,transparent) 55%,transparent 80%)!important;}
+/* метки дропов на полосе прогресса */
+.fx-marks{position:absolute;height:0;pointer-events:none;}
+.fx-marks i{position:absolute;top:-3px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:rgba(255,255,255,.55);}
+.fx-marks i.s2{background:color-mix(in srgb,var(--kara,#fff) 80%,#fff);width:7px;height:7px;top:-3.5px;}
+.fx-marks i.s3{background:var(--kara,#ffd23f);width:9px;height:9px;top:-4.5px;margin-left:-4.5px;box-shadow:0 0 8px var(--kara,#ffd23f);}

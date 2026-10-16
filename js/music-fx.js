@@ -29,12 +29,16 @@ async function _dropScan(it){
   const avg=(arr,i0,i1)=>{let s=0,c=0;for(let i=Math.max(0,i0);i<Math.min(n,i1);i++){s+=arr[i];c++;}return c?s/c:0;};
   // кандидаты: бас после момента заметно сильнее, чем до (сравниваем 2 с после и 4 с до), и трек тут не тихий
   const cand=[];
+  // трек начинается сразу с баса — удар на первой доле
+  for(let w=0;w<30;w++)if(E[w]>=bass80*.6){if(avg(E,w,w+20)>=bass80*.7)cand.push({t:w/10,s:3,score:99});break;}
   for(let w=50;w<n-20;w++){
     const before=avg(E,w-40,w),after=avg(E,w,w+20),afterF=avg(F,w,w+20);
     const r=after/(before+1e-6);
     if(r<1.35||afterF<loud50)continue;
-    // сила: насколько громко после и насколько вырос бас
-    const lvl=r>=2&&afterF>=loud80&&after>=bass80?3:r>=1.6&&afterF>=loud50*1.15?2:1;
+    // сила. Жёсткий дроп — перед ним бас почти пропадает (брейк), а потом бьёт в полную (проверено на «2017»:
+    // «Этот рэпер диссит VIPERR» — бас до 0,1 от обычного, после ×9). Средний — бас был, но заметно вырос.
+    const brk=before<=bass80*.25&&after>=bass80*.75&&afterF>=loud80*.8;
+    const lvl=brk||r>=4?3:r>=1.6&&afterF>=loud50*1.15?2:1;
     // точный момент удара — самый резкий скачок рядом
     let best=w,jump=-1;for(let k=w-5;k<=w+5;k++){const j=E[k]-avg(E,k-5,k);if(j>jump){jump=j;best=k;}}
     cand.push({t:best/10,s:lvl,score:r*(afterF/(loud80||1))});
@@ -116,3 +120,20 @@ setInterval(()=>{
   if(_featSecs){let who='';for(const s of _featSecs){if(s.t<=t)who=s.who;else break;}
     if(who&&who!==_featCur){const first=!_featCur;_featCur=who;if(!first)_fxFeat(who);}}
 },100);
+
+// ── метки дропов на полосе прогресса (видно, где что нашлось; цвет — сила) ──
+function _dropMarks(){
+  const d=_dropsNow(),a=typeof _pxAudio!=='undefined'&&_pxAudio,dur=a&&isFinite(a.duration)?a.duration:0;
+  for(const id of ['fpR','pxKaraR']){
+    const r=document.getElementById(id);if(!r)continue;
+    const host=r.parentElement;let m=host.querySelector(':scope>.fx-marks');
+    const key=(d&&d.list?d.k+':'+d.list.length:'')+':'+Math.round(dur);
+    if(!d||!d.list||!d.list.length||!dur){m&&m.remove();continue;}
+    if(m&&m.dataset.k===key&&m.dataset.w===String(r.offsetWidth))continue;
+    if(!m){m=document.createElement('div');m.className='fx-marks';host.appendChild(m);if(getComputedStyle(host).position==='static')host.style.position='relative';}
+    m.dataset.k=key;m.dataset.w=String(r.offsetWidth);
+    m.style.left=r.offsetLeft+'px';m.style.width=r.offsetWidth+'px';m.style.top=(r.offsetTop+r.offsetHeight/2)+'px';
+    m.innerHTML=d.list.map(x=>`<i class="s${x.s}" style="left:${(x.t/dur*100).toFixed(2)}%" title="${x.s===3?'Жёсткий дроп':x.s===2?'Удар':'Пульс'} · ${Math.floor(x.t/60)}:${String(Math.floor(x.t%60)).padStart(2,'0')}"></i>`).join('');
+  }
+}
+setInterval(_dropMarks,1000);
