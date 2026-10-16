@@ -878,6 +878,7 @@ function _spGeneral(){
   _spPush('Общие настройки',
     _spSec('Тема оформления')+`<div class="sp-card sp-pad"><div class="tp-grid-wrap" id="profThemeGrid"></div></div>`
     +_spCard(_spRow({ico:'brush',color:'purple',title:'Кастомизация профиля',sub:'Фон, градиент и узор',onclick:'_spCustomize()'}))
+    +(typeof _glassPicks==='function'?_spSec('Стекло')+_spCard(_glassPicks(),'sp-pad'):'')
     +_spSec('Обои чатов'+(myPremium?'':' <span class="sp-lock">Premium</span>'))+_spCard(wp,'sp-pad'));
   buildThemeGrids();
 }

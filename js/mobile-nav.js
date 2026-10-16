@@ -74,3 +74,11 @@ setInterval(()=>{
   let n=w.nextSibling;
   while(n){const nx=n.nextSibling;if(n.nodeType===1&&(n.classList.contains('fab-wrap')||n.id==='sbTabbar'||n.classList.contains('contacts-panel')))break;w.appendChild(n);n=nx;}
 })();
+
+// ── телефон: стеклянная полоса под статус-баром над списком чатов ──
+(function _sbGlassTop(){
+  if(window.innerWidth>640)return;
+  const sb=document.getElementById('sidebar');if(!sb){setTimeout(_sbGlassTop,400);return;}
+  if(sb.querySelector('.sb-glass-top'))return;
+  const d=document.createElement('div');d.className='sb-glass-top';sb.appendChild(d);
+})();
