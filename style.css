@@ -4214,3 +4214,231 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 /* боковые вырезы камеры в горизонтальной ориентации (Android 15 рисует до края) */
 :root{--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);}
 @media(orientation:landscape) and (max-height:520px){.app{padding-left:var(--sal);padding-right:var(--sar);box-sizing:border-box;}}
+
+/* ════════════════ ХЕЛЛОУИН ════════════════ */
+.hws{display:block;width:100%;height:100%;overflow:visible;}
+.hws g:not([transform]),.hwf-svg g:not([transform]),.hwgift g:not([transform]){transform-box:fill-box;transform-origin:center;}
+/* — персонажи оживают — */
+.hw-pumpkin .hwp-body,.hwf .hwp-body,.hww .hwp-body,.hwgift .hwp-body{animation:hwBob 2.6s ease-in-out infinite;}
+.hw-pumpkin .hwp-face{animation:hwFlicker 1.8s steps(1) infinite;}
+@keyframes hwFlicker{0%,100%{opacity:1}12%{opacity:.75}14%{opacity:1}46%{opacity:.85}48%{opacity:1}72%{opacity:.7}74%{opacity:1}}
+@keyframes hwBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.hw-ghost .hwg-body{animation:hwFloat 3s ease-in-out infinite;}
+.hw-ghost .hwg-arm{transform-origin:100% 0;animation:hwWaveL 1.6s ease-in-out infinite;}
+.hw-ghost .hwg-arm2{transform-origin:0 0;animation:hwWaveR 1.6s ease-in-out infinite .4s;}
+@keyframes hwFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-4px) rotate(2deg)}}
+@keyframes hwWaveL{0%,100%{transform:rotate(0)}50%{transform:rotate(-18deg)}}
+@keyframes hwWaveR{0%,100%{transform:rotate(0)}50%{transform:rotate(18deg)}}
+.hw-ghost .hwg-eyes{animation:hwBlink 4s infinite;}
+@keyframes hwBlink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.hw-bat .hwb-wl{transform-origin:100% 40%;animation:hwFlapL .35s ease-in-out infinite alternate;}
+.hw-bat .hwb-wr{transform-origin:0 40%;animation:hwFlapR .35s ease-in-out infinite alternate;}
+.hw-bat .hwb-body{animation:hwFloat 1.4s ease-in-out infinite;}
+@keyframes hwFlapL{from{transform:scaleY(1) rotate(0)}to{transform:scaleY(.45) rotate(14deg)}}
+@keyframes hwFlapR{from{transform:scaleY(1) rotate(0)}to{transform:scaleY(.45) rotate(-14deg)}}
+.hw-skull .hws-jaw{animation:hwChatter .5s ease-in-out infinite alternate;}
+.hw-skull .hws-glow{animation:hwGlowP 1.6s ease-in-out infinite alternate;}
+.hw-skull .hws-body{animation:hwBob 2.2s ease-in-out infinite;}
+@keyframes hwChatter{from{transform:translateY(0)}to{transform:translateY(1.6px)}}
+@keyframes hwGlowP{from{opacity:.35}to{opacity:1}}
+.hw-spider .hwsp-body{animation:hwSpBob 2.6s ease-in-out infinite;}
+.hw-spider .hwsp-thread{transform-origin:top;animation:hwSpThr 2.6s ease-in-out infinite;}
+@keyframes hwSpBob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+@keyframes hwSpThr{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.33)}}
+.hw-spider .hwsp-legs{animation:hwLegs .6s ease-in-out infinite alternate;}
+@keyframes hwLegs{from{transform:scaleX(1)}to{transform:scaleX(.92)}}
+.hw-hat .hwh-body{animation:hwHatB 2.4s ease-in-out infinite;}
+.hw-hat .hwh-stars{animation:hwGlowP 1.2s ease-in-out infinite alternate;}
+@keyframes hwHatB{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg) translateY(-2px)}}
+.hw-cauldron .hwc-bub>*{animation:hwBubble 1.8s ease-in infinite;}
+.hw-cauldron .hwc-bub>*:nth-child(2){animation-delay:.6s}.hw-cauldron .hwc-bub>*:nth-child(3){animation-delay:1.2s}
+@keyframes hwBubble{0%{transform:translateY(4px) scale(.6);opacity:0}30%{opacity:1}100%{transform:translateY(-10px) scale(1.1);opacity:0}}
+.hw-cauldron .hwc-fire{animation:hwFire .3s steps(2) infinite;}
+@keyframes hwFire{50%{transform:scaleY(.85) translateY(1px)}}
+.hw-candle .hwk-flame{transform-origin:50% 90%;animation:hwFlame 1.1s ease-in-out infinite;}
+@keyframes hwFlame{0%,100%{transform:scale(1) skewX(0)}25%{transform:scale(.94,1.06) skewX(3deg)}50%{transform:scale(1.04,.95) skewX(-2deg)}75%{transform:scale(.97,1.04) skewX(2deg)}}
+.hw-candy .hwcn-body{animation:hwWob 1.8s ease-in-out infinite;}
+@keyframes hwWob{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg) translateY(-2px)}}
+.hw-cat .hwct-eyes{animation:hwBlink 3.4s infinite;}
+.hw-cat .hwct-tail{transform-origin:0 100%;animation:hwTail 1.6s ease-in-out infinite;}
+@keyframes hwTail{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+.hw-potion .hwpt-bub>*{animation:hwBubble 1.6s ease-in infinite;}.hw-potion .hwpt-bub>*:nth-child(2){animation-delay:.5s}.hw-potion .hwpt-bub>*:nth-child(3){animation-delay:1s}
+.hw-potion .hwpt-body{animation:hwWob 2.6s ease-in-out infinite;}
+.hw-eye .hwe-iris{animation:hwLook 3.2s ease-in-out infinite;}
+@keyframes hwLook{0%,100%{transform:translate(0,0)}25%{transform:translate(-4px,1px)}50%{transform:translate(3px,-2px)}75%{transform:translate(2px,3px)}}
+.hw-sugar .hwsg-body{animation:hwWob 2.4s ease-in-out infinite;}
+.hw-moon .hwm-body{animation:hwGlowP 3s ease-in-out infinite alternate;}
+/* эмодзи в тексте, реакциях, у ника */
+.cx-hw{display:inline-block;width:1.3em;height:1.3em;vertical-align:-.3em;}
+.cx-hw .hws{width:100%;height:100%;}
+.el-big .cx-hw{width:84px;height:84px;margin:2px;}
+.ep-hw .cx-hw{width:30px;height:30px;}
+.rx-i .cx-hw,.rx-tab .cx-hw{width:28px;height:28px;}
+.es-ico .cx-hw{width:20px;height:20px;vertical-align:-4px;}
+
+/* — рамки аватара — */
+.hwf{position:absolute;inset:0;pointer-events:none;z-index:3;}
+.hwf-svg{position:absolute;overflow:visible;pointer-events:none;}
+.hwf-bob{animation:hwBob 2.4s ease-in-out infinite;}.hwf-bob.b{animation-delay:-.8s}.hwf-bob.c{animation-delay:-1.6s}
+.hwf-hat{animation:hwHatB 3s ease-in-out infinite;}
+.hwf-tw{animation:hwGlowP 1.2s ease-in-out infinite alternate;}
+.hwf-horn{animation:hwHorn 2.4s ease-in-out infinite;}.hwf-horn.r{animation-delay:-1.2s}
+@keyframes hwHorn{0%,100%{transform:rotate(0)}50%{transform:rotate(-4deg) translateY(-1px)}}
+.hwf-wing.l{transform-origin:100% 50%;animation:hwFwL 1.4s ease-in-out infinite;}
+.hwf-wing.r{transform-origin:0 50%;animation:hwFwR 1.4s ease-in-out infinite;}
+@keyframes hwFwL{0%,100%{transform:rotate(0) scaleY(1)}50%{transform:rotate(10deg) scaleY(.8)}}
+@keyframes hwFwR{0%,100%{transform:rotate(0) scaleY(1)}50%{transform:rotate(-10deg) scaleY(.8)}}
+.hwf-orbit{transform-origin:50px 50px!important;transform-box:view-box!important;animation:hwSpin 12s linear infinite;}
+.hwf-orb-i{animation:hwSpin 12s linear infinite reverse;}
+@keyframes hwSpin{to{transform:rotate(360deg)}}
+.hwf-cdl .hwk-flame{transform-origin:50% 90%;animation:hwFlame 1.1s ease-in-out infinite;animation-delay:var(--d,0s);}
+.hwf-drop{animation:hwSpBob 3s ease-in-out infinite;}
+.hwf-fog{animation:hwFogX 6s ease-in-out infinite alternate;}.hwf-fog.b{animation-duration:8s;animation-direction:alternate-reverse;}
+@keyframes hwFogX{from{transform:translateX(-8px)}to{transform:translateX(8px)}}
+.hwf-pulse{animation:hwGlowP 2s ease-in-out infinite alternate;}
+.hwf-bat{animation:hwFloat 1.6s ease-in-out infinite;animation-delay:var(--d,0s);}
+.hwf-bat .hwb-wl{transform-origin:100% 40%;animation:hwFlapL .35s ease-in-out infinite alternate;}
+.hwf-bat .hwb-wr{transform-origin:0 40%;animation:hwFlapR .35s ease-in-out infinite alternate;}
+.hwf-cat .hwct-eyes{animation:hwBlink 3.4s infinite;}.hwf-cat .hwct-tail{transform-origin:0 100%;animation:hwTail 1.6s ease-in-out infinite;}
+.hwf-orb-i .hwg-body,.hww .hwg-body{animation:hwFloat 3s ease-in-out infinite;}
+
+/* — обои профиля — */
+.hww{position:absolute;inset:0;overflow:hidden;}
+.hww>i{position:absolute;display:block;}
+.hww-sky{position:absolute;inset:0;}
+.hww-sky.night{background:radial-gradient(120% 90% at 70% 10%,#2b2a6e,#14113a 50%,#07061a);}
+.hww-sky.dusk{background:linear-gradient(180deg,#3b1d5e,#a33f4f 55%,#f08a3e);}
+.hww-sky.fog{background:linear-gradient(180deg,#2d3550,#56607e 70%,#7a84a3);}
+.hww-sky.teal{background:radial-gradient(100% 80% at 50% 20%,#1d5a5e,#0b2a30 60%,#051417);}
+.hww-sky.brew{background:radial-gradient(70% 60% at 50% 75%,#3c8a2a,#14301a 55%,#060d08);}
+.hww-sky.candy{background:linear-gradient(160deg,#5b1e6e,#c33a7a 50%,#ff8a3c);}
+.hww-sky.blood{background:radial-gradient(90% 70% at 70% 25%,#c0281e,#4a0a12 55%,#12020a);}
+.hww-sky.neon{background:radial-gradient(100% 100% at 50% 50%,#25004a,#0b0018);}
+.hww-sky.webs{background:radial-gradient(100% 90% at 50% 20%,#3a3f5a,#14161f);}
+.hww-sky.warm{background:radial-gradient(100% 80% at 50% 80%,#6e3410,#2a1206 55%,#0c0502);}
+.hww-moon{position:absolute;right:8%;top:6%;width:30%;aspect-ratio:1;}
+.hww-moon.red{border-radius:50%;background:radial-gradient(circle at 38% 36%,#ff8a6b,#d4241c 55%,#6e0a0a);box-shadow:0 0 50px 12px rgba(255,40,20,.45);width:26%;}
+.hww-fly{left:-20%;top:var(--y);width:calc(16% * var(--s,1));aspect-ratio:1;animation:hwFlyX var(--t,10s) linear infinite;animation-delay:var(--d,0s);}
+.hww-fly .hwb-wl,.hwn-fly .hwb-wl,.hwx-bat .hwb-wl{transform-origin:100% 40%;animation:hwFlapL .3s ease-in-out infinite alternate;}
+.hww-fly .hwb-wr,.hwn-fly .hwb-wr,.hwx-bat .hwb-wr{transform-origin:0 40%;animation:hwFlapR .3s ease-in-out infinite alternate;}
+.hww-fly.crow .hws{filter:brightness(.35) saturate(0);}
+@keyframes hwFlyX{0%{transform:translate(0,0)}25%{transform:translate(35vw,-14px)}50%{transform:translate(70vw,6px)}75%{transform:translate(100vw,-10px)}100%{transform:translate(140vw,0)}}
+.hww-hills{position:absolute;left:0;right:0;bottom:0;width:100%;height:45%;}
+.hww-trees{position:absolute;inset:0;width:100%;height:100%;}
+.hww-pump{width:calc(18% * var(--s,1));aspect-ratio:1;transform:translate(-50%,-70%);filter:drop-shadow(0 0 10px rgba(255,170,40,.6));}
+.hww-pump .hwp-face,.hwx-lights .hwp-face,.hwgift .hwp-face{animation:hwFlicker 1.8s steps(1) infinite;animation-delay:var(--d,0s);}
+.hww-ff{width:5px;height:5px;border-radius:50%;background:#fff28a;box-shadow:0 0 8px 3px rgba(255,230,100,.7);animation:hwFF 4s ease-in-out infinite;animation-delay:var(--d,0s);}
+@keyframes hwFF{0%,100%{transform:translate(0,0);opacity:.2}50%{transform:translate(12px,-14px);opacity:1}}
+.hww-tomb{width:calc(18% * var(--s,1));aspect-ratio:1;transform:translate(-50%,-80%) rotate(var(--r,0deg));filter:brightness(.6);}
+.hww-fogl{left:-50%;width:200%;height:30%;bottom:-6%;background:radial-gradient(50% 50% at 50% 50%,rgba(220,228,255,.45),transparent 70%);animation:hwFogL 14s linear infinite alternate;}
+.hww-fogl.b{bottom:4%;opacity:.7;animation-duration:20s;animation-direction:alternate-reverse;}
+.hww-fogl.c{bottom:-12%;opacity:.9;animation-duration:26s;}
+@keyframes hwFogL{from{transform:translateX(-12%)}to{transform:translateX(12%)}}
+.hww-ghost{width:22%;aspect-ratio:1;opacity:.85;animation:hwGhostX 12s ease-in-out infinite;}
+.hww-ghost.a{left:10%;top:30%;}.hww-ghost.b{left:62%;top:14%;width:16%;animation-delay:-6s;opacity:.6;}
+@keyframes hwGhostX{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-16px)}}
+.hww-cauldron{left:50%;bottom:4%;width:36%;aspect-ratio:1;transform:translateX(-50%);filter:drop-shadow(0 0 22px rgba(120,255,80,.45));}
+.hww-bubble{bottom:38%;width:calc(10px * var(--s,1));height:calc(10px * var(--s,1));border-radius:50%;background:radial-gradient(circle at 35% 35%,#eaffc2,#7fe04a);opacity:0;animation:hwBubUp 4s ease-in infinite;animation-delay:var(--d,0s);}
+@keyframes hwBubUp{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:.9}100%{transform:translateY(-160px) scale(1.2);opacity:0}}
+.hww-smoke{left:35%;bottom:40%;width:30%;height:40%;background:radial-gradient(50% 50% at 50% 50%,rgba(170,255,140,.25),transparent 70%);animation:hwSmoke 6s ease-out infinite;}
+.hww-smoke.b{left:45%;animation-delay:-3s;}
+@keyframes hwSmoke{0%{transform:translateY(20px) scale(.6);opacity:0}30%{opacity:1}100%{transform:translateY(-120px) scale(1.6);opacity:0}}
+.hww-fall{top:-15%;width:12%;aspect-ratio:1;animation:hwFall var(--t,6s) linear infinite;animation-delay:var(--d,0s);}
+@keyframes hwFall{from{transform:translateY(0) rotate(var(--r,0deg))}to{transform:translateY(130vh) rotate(calc(var(--r,0deg) + 360deg))}}
+.hww-neon{width:18%;aspect-ratio:1;filter:drop-shadow(0 0 6px hsl(var(--h) 100% 60%)) drop-shadow(0 0 14px hsl(var(--h) 100% 50%));animation:hwNeon 3s ease-in-out infinite;animation-delay:var(--d,0s);}
+.hww-neon .hws{filter:sepia(1) saturate(6) hue-rotate(calc(var(--h) * 1deg - 50deg)) brightness(1.2);}
+@keyframes hwNeon{0%,100%{opacity:.55}45%{opacity:1}47%{opacity:.4}49%{opacity:1}}
+.hww-web{position:absolute;inset:0;width:100%;height:100%;}
+.hww-swing{top:0;width:calc(14% * var(--s,1));transform-origin:50% 0;animation:hwSwing 3s ease-in-out infinite;animation-delay:var(--d,0s);display:flex!important;flex-direction:column;align-items:center;}
+.hww-swing b{display:block;width:1px;height:60px;background:rgba(230,235,255,.6);}
+.hww-swing .hws{width:100%;aspect-ratio:1;height:auto;}
+@keyframes hwSwing{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.hww-cdl{width:calc(12% * var(--s,1));aspect-ratio:1;transform:translate(-50%,-60%);filter:drop-shadow(0 0 14px rgba(255,180,60,.6));}
+.hww-cdl .hwk-flame,.hwx-cdls .hwk-flame{transform-origin:50% 90%;animation:hwFlame 1.1s ease-in-out infinite;animation-delay:var(--d,0s);}
+.hww-bokeh{width:var(--s);height:var(--s);border-radius:50%;background:radial-gradient(circle,rgba(255,200,110,.55),transparent 70%);animation:hwGlowP 3s ease-in-out infinite alternate;animation-delay:var(--d,0s);}
+
+/* — эффекты профиля (края окна) — */
+.hwx{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+.hwx>i,.hwx>div,.hwx>svg{position:absolute;display:block;}
+.hwx-bat{left:calc(50% - 50% * var(--dir));top:var(--y);width:calc(70px * var(--s,1));aspect-ratio:1;animation:hwBatX var(--t,6s) ease-in-out infinite;animation-delay:var(--d,0s);}
+@keyframes hwBatX{0%{transform:translateX(calc(-60px * var(--dir))) translateY(0);opacity:0}15%{opacity:1}50%{transform:translateX(calc(40px * var(--dir))) translateY(-30px)}85%{opacity:1}100%{transform:translateX(calc(-80px * var(--dir))) translateY(-60px);opacity:0}}
+.hwx-fog{left:-40%;width:180%;height:28%;bottom:-8%;background:radial-gradient(50% 50% at 50% 60%,rgba(215,225,255,.55),transparent 70%);animation:hwFogL 12s ease-in-out infinite alternate;}
+.hwx-fog.b{bottom:-2%;opacity:.6;animation-duration:17s;animation-direction:alternate-reverse;}.hwx-fog.c{bottom:-14%;animation-duration:22s;}
+.hwx-cdls{left:0;right:0;bottom:-4px;display:flex!important;justify-content:space-around;align-items:flex-end;}
+.hwx-cdls i{display:block;width:calc(46px * var(--s,1));aspect-ratio:1;filter:drop-shadow(0 0 10px rgba(255,170,50,.6));}
+.hwx-wire{left:0;right:0;top:0;width:100%;height:40px;}
+.hwx-lights{left:0;right:0;top:0;height:60px;}
+.hwx-lights i{position:absolute;display:block;width:34px;aspect-ratio:1;transform:translateX(-50%);filter:drop-shadow(0 0 10px rgba(255,160,30,.8));animation:hwSwing 2.4s ease-in-out infinite;transform-origin:50% 0;animation-delay:var(--d,0s);}
+.hwx-leaf{top:-8%;width:16px;height:12px;border-radius:0 80% 0 80%;background:var(--c);opacity:.9;animation:hwLeaf var(--t,7s) linear infinite;animation-delay:var(--d,0s);}
+@keyframes hwLeaf{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(30px,25vh) rotate(120deg)}50%{transform:translate(-20px,50vh) rotate(220deg)}75%{transform:translate(25px,75vh) rotate(320deg)}100%{transform:translate(0,110vh) rotate(420deg)}}
+.hwx-ghost{width:80px;aspect-ratio:1;opacity:.75;animation:hwGhostSide 9s ease-in-out infinite;}
+.hwx-ghost.a{left:-90px;top:20%;}.hwx-ghost.b{right:-90px;top:55%;animation-delay:-3s;animation-name:hwGhostSideR;}.hwx-ghost.c{left:-90px;top:78%;animation-delay:-6s;width:56px;}
+@keyframes hwGhostSide{0%,100%{transform:translateX(0);opacity:0}30%,70%{transform:translateX(100px);opacity:.8}}
+@keyframes hwGhostSideR{0%,100%{transform:translateX(0);opacity:0}30%,70%{transform:translateX(-100px);opacity:.8}}
+.hwx-drip{left:0;right:0;top:0;width:100%;height:60px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
+.hwx-drop{top:18px;width:6px;height:10px;border-radius:50% 50% 50% 50%/40% 40% 60% 60%;background:#b3140f;animation:hwDrop var(--t,4s) ease-in infinite;animation-delay:var(--d,0s);}
+@keyframes hwDrop{0%,40%{transform:translateY(0) scaleY(.6);opacity:0}45%{opacity:1}100%{transform:translateY(90vh) scaleY(1.2);opacity:.9}}
+.hwx-spark{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 10px 3px var(--c);animation:hwSpark 3s ease-in-out infinite;animation-delay:var(--d,0s);}
+@keyframes hwSpark{0%,100%{transform:scale(0);opacity:0}50%{transform:scale(1) translateY(-14px);opacity:1}}
+.hwx-eyes{position:absolute;display:flex!important;gap:7px;animation:hwEyes 5s infinite;animation-delay:var(--d,0s);}
+.hwx-eyes b{display:block;width:9px;height:6px;border-radius:50%;background:#ffdd3c;box-shadow:0 0 8px 2px rgba(255,210,40,.7);}
+.hwx-eyes.small b{width:6px;height:4px;}
+@keyframes hwEyes{0%,8%,100%{opacity:0;transform:scaleY(1)}12%,60%{opacity:1}62%{transform:scaleY(.1)}64%{transform:scaleY(1)}70%{opacity:1}74%{opacity:0}}
+.hwx-flash{inset:0;background:rgba(200,215,255,.9);opacity:0;animation:hwFlash 7s infinite;}
+@keyframes hwFlash{0%,90%,100%{opacity:0}91%{opacity:.75}92%{opacity:.1}93.5%{opacity:.5}95%{opacity:0}}
+.hwx-bolt{right:12%;top:0;width:40px;height:120px;opacity:0;filter:drop-shadow(0 0 10px #bcd0ff);animation:hwFlash 7s infinite;}
+
+/* — плашки в списке чатов — */
+.hwn{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none;}
+.hwn>i,.hwn>svg,.hwn>div{position:absolute;display:block;}
+.hwn-bg{inset:0;background:linear-gradient(90deg,var(--a) 30%,var(--b));}
+.hwn-it{top:50%;width:calc(120px * var(--s,1));aspect-ratio:1;transform:translate(-50%,-50%) rotate(var(--r,0deg));}
+.hwn-it.sp{top:30%;}.hwn-it.moon{filter:drop-shadow(0 0 12px rgba(255,230,150,.6));}
+.hwn-it .hwp-body,.hwn-it .hwcn-body{animation:hwBob 2.4s ease-in-out infinite;animation-delay:var(--d,0s);}
+.hwn-web,.hwn-sil{inset:0;width:100%;height:100%;}
+.hwn-drip{left:0;right:0;top:0;width:100%;height:30px;}
+.hwn-fly{left:-20%;top:var(--y);width:34px;aspect-ratio:1;animation:hwFlyX 7s linear infinite;animation-delay:var(--d,0s);}
+.hwn-fog{left:-30%;width:160%;height:100%;top:30%;background:radial-gradient(50% 40% at 50% 60%,rgba(210,220,255,.35),transparent 70%);animation:hwFogL 9s ease-in-out infinite alternate;}
+.hwn-fog.v{background:radial-gradient(50% 40% at 50% 60%,rgba(190,120,255,.45),transparent 70%);}.hwn-fog.b{top:0;animation-duration:13s;animation-direction:alternate-reverse;}
+.hwn-star{width:3px;height:3px;border-radius:50%;background:#fff;animation:hwGlowP 1.6s ease-in-out infinite alternate;animation-delay:var(--d,0s);}
+
+/* — подарки — */
+.hwgift .hwg-wob{animation:hwGiftW 3s ease-in-out infinite;transform-origin:60px 100px!important;transform-box:view-box!important;}
+@keyframes hwGiftW{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(3deg) translateY(-3px)}}
+.hwgift .hwg-halo,.hwgift .hwg-spark{animation:hwGlowP 1.6s ease-in-out infinite alternate;}
+.hwgift .hwk-flame{transform-origin:50% 90%;animation:hwFlame 1.1s ease-in-out infinite;}
+.hwgift .hwct-eyes{animation:hwBlink 3.4s infinite;}.hwgift .hwct-tail{transform-origin:0 100%;animation:hwTail 1.6s ease-in-out infinite;}
+.hwgift .hwc-bub>*,.hwgift .hwpt-bub>*{animation:hwBubble 1.8s ease-in infinite;}
+.hwgift .hwg-arm{transform-origin:100% 0;animation:hwWaveL 1.6s ease-in-out infinite;}
+
+/* — витрина — */
+.hwv{padding:0 0 120px;}
+.hwv-intro{margin:10px 16px 4px;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#3a1450,#ff7b1c);color:#fff;font-size:14px;line-height:1.4;}
+.hwv-sub{font-size:12px;color:var(--text2);margin-bottom:10px;}
+.hwv-n{display:inline-block;min-width:24px;padding:1px 5px;border-radius:6px;background:#ff8a1c;color:#fff;font-size:11px;text-align:center;margin-right:2px;}
+.hwv-grid{display:grid;gap:12px;}
+.hwv-grid.emoji{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));}
+.hwv-grid.gifts{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));}
+.hwv-grid.frames{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));row-gap:28px;}
+.hwv-grid.walls,.hwv-grid.fx{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+.hwv-cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:12px;color:var(--text2);}
+.hwv-grid.emoji .hws{width:56px;height:56px;}
+.hwv-grid.gifts .gift-svg{width:110px;height:110px;}
+.hwv-av{position:relative;width:76px;height:76px;margin:34px auto 12px;}
+.hwv-face{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#7f6cff,#3c2dbf);display:flex;align-items:center;justify-content:center;font-size:34px;}
+.hwv-face img{width:100%;height:100%;object-fit:cover;}
+.hwv-av .hwf{position:absolute;inset:0;}
+.hwv-wall{position:relative;width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;}
+.hwv-wall .hwv-av{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;width:60px;height:60px;z-index:2;box-shadow:0 0 0 3px rgba(255,255,255,.25);border-radius:50%;}
+.hwv-prof{position:relative;width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:var(--bg1);box-shadow:inset 0 0 0 1px var(--border);}
+.hwv-pfx{position:absolute;inset:0;z-index:3;}
+.hwv-prof .hwv-av{margin:28% auto 0;width:56px;height:56px;}
+.hwv-l{display:block;height:8px;border-radius:4px;background:var(--bg3);margin:10px 18% 0;}.hwv-l.s{margin:6px 30% 0;}
+.hwv-plates{display:flex;flex-direction:column;gap:8px;}
+.hwv-plate{position:relative;height:66px;border-radius:14px;overflow:hidden;display:flex;align-items:center;gap:12px;padding:0 12px;color:#fff;}
+.hwv-pav{position:relative;z-index:2;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#7f6cff,#3c2dbf);display:flex;align-items:center;justify-content:center;font-size:24px;}
+.hwv-pt{position:relative;z-index:2;display:flex;flex-direction:column;gap:2px;font-size:13px;}
+.hwv-pt b{font-size:15px;}.hwv-pt span{opacity:.85;}
+.hwv-nick{margin-top:12px;font-size:14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.hwv-nick .hws.es{width:20px;height:20px;}.hwv-nick .hws.inl{width:22px;height:22px;}
+@media(prefers-reduced-motion:reduce){.hws *,.hwf *,.hww *,.hwx *,.hwn *,.hwgift *{animation:none!important;}}
