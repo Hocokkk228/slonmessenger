@@ -4442,3 +4442,18 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 .hwv-nick{margin-top:12px;font-size:14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
 .hwv-nick .hws.es{width:20px;height:20px;}.hwv-nick .hws.inl{width:22px;height:22px;}
 @media(prefers-reduced-motion:reduce){.hws *,.hwf *,.hww *,.hwx *,.hwn *,.hwgift *{animation:none!important;}}
+
+/* Хеллоуин после отбора: подтёки без фильтров (тень перерисовывалась каждый кадр — лагало), слои изолированы */
+.hwx{contain:paint;}
+.hwx-drip{filter:none!important;}
+.hwx-drip path{fill:#8e0b0b;}
+.hwx-drop{will-change:transform,opacity;}
+.hwx-leaf,.hwx-fog{will-change:transform;}
+/* мини-превью эффекта в выборе */
+.cos-fx-mini{position:relative;overflow:hidden;}
+.cos-fx-mini .hwx.mini{position:absolute;inset:0;}
+.cos-fx-mini .hwx-drip{height:24px;}
+.cos-fx-mini .hwx-leaf{width:9px;height:7px;}
+.cos-demo-fx .cos-fx-mini:has(>.hwx){position:absolute;inset:0;width:auto;height:auto;display:block;}
+.cos-fx-mini .hwx-leaf{animation-duration:3.5s!important;}
+.cos-fx-mini .hwx-fog{height:60%;bottom:-20%;}

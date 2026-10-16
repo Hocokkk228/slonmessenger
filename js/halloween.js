@@ -205,7 +205,7 @@ const HW_WALLS=[
   ['candyrain','Конфетный дождь',()=>`<div class="hww-sky candy"></div>${Array.from({length:14},(_,i)=>`<i class="hww-fall" style="left:${_hwRnd(i,8)*96}%;--d:${-_hwRnd(i,9)*7}s;--t:${5+_hwRnd(i,10)*4}s;--r:${_hwRnd(i,11)*360}deg">${hwSprite(i%3?'candy':'pumpkin')}</i>`).join('')}`],
   ['bloodmoon','Кровавая луна',()=>`<div class="hww-sky blood"></div><div class="hww-moon red"></div><svg class="hww-trees" viewBox="0 0 400 200" preserveAspectRatio="none"><path d="M0 200V150Q60 130 120 150T260 140T400 150V200z" fill="#14040a"/><path d="M300 150V70l-16-20 18 14 2-30 6 28 12-18-8 26v80z" fill="#14040a"/></svg>${Array.from({length:4},(_,i)=>`<i class="hww-fly crow" style="--y:${12+i*10}%;--d:${-i*2.6}s;--s:${.4+_hwRnd(i,12)*.3};--t:${11+i*2}s">${hwSprite('bat')}</i>`).join('')}`],
   ['neonskulls','Неоновые черепа',()=>`<div class="hww-sky neon"></div>${Array.from({length:9},(_,i)=>`<i class="hww-neon" style="left:${8+(i%3)*33+_hwRnd(i,13)*10}%;top:${8+Math.floor(i/3)*30+_hwRnd(i,14)*8}%;--d:${-_hwRnd(i,15)*3}s;--h:${[300,190,120][i%3]}">${hwSprite('skull')}</i>`).join('')}`],
-  ['webs','Паутина',()=>`<div class="hww-sky webs"></div><svg class="hww-web" viewBox="0 0 400 200" preserveAspectRatio="none">${_hwWebPath()}</svg>${[[18,0,.7],[62,0,.55],[86,0,.8]].map(([x,,s],i)=>`<i class="hww-swing" style="left:${x}%;--s:${s};--d:${-i*.8}s"><b></b>${hwSprite('spider')}</i>`).join('')}`],
+  ['webs','Паутина',()=>`<svg class="hww-web" viewBox="0 0 400 200" preserveAspectRatio="none">${_hwWebPath()}</svg>${[[18,0,.7],[62,0,.55],[86,0,.8]].map(([x,,s],i)=>`<i class="hww-swing" style="left:${x}%;--s:${s};--d:${-i*.8}s"><b></b>${hwSprite('spider')}</i>`).join('')}`],
   ['candles','Свечи',()=>`<div class="hww-sky warm"></div>${[[8,64,.9],[22,72,.7],[38,60,1],[56,70,.8],[72,62,.95],[88,72,.7]].map(([x,y,s],i)=>`<i class="hww-cdl" style="left:${x}%;top:${y}%;--s:${s};--d:${-i*.31}s">${hwSprite('candle')}</i>`).join('')}${Array.from({length:10},(_,i)=>`<i class="hww-bokeh" style="left:${_hwRnd(i,16)*100}%;top:${_hwRnd(i,17)*60}%;--s:${8+_hwRnd(i,18)*22}px;--d:${-_hwRnd(i,19)*5}s"></i>`).join('')}`],
 ];
 function _hwWebPath(){
@@ -225,7 +225,7 @@ const HW_FX=[
   ['garland','Тыквенная гирлянда',()=>`<svg class="hwx-wire" viewBox="0 0 400 40" preserveAspectRatio="none"><path d="M0 6Q50 34 100 10T200 10T300 10T400 6" stroke="#2c2c35" stroke-width="2" fill="none"/></svg><div class="hwx-lights">${Array.from({length:8},(_,i)=>`<i style="left:${6+i*12.4}%;top:${[18,30,22,14,22,30,18,10][i]}px;--d:${-i*.4}s">${hwSprite('pumpkin')}</i>`).join('')}</div>`],
   ['leaves','Осенние листья',()=>Array.from({length:12},(_,i)=>`<i class="hwx-leaf" style="left:${_hwRnd(i,25)*100}%;--d:${-_hwRnd(i,26)*8}s;--t:${6+_hwRnd(i,27)*5}s;--c:${['#ff8a1c','#e0451b','#ffb627','#b3361a'][i%4]}"></i>`).join('')],
   ['ghosts','Проплывающие призраки',()=>`<i class="hwx-ghost a">${hwSprite('ghost')}</i><i class="hwx-ghost b">${hwSprite('ghost')}</i><i class="hwx-ghost c">${hwSprite('ghost')}</i>`],
-  ['blood','Кровавые подтёки',()=>`<svg class="hwx-drip" viewBox="0 0 400 60" preserveAspectRatio="none"><path d="M0 0H400V10c-10 0-12 4-14 14-2 8-8 8-9-2-1-8-4-12-12-12s-10 2-12 18c-1 10-9 10-10 0-1-12-4-18-14-18s-14 6-16 10c-2 6-7 6-8 0-1-6-6-10-14-10H0z" fill="#9c0c0c"/></svg>${[[12,.8],[37,1.1],[63,.9],[86,1.2]].map(([x,t],i)=>`<i class="hwx-drop" style="left:${x}%;--d:${-i*1.1}s;--t:${3+t*2}s"></i>`).join('')}`],
+  ['blood','Кровавые подтёки',()=>`<svg class="hwx-drip" viewBox="0 0 400 60" preserveAspectRatio="none"><path d="M0 0H400V10c-10 0-12 4-14 14-2 8-8 8-9-2-1-8-4-12-12-12s-10 2-12 18c-1 10-9 10-10 0-1-12-4-18-14-18s-14 6-16 10c-2 6-7 6-8 0-1-6-6-10-14-10H0z" fill="#9c0c0c"/></svg>${[[18,.9],[52,1.2],[84,1]].map(([x,t],i)=>`<i class="hwx-drop" style="left:${x}%;--d:${-i*1.1}s;--t:${3+t*2}s"></i>`).join('')}`],
   ['magic','Ведьмина магия',()=>Array.from({length:18},(_,i)=>`<i class="hwx-spark" style="left:${_hwRnd(i,28)*100}%;top:${_hwRnd(i,29)*100}%;--d:${-_hwRnd(i,30)*3}s;--c:${['#a8ff6a','#c03cff','#7dfcff'][i%3]}"></i>`).join('')],
   ['eyes','Глаза в темноте',()=>Array.from({length:6},(_,i)=>`<i class="hwx-eyes" style="left:${[4,86,2,88,10,80][i]}%;top:${[18,30,58,68,86,84][i]}%;--d:${-i*.9}s"><b></b><b></b></i>`).join('')],
   ['lightning','Гроза',()=>`<i class="hwx-flash"></i><svg class="hwx-bolt" viewBox="0 0 40 120"><path d="M24 0L8 54h12L6 120 36 44H22L32 0z" fill="#e8f0ff"/></svg>`],
@@ -285,7 +285,7 @@ function _hwShowcase(){
   _spPush('🎃 Хеллоуин — витрина',`<div class="hwv">${h}</div>`);
 }
 // пункт в настройках (на время отбора)
-if(typeof _spGeneral==='function'){const f=_spGeneral;_spGeneral=function(){const r=f.apply(this,arguments);
+if(false&&typeof _spGeneral==='function'){const f=_spGeneral;_spGeneral=function(){const r=f.apply(this,arguments);
   const b=document.querySelector('.sp-page:last-child .sp-page-body');
   if(b)b.insertAdjacentHTML('afterbegin',`<div class="sp-card"><div class="sp-row" onclick="_hwShowcase()"><div class="sp-row-txt"><div class="sp-row-title">🎃 Хеллоуин — витрина кандидатов</div><div class="sp-row-sub">Подарки, эмодзи, рамки, обои, эффекты, плашки — выбрать лучшие</div></div></div></div>`);
   return r;};}
@@ -353,4 +353,21 @@ if(typeof _spGeneral==='function'){const f=_spGeneral;_spGeneral=function(){cons
   }
   // подарки: картинка по id (цены и названия — с сервера)
   if(typeof _giftSvg==='function'){const f=_giftSvg;_giftSvg=function(id,cls){if(String(id).startsWith('g_'))return hwGiftSvg(id,cls);return f.apply(this,arguments);};}
+})();
+
+// ════════ ОТБОР (16.10): оставлено выбранное, остальное убрано ════════
+// рамки: кладбище, кровавая луна · эффекты: листья, туман, подтёки · обои: луна и мыши, кладбище, паутина, кровавая луна
+// плашки: луна, кладбище, фиолетовый туман, паутина · подарки — будут слониками (ждём картинки)
+(function _hwPick(){
+  const keep={fr:['graveyard','bloodmoon'],fx:['leaves','groundfog','blood'],wall:['moonbats','graveyard','webs','bloodmoon'],np:['moon','graves','mist','web']};
+  const cut=(arr,ids)=>{for(let i=arr.length-1;i>=0;i--)if(String(arr[i].id).startsWith('hw_')&&!ids.includes(arr[i].id.slice(3)))arr.splice(i,1);};
+  if(typeof AV_FRAMES!=='undefined'){cut(AV_FRAMES,keep.fr);for(const k of Object.keys(AV_FRAME_MAP))if(k.startsWith('hw_')&&!keep.fr.includes(k.slice(3)))delete AV_FRAME_MAP[k];}
+  if(typeof PROFILE_FX!=='undefined')cut(PROFILE_FX,keep.fx);
+  if(typeof PROFILE_WALLPAPERS!=='undefined'){cut(PROFILE_WALLPAPERS,keep.wall);for(const k of Object.keys(PROFILE_WALLPAPER_MAP))if(k.startsWith('hw_')&&!keep.wall.includes(k.slice(3)))delete PROFILE_WALLPAPER_MAP[k];}
+  if(typeof NAME_PLATES!=='undefined')cut(NAME_PLATES,keep.np);
+  HW_GIFTS.length=0;                                       // подарки переделываем в слоников
+  // превью эффекта в выборе — настоящее (раньше у всех рисовалось «Ледяное пламя»)
+  if(typeof _fxInnerMini==='function'){const f=_fxInnerMini;_fxInnerMini=function(id){
+    if(String(id).startsWith('hw_')){const x=HW_FX.find(e=>'hw_'+e[0]===id);return x?`<div class="hwx hwx-${x[0]} mini">${x[2]()}</div>`:'';}
+    return f.apply(this,arguments);};}
 })();
