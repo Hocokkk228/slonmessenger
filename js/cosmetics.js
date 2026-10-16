@@ -317,7 +317,15 @@ function _fxApply(host,val){
   if(!fx||!PROFILE_FX.some(f=>f.id===fx&&fx))return;
   if(getComputedStyle(host).position==='static')host.style.position='relative';
   const d=document.createElement('div');d.className='pfx pfx-'+fx;d.innerHTML=_fxInner(fx);
-  host.appendChild(d);
+  // окно, которое прокручивается само (профиль собеседника): absolute+inset:0 ехал бы вместе с содержимым
+  // и пламя/паутина оказывались посреди карточек — прилепляем эффект к видимой рамке (sticky, первым ребёнком)
+  const oy=getComputedStyle(host).overflowY;
+  if(oy==='auto'||oy==='scroll'){
+    d.classList.add('pfx-stick');
+    const fit=()=>d.style.setProperty('--pfx-h',host.clientHeight+'px');fit();
+    if(typeof ResizeObserver!=='undefined'){host._pfxRo?.disconnect();host._pfxRo=new ResizeObserver(fit);host._pfxRo.observe(host);}
+    host.prepend(d);
+  }else host.appendChild(d);
 }
 
 // ════════ Фон в списке чатов (у всех, у кого ты в списке) ════════

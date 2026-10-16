@@ -3921,3 +3921,36 @@ body.glass-off{--g-tint:88%;}
 }
 /* без размытия: только подложка */
 body.glass-off *,body.glass-off *::before,body.glass-off *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+/* эффект профиля в прокручиваемом окне — прилип к видимой рамке, не едет с содержимым */
+.pfx.pfx-stick{position:sticky!important;inset:0 0 auto 0!important;flex-shrink:0;
+  width:100%!important;height:var(--pfx-h,100%)!important;margin-bottom:calc(-1 * var(--pfx-h,100%));border-radius:0;}
+
+/* ════════ ПК: жидкое стекло (те же параметры и уровни, что на телефоне) ════════ */
+@media(min-width:641px){
+  /* мягкое свечение цвета темы за панелями — чтобы стеклу было что преломлять (статичный фон: размытие считается один раз) */
+  .main{background:
+    radial-gradient(60% 55% at 12% 18%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),
+    radial-gradient(50% 60% at 88% 85%,color-mix(in srgb,var(--accent) 11%,transparent),transparent 70%);}
+  .chat{background:transparent;}
+  /* сайдбар — стеклянная панель */
+  .sidebar{background:var(--g-sheen),color-mix(in srgb,var(--bg2) calc(var(--g-tint) + 18%),transparent)!important;
+    -webkit-backdrop-filter:blur(calc(var(--g-blur) * 1.5)) saturate(var(--g-sat));backdrop-filter:blur(calc(var(--g-blur) * 1.5)) saturate(var(--g-sat));
+    box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge),0 10px 36px rgba(0,0,0,.22)!important;}
+  .sidebar .sb-inp{background:color-mix(in srgb,var(--bg3) 55%,transparent)!important;box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge);}
+  /* парящие над сообщениями элементы и всплывающее */
+  body .chat-hdr,body .pinned-bar,#chatPane .inp-row,#chatPane .reply-bar,.scroll-down-btn,.toast,.msg-menu-popup,.sp-menu,.hb-menu,
+  .route-menu,#chatPane .emoji-panel,.modal .mbox,.fab-menu-item,.mm-mini{
+    background:var(--g-sheen),color-mix(in srgb,var(--bg2) var(--g-tint),transparent)!important;
+    -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;
+    box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge),var(--g-sh)!important;border-color:transparent!important;}
+  .chat-hdr::before{background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,0) 60%)!important;}
+  .sidebar .fab-btn{background:var(--g-sheen),color-mix(in srgb,var(--accent) 84%,transparent)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 1px rgba(255,255,255,.12),0 8px 22px color-mix(in srgb,var(--accent) 40%,rgba(0,0,0,.3))!important;}
+  .date-separator span{background:var(--g-sheen),color-mix(in srgb,var(--bg2) 60%,transparent)!important;box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge)!important;color:var(--text1)!important;}
+  /* поле ввода парит над сообщениями */
+  #chatPane .inp-wrap{position:absolute!important;left:0;right:0;bottom:14px;margin:0 auto!important;z-index:6;}
+  #chatPane .msgs{padding-bottom:calc(var(--inp-h,58px) + 24px)!important;}
+  #chatPane .scroll-down-btn{bottom:calc(var(--inp-h,58px) + 26px)!important;}
+  /* фон затемнения под окнами — тоже размыт, но слабее */
+  .modal{background:rgba(0,0,0,.45)!important;}
+}

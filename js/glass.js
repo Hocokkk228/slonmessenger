@@ -44,12 +44,13 @@
     frames=[];
   }
   function poke(){
-    if(window.innerWidth>640||document.hidden)return;
+    if(document.hidden)return;
     if(!on){on=true;frames=[];requestAnimationFrame(loop);}
     until=performance.now()+1500;
   }
   addEventListener('touchmove',poke,{passive:true,capture:true});
   addEventListener('scroll',poke,{passive:true,capture:true});
+  addEventListener('wheel',poke,{passive:true,capture:true});
 })();
 
 // Пункт в настройках: Общие → Стекло
