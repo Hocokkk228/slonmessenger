@@ -54,12 +54,19 @@ function _mxRepeat(){
 
 // ── исполнители и альбомы — из тегов своих треков ──
 const _mxArtistOf=it=>String(it.artist||'').split(/\s*(?:,|&|\/|;|\bfeat\.?|\bft\.?|\bx\b)\s*/i)[0].trim()||'Неизвестный исполнитель';
+// ключ группы: одно и то же имя в тегах бывает записано по-разному — невидимые символы, неразрывный пробел,
+// латинская X вместо кириллической Х, регистр («королевский XVII» ×2) — сводим к одному виду
+const _MX_LOOK={а:'a',в:'b',е:'e',ё:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
+const _mxGKey=s=>String(s||'').normalize('NFKC').replace(/[​-‏⁠﻿­]/g,'').replace(/\s+/g,' ').trim().toLowerCase().replace(/[авеёкмнорстух]/g,c=>_MX_LOOK[c]);
 function _mxGroups(kind){
   const m=new Map();
   for(const it of _mm.list){if(it.friend)continue;
-    const k=kind==='artist'?_mxArtistOf(it):String(it.album||'').trim();if(!k)continue;
-    if(!m.has(k))m.set(k,[]);m.get(k).push(it);}
-  return [...m.entries()].map(([name,items])=>({name,items,cover:(items.find(x=>x.coverUrl)||{}).coverUrl||''})).sort((a,b)=>b.items.length-a.items.length||a.name.localeCompare(b.name));
+    const name=(kind==='artist'?_mxArtistOf(it):String(it.album||'')).replace(/[​-‏⁠﻿­]/g,'').replace(/\s+/g,' ').trim();if(!name)continue;
+    const k=_mxGKey(name);
+    if(!m.has(k))m.set(k,{names:{},items:[]});const g=m.get(k);g.items.push(it);g.names[name]=(g.names[name]||0)+1;}
+  // показываем самое частое написание
+  return [...m.values()].map(g=>{const name=Object.entries(g.names).sort((a,b)=>b[1]-a[1])[0][0];
+    return {name,items:g.items,cover:(g.items.find(x=>x.coverUrl)||{}).coverUrl||''};}).sort((a,b)=>b.items.length-a.items.length||a.name.localeCompare(b.name));
 }
 const _mxCv=(url,cls)=>url?`<img class="${cls||''}" src="${esc(url)}" alt="" loading="lazy">`:`<span class="mm-cv-none ${cls||''}">${_MM_ICO.note}</span>`;
 const _mxN=n=>n+' '+_mmPlural(n);
@@ -332,7 +339,10 @@ function _mxChipGo(k){
   _mxS.chip=k;_mxS.chipDir=dir;_mxRefresh();
   const b=$('mxBody');if(!b)return;
   const chips=b.querySelector('.mx-chips');
-  chips&&chips.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
+  // только ряд чипов (scrollIntoView крутил и сайдбар с overflow:hidden — панель съезжала влево и обрезалась)
+  const on=chips&&chips.querySelector('.on');
+  if(on)chips.scrollTo({left:on.offsetLeft-(chips.clientWidth-on.offsetWidth)/2,behavior:'smooth'});
+  ['sidebar','spPanel'].forEach(id=>{const e=$(id);if(e&&e.scrollLeft)e.scrollLeft=0;});   // если уже успело съехать
   [...b.children].forEach(el=>{if(el===chips)return;el.classList.remove('mx-in-l','mx-in-r');void el.offsetWidth;el.classList.add(dir>0?'mx-in-r':'mx-in-l');});
 }
 
