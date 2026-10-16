@@ -782,7 +782,19 @@ const routes = {
     const rows = await q('SELECT id,title,artist,album,dur,size,mime,cover,ts FROM mymusic WHERE u=$o;', { o });
     const base = `https://${S3_HOST}/${BUCKET}/mm/${o}/`;
     const tracks = rows.map(x => ({ ...x, cover: !!x.cover, url: base + x.id, coverUrl: x.cover ? base + x.id + '.jpg' : '' })).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    return J({ ok: true, tracks });
+    // плейлисты медиатеки владельца — только для семьи (ключ «u:fam» в plist: /plist?u= его не отдаст — не юзернейм)
+    const px = await one('SELECT data FROM plist WHERE u=$u;', { u: o + ':fam' });
+    let pls = []; try { pls = px ? JSON.parse(px.data) : []; } catch (e) { }
+    return J({ ok: true, tracks, pls });
+  },
+  // мои плейлисты медиатеки — для семьи (id треков — облачные)
+  async 'POST /mm/pls'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const list = (Array.isArray(d.list) ? d.list : []).slice(0, 200).map(p => ({ id: String(p.id || '').slice(0, 40), name: String(p.name || '').slice(0, 100),
+      tr: (Array.isArray(p.tr) ? p.tr : []).slice(0, 2000).map(x => String(x).slice(0, 64)) }));
+    const data = JSON.stringify(list); if (data.length > 1500000) return E('too_large', 'Слишком много', 413);
+    await q('UPSERT INTO plist (u,data,ts) VALUES ($u,$d,$t);', { u: u + ':fam', d: data, t: now() });
+    return J({ ok: true });
   },
   // ── Соглашение и политика: кто какую версию принял ──
   // фото исполнителя из Яндекс Музыки (у СНГ-артистов там настоящие фото; браузер напрямую не пускают — CORS)
