@@ -1129,14 +1129,7 @@ function _fpLyTick(jump){
     const cur=box.querySelector('.fp-kl.cur')||box.querySelector('.fp-kl');
     if(cur&&!(box._u&&Date.now()-box._u<3000))box.scrollTo({top:cur.offsetTop-box.clientHeight*0.36,behavior:jump?'instant':'smooth'});
   }
-  if(i>=0){const cur=box.querySelector('.fp-kl.cur');if(cur){
-    const nx=(L[i+1]?.t)??(L[i].t+4),dur=_fpSungDur(L[i].text,Math.max(.3,nx-L[i].t));
-    const p=Math.max(0,Math.min(1,(tl-L[i].t)/dur));
-    const ws=cur._kw||(cur._kw=[...cur.querySelectorAll('.kw')].map(e=>({e,n:e.textContent.length})));
-    const tot=ws.reduce((a,w)=>a+w.n,0)||1;let acc=0;const at=p*tot;
-    for(const w of ws){const q=Math.max(0,Math.min(1,(at-acc)/w.n));acc+=w.n;
-      const v=(q*100).toFixed(1)+'%';if(w.v!==v){w.v=v;w.e.style.setProperty('--wp',v);w.e.classList.toggle('done',q>=1);}}
-  }}
+  if(i>=0){const cur=box.querySelector('.fp-kl.cur');if(cur)_kwFill(cur,L,i,tl);}
 }
 // строка → слова (заливка идёт по словам, а не одним градиентом по блоку: иначе перенесённая строка
 // заливалась обеими половинами сразу и «обгоняла» пение)
@@ -1148,6 +1141,15 @@ function _fpWords(t){
 }
 // сколько строку реально поют: по длине текста (~13 знаков/с), но не дольше паузы до следующей строки
 function _fpSungDur(text,gap){const n=String(text||'').replace(/s+/g,'').length;return Math.max(.7,Math.min(gap*.92,n/13+.35));}
+// заливка текущей строки по словам (общая для полного плеера на телефоне и окна караоке на ПК)
+function _kwFill(cur,L,i,tl){
+  const nx=(L[i+1]?.t)??(L[i].t+4),dur=_fpSungDur(L[i].text,Math.max(.3,nx-L[i].t));
+  const p=Math.max(0,Math.min(1,(tl-L[i].t)/dur));
+  const ws=cur._kw||(cur._kw=[...cur.querySelectorAll('.kw')].map(e=>({e,n:e.textContent.length})));
+  const tot=ws.reduce((a,w)=>a+w.n,0)||1;let acc=0;const at=p*tot;
+  for(const w of ws){const q=Math.max(0,Math.min(1,(at-acc)/w.n));acc+=w.n;
+    const v=(q*100).toFixed(1)+'%';if(w.v!==v){w.v=v;w.e.style.setProperty('--wp',v);w.e.classList.toggle('done',q>=1);}}
+}
 function _fpLine(i){
   if(!_fpLines||!_fpLines[i]||!_pxAudio)return;
   const off=_fpOff();

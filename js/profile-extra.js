@@ -222,7 +222,7 @@ async function _pxLyrics(tr){
     if(!hit){body.innerHTML='<div class="px-kara-msg">Текст не найден</div>';}
     else if(hit.syncedLyrics){
       _kr.lines=_lrcParse(hit.syncedLyrics);_kr.synced=full||_kr.off!=null;
-      body.innerHTML='<div class="px-kara-pad"></div>'+_kr.lines.map((l,i)=>`<div class="px-kl${l.text?'':' gap'}" data-i="${i}" onclick="_pxKaraLine(${i})">${l.text?esc(l.text):'♪'}</div>`).join('')+'<div class="px-kara-pad"></div>';
+      body.innerHTML='<div class="px-kara-pad"></div>'+_kr.lines.map((l,i)=>`<div class="px-kl${l.text?'':' gap'}" data-i="${i}" onclick="_pxKaraLine(${i})">${l.text?(typeof _fpWords==='function'?_fpWords(l.text):esc(l.text)):'♪'}</div>`).join('')+'<div class="px-kara-pad"></div>';
     }else{
       body.innerHTML='<div class="px-kara-pad s"></div>'+String(hit.plainLyrics).split('\n').map(l=>`<div class="px-kl plain">${esc(l)||'&nbsp;'}</div>`).join('')+'<div class="px-kara-pad s"></div>';
     }
@@ -249,8 +249,8 @@ function _pxKaraTick(){
     const cur=body.querySelector('.px-kl.cur');
     if(cur&&!(_kr.userT&&Date.now()-_kr.userT<3000))body.scrollTo({top:cur.offsetTop-body.clientHeight*0.38,behavior:'smooth'});
   }
-  // заливка текущей строки — доля времени до следующей
-  if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur){const nx=(L[i+1]?.t)??(L[i].t+4);const p=Math.max(0,Math.min(1,(tl-L[i].t)/Math.max(.3,nx-L[i].t)));cur.style.setProperty('--kp',(p*100).toFixed(1)+'%');}}
+  // заливка текущей строки — по словам, в темпе пения (см. _kwFill в music.js)
+  if(i>=0){const cur=body.querySelector('.px-kl.cur');if(cur&&typeof _kwFill==='function')_kwFill(cur,L,i,tl);}
 }
 async function _pxKaraToggle(){
   if(!_kr)return;
