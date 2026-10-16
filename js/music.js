@@ -84,11 +84,39 @@ function _mmPick(){
     _mmSay('');toast(fs.length===1?'Трек добавлен':'Добавлено треков: '+fs.length);};
   i.click();
 }
+// Лишнее из названий: «De Jure (hitmos.fm)» → «De Jure». Вырезаем скобки с сайтами и «скачать/mp3»,
+// голые адреса сайтов и www. «(feat. …)», «(prod. …)», «(Remix)» и прочее настоящее — оставляем.
+const _MM_JUNK_TLD='fm|net|com|ru|org|me|su|cc|io|pro|biz|info|club|online|site|xyz|to|tv|top|live|music|mp3|uk|ua|kz|by|co|cx|ws|la|in|vip|fun|space|store|link';
+const _MM_JUNK_RE=new RegExp('\\b(?:www\\.)?[a-z0-9][a-z0-9-]*\\.(?:'+_MM_JUNK_TLD+')\\b','i');
+const _MM_JUNK_WORDS=/скачать|скачай|download|бесплатно|\bfree\b|\bmp3\b|hitmos|hitmo|muzofond|zaycev|musify|lightaudio|drivemusic|mp3party|patefon|primemusic|muzati|zvukm|xn--|vk\.com|t\.me/i;
+function _mmClean(s){
+  let x=String(s||'');
+  // скобки целиком, если внутри сайт или «скачать/mp3»
+  x=x.replace(/\s*[\(\[\{]([^\)\]\}]*)[\)\]\}]/g,(m,inner)=>_MM_JUNK_RE.test(inner)||_MM_JUNK_WORDS.test(inner)?'':m);
+  // голые адреса и хвосты «| hitmos.fm», «- muzofond.fm»
+  x=x.replace(new RegExp('\\s*[|\\-–—_~•·]*\\s*(?:https?:\\/\\/)?(?:www\\.)?[a-z0-9][a-z0-9-]*\\.(?:'+_MM_JUNK_TLD+')(?:\\/\\S*)?','gi'),'');
+  x=x.replace(/(?:\s*\(\d{1,2}\))+\s*$/,'');               // «(1)» — повторное скачивание файла
+  x=x.replace(/_/g,' ').replace(/\s{2,}/g,' ').replace(/^[\s\-–—|•·.,]+|[\s\-–—|•·.,]+$/g,'').trim();
+  return x||String(s||'').trim();
+}
+// уже добавленные треки — чистим один раз (на устройстве и в облаке)
+async function _mmCleanAll(){
+  for(const it of _mm.list){
+    if(it.friend)continue;
+    const t=_mmClean(it.title),a=_mmClean(it.artist),al=_mmClean(it.album);
+    if(t===it.title&&a===it.artist&&al===(it.album||''))continue;
+    it.title=t;it.artist=a;it.album=al;
+    try{const rec=await _mmGetRec(it.id);if(rec){rec.title=t;rec.artist=a;rec.album=al;await _mmPutRec(rec);}}catch(e){}
+    if(it.cid&&typeof _apiToken==='function'&&_apiToken())api('/mm/meta',{id:it.cid,title:t,artist:a,album:al}).catch(()=>{});
+  }
+  _mmPaint();
+}
 async function _mmAddBlob(blob,name){
   const mime=blob.type&&blob.type.startsWith('audio/')?blob.type:(/\.m4a$/i.test(name)?'audio/mp4':/\.ogg|\.oga|\.opus$/i.test(name)?'audio/ogg':/\.flac$/i.test(name)?'audio/flac':/\.wav$/i.test(name)?'audio/wav':'audio/mpeg');
   const tags=_id3Read(await blob.slice(0,Math.min(blob.size,2*1024*1024)).arrayBuffer());
   const base=String(name||'').replace(/\.[^.]+$/,''),m=base.split(/\s+[-–—]\s+/);
-  const title=(tags.title||(m[1]||base)||'Без названия').slice(0,200),artist=(tags.artist||(m[1]?m[0]:'')).slice(0,200);
+  const title=(_mmClean(tags.title||(m[1]||base))||'Без названия').slice(0,200),artist=_mmClean(tags.artist||(m[1]?m[0]:'')).slice(0,200);
+  tags.album=_mmClean(tags.album||'');
   const dup=_mm.list.find(x=>x.title===title&&x.artist===artist&&Math.abs((x.size||0)-blob.size)<1024);
   if(dup)return dup;
   const cover=tags.cover?await _pxCoverJpeg(tags.cover):null;
@@ -1337,3 +1365,6 @@ function _fpLyLoop(){
 function _mobChat(){const sb=document.getElementById('sidebar');return !!sb&&!sb.classList.contains('open');}
 // переходы чат ↔ список: плеер сам переезжает (остров сверху / плеер снизу)
 setInterval(()=>{if(_mobPl()&&typeof _islTr!=='undefined'&&_islTr){const want=_mobChat()?'isl':'mini';if(window._mmWhere!==want){window._mmWhere=want;_isl();}}},300);
+// после загрузки фонотеки — вычистить мусор из названий старых треков
+{const f=_mmLoad;let busy=false;_mmLoad=async function(){const r=await f.apply(this,arguments);
+  if(!busy&&_mm.list.length){busy=true;try{await _mmCleanAll();}catch(e){}busy=false;}return r;};}

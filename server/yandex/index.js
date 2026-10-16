@@ -741,6 +741,14 @@ const routes = {
     const base = `https://${S3_HOST}/${BUCKET}/${key}`;
     return J({ ok: true, id, put: presign('PUT', key), url: base, putCover: cv ? presign('PUT', key + '.jpg') : '', coverUrl: cv ? base + '.jpg' : '' });
   },
+  // переименовать трек (название/исполнитель/альбом) — например, вырезать «(hitmos.fm)» из старых загрузок
+  async 'POST /mm/meta'(r, d) {
+    const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
+    const id = String(d.id || ''); if (!/^[A-Za-z0-9_-]{8,40}$/.test(id)) return E('bad', 'Неверный трек');
+    await q('UPDATE mymusic SET title=$t, artist=$a, album=$al WHERE u=$u AND id=$i;',
+      { u, i: id, t: String(d.title || '').slice(0, 200), a: String(d.artist || '').slice(0, 200), al: String(d.album || '').slice(0, 200) });
+    return J({ ok: true });
+  },
   async 'POST /mm/delete'(r, d) {
     const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
     const id = String(d.id || ''); if (!/^[A-Za-z0-9_-]{8,40}$/.test(id)) return E('bad', 'Неверный трек');
