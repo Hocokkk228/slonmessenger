@@ -785,6 +785,22 @@ const routes = {
     return J({ ok: true, tracks });
   },
   // ── Соглашение и политика: кто какую версию принял ──
+  // фото исполнителя из Яндекс Музыки (у СНГ-артистов там настоящие фото; браузер напрямую не пускают — CORS)
+  // публичные данные, без входа; только точное совпадение имени — чтобы не подсунуть чужое лицо
+  async 'GET /art'(r) {
+    const q = String(r.qs.get('q') || '').trim().slice(0, 80);
+    if (!q) return E('bad_request', 'Нет имени');
+    const norm = s => String(s || '').toLowerCase().replace(/^the /, '').replace(/[^\p{L}\p{N}]/gu, '');
+    try {
+      const res = await fetch('https://api.music.yandex.net/search?type=artist&page=0&text=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json', 'X-Yandex-Music-Client': 'YandexMusicAndroid/24023621' } });
+      const j = await res.json();
+      const list = (j && j.result && j.result.artists && j.result.artists.results) || [];
+      const hit = list.find(a => norm(a.name) === norm(q));
+      const uri = hit && hit.cover && hit.cover.uri;
+      const out = { ok: true, u: uri ? 'https://' + uri.replace('%%', '400x400') : '', photo: !!(uri && /\.p\./.test(uri)) };
+      const o = J(out); o.headers['Cache-Control'] = 'public, max-age=604800'; return o;
+    } catch (e) { return E('upstream', 'Каталог недоступен', 502); }
+  },
   async 'GET /legal'(r) {
     const u = r.user; if (!u) return E('unauthorized', 'Войди заново', 401);
     const x = await one('SELECT v FROM legal WHERE u=$u;', { u });

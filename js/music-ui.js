@@ -340,7 +340,7 @@ function _mxChipGo(k){
 // ════════ Фото исполнителей (картинка артиста из каталога Deezer) вместо обложки альбома ════════
 // Кэш в localStorage на 30 дней; берём только точное совпадение имени — чтобы не подсунуть чужое лицо.
 // Нет фото у артиста (у Deezer пустая заглушка) — остаётся обложка.
-const _ART_K='sl_artpic',_ART_TTL=30*864e5;
+const _ART_K='sl_artpic2',_ART_TTL=30*864e5;
 let _artMap=null,_artBusy=0;const _artQ=[],_artNames={},_artWait={};
 function _artLoad(){if(!_artMap){try{_artMap=JSON.parse(localStorage.getItem(_ART_K)||'{}')||{};}catch(e){_artMap={};}}return _artMap;}
 const _artKey=n=>String(n||'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -360,7 +360,13 @@ function _artPump(){
     const k=_artQ.shift();_artBusy++;
     (async()=>{
       let u='',ok=false;
+      // сначала Яндекс Музыка (у СНГ-артистов там настоящие фото; через наш сервер — браузер напрямую не пускают),
+      // нет фото — Deezer
       try{
+        const r=await fetch(SLON_YC.api+'?p='+encodeURIComponent('/art?q='+_artNames[k]));
+        const j=await r.json();if(j&&j.ok){ok=true;if(j.u&&j.photo)u=j.u;}
+      }catch(e){}
+      if(!u)try{
         const d=await _dzJsonp('/search/artist?q='+encodeURIComponent(_artNames[k])+'&limit=8');
         const want=_artNorm(_artNames[k]);
         const hit=((d&&d.data)||[]).find(x=>_artNorm(x.name)===want);
