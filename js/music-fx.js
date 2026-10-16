@@ -6,7 +6,7 @@
 // • Фит: если в тексте песни есть заголовки «[Куплет 2: Kai Angel]», при смене исполнителя — свой эффект
 //   (глитч-сдвиг цвета) и плашка с именем того, кто сейчас читает.
 
-const _DROP_K='sl_drops2';
+const _DROP_K='sl_drops3';     // [{t, s: 1 лёгкий | 2 средний | 3 жёсткий}]
 const _dropsDb=(()=>{try{return JSON.parse(localStorage.getItem(_DROP_K)||'{}')||{};}catch(e){return {};}})();
 const _dropsSave=()=>{try{localStorage.setItem(_DROP_K,JSON.stringify(_dropsDb));}catch(e){}};
 let _dropBusy=false,_dropFired=new Set(),_dropKey='';
@@ -24,19 +24,25 @@ async function _dropScan(it){
   // бас: простой фильтр низких частот (~150 Гц), энергия по окнам
   const a=1-Math.exp(-2*Math.PI*150/sr);let lp=0;const E=new Float32Array(n),F=new Float32Array(n);
   for(let w=0;w<n;w++){let s=0,f=0;for(let i=w*win,e=i+win;i<e;i++){const x=ch[i];lp+=a*(x-lp);s+=lp*lp;f+=x*x;}E[w]=Math.sqrt(s/win);F[w]=Math.sqrt(f/win);}
-  const sorted=Array.from(F).sort((x,y)=>x-y),loud=sorted[Math.floor(n*.6)]||0;
+  const pct=(arr,p)=>{const s=Array.from(arr).sort((x,y)=>x-y);return s[Math.floor(s.length*p)]||0;};
+  const loud50=pct(F,.5),loud80=pct(F,.8),bass80=pct(E,.8);
   const avg=(arr,i0,i1)=>{let s=0,c=0;for(let i=Math.max(0,i0);i<Math.min(n,i1);i++){s+=arr[i];c++;}return c?s/c:0;};
+  // кандидаты: бас после момента заметно сильнее, чем до (сравниваем 2 с после и 4 с до), и трек тут не тихий
   const cand=[];
-  for(let w=80;w<n-40;w++){
-    const before=avg(E,w-60,w),after=avg(E,w,w+40),afterF=avg(F,w,w+40);
-    if(after<before*1.9||afterF<loud)continue;
-    // точный момент удара — самый резкий скачок в окрестности
-    let best=w,jump=0;for(let k=w-5;k<=w+5;k++){const j=E[k]-avg(E,k-5,k);if(j>jump){jump=j;best=k;}}
-    cand.push({t:best/10,score:after/(before+1e-6)});
+  for(let w=50;w<n-20;w++){
+    const before=avg(E,w-40,w),after=avg(E,w,w+20),afterF=avg(F,w,w+20);
+    const r=after/(before+1e-6);
+    if(r<1.35||afterF<loud50)continue;
+    // сила: насколько громко после и насколько вырос бас
+    const lvl=r>=2&&afterF>=loud80&&after>=bass80?3:r>=1.6&&afterF>=loud50*1.15?2:1;
+    // точный момент удара — самый резкий скачок рядом
+    let best=w,jump=-1;for(let k=w-5;k<=w+5;k++){const j=E[k]-avg(E,k-5,k);if(j>jump){jump=j;best=k;}}
+    cand.push({t:best/10,s:lvl,score:r*(afterF/(loud80||1))});
   }
-  cand.sort((x,y)=>y.score-x.score);
-  const out=[];for(const c of cand){if(out.every(o=>Math.abs(o-c.t)>20))out.push(c.t);if(out.length>=4)break;}
-  return out.sort((x,y)=>x-y).map(t=>Math.round(t*10)/10);
+  // сначала сильные; между событиями — не меньше 8 с; до 12 за трек
+  cand.sort((x,y)=>y.s-x.s||y.score-x.score);
+  const out=[];for(const c of cand){if(out.every(o=>Math.abs(o.t-c.t)>8))out.push({t:Math.round(c.t*10)/10,s:c.s});if(out.length>=12)break;}
+  return out.sort((x,y)=>x.t-y.t);
 }
 async function _dropPrep(){
   if(_dropBusy||(navigator.deviceMemory&&navigator.deviceMemory<=3))return;   // слабый телефон — разбор трека не тянем
@@ -53,12 +59,14 @@ function _dropsNow(){
   return {k:it.cid||it.id,list:_dropsDb[it.cid||it.id]||null};
 }
 // «БАМ»
-function _fxBam(){
-  const b=document.body;b.classList.remove('fx-bam');void b.offsetWidth;b.classList.add('fx-bam');
-  clearTimeout(_fxBam._t);_fxBam._t=setTimeout(()=>b.classList.remove('fx-bam'),1400);
-  for(const host of [document.getElementById('mmFp'),document.getElementById('pxKara')]){if(!host)continue;
-    host.querySelector(':scope>.fx-flash')?.remove();const f=document.createElement('div');f.className='fx-flash';host.appendChild(f);setTimeout(()=>f.remove(),1200);}
-  if(navigator.vibrate&&matchMedia('(max-width:640px)').matches)try{navigator.vibrate([35,40,70]);}catch(e){}
+// сила 3 — жёсткий дроп: удар, вспышка, тряска, вибрация; 2 — удар покороче со слабой вспышкой; 1 — пульс обложки
+function _fxBam(lvl){
+  lvl=lvl||3;const b=document.body,cls=lvl>=3?'fx-bam':lvl===2?'fx-hit':'fx-pulse';
+  b.classList.remove('fx-bam','fx-hit','fx-pulse');void b.offsetWidth;b.classList.add(cls);
+  clearTimeout(_fxBam._t);_fxBam._t=setTimeout(()=>b.classList.remove(cls),1400);
+  if(lvl>=2)for(const host of [document.getElementById('mmFp'),document.getElementById('pxKara')]){if(!host)continue;
+    host.querySelector(':scope>.fx-flash')?.remove();const f=document.createElement('div');f.className='fx-flash';host.appendChild(f);if(lvl<3)f.style.opacity='.5';setTimeout(()=>f.remove(),1200);}
+  if(lvl>=3&&navigator.vibrate&&matchMedia('(max-width:640px)').matches)try{navigator.vibrate([35,40,70]);}catch(e){}
 }
 
 // ── фит: разметка куплетов из текста ([Куплет 2: Исполнитель]) ──
@@ -102,8 +110,8 @@ setInterval(()=>{
   if(d.k!==_dropKey){_dropKey=d.k;_dropFired=new Set();}
   const t=a.currentTime;
   if(!d.list){if(t>2)_dropPrep();}
-  else for(const x of d.list){if(!_dropFired.has(x)&&t>=x-0.05&&t<x+0.6){_dropFired.add(x);_fxBam();}
-    else if(t<x-1)_dropFired.delete(x);}                                        // перемотали назад — сыграет снова
+  else for(const x of d.list){if(!_dropFired.has(x.t)&&t>=x.t-0.05&&t<x.t+0.6){_dropFired.add(x.t);_fxBam(x.s);}
+    else if(t<x.t-1)_dropFired.delete(x.t);}                                        // перемотали назад — сыграет снова
   _featPrep();
   if(_featSecs){let who='';for(const s of _featSecs){if(s.t<=t)who=s.who;else break;}
     if(who&&who!==_featCur){const first=!_featCur;_featCur=who;if(!first)_fxFeat(who);}}

@@ -4190,3 +4190,10 @@ body.fx-feat #fpCover,body.fx-feat .px-kara-art{animation:fxFeat .9s steps(12,en
 .fx-who.show{opacity:1;transform:translate(-50%,0) scale(1);}
 @media(prefers-reduced-motion:reduce){body.fx-bam *,body.fx-feat *{animation:none!important;}}
 .px-kara>.fx-flash,#mmFp>.fx-flash{position:absolute!important;inset:0;}
+/* средний удар и лёгкий пульс (по силе дропа) */
+@keyframes fxHit{0%{transform:none}8%{transform:scale(1.06) translate(-1%,.6%)}18%{transform:scale(1.04) translate(1%,-.5%)}32%{transform:scale(1.02)}100%{transform:none}}
+@keyframes fxPulse{0%{transform:none}12%{transform:scale(1.035)}100%{transform:none}}
+body.fx-hit #fpCover,body.fx-hit .px-kara-art,body.fx-hit #mmMini{animation:fxHit .8s cubic-bezier(.2,.9,.3,1);}
+body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animation:fxPulse .5s cubic-bezier(.2,.9,.3,1);}
+.fx-flash[style*="opacity"]{animation:fxFlashSoft .8s ease-out forwards;}
+@keyframes fxFlashSoft{0%{opacity:0}8%{opacity:.5}100%{opacity:0}}
