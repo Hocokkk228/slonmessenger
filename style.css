@@ -4060,3 +4060,7 @@ body.glass-off .fp-bg::before{filter:blur(30px);}
 .fp-kl,.px-kl,.fp-kl .kw,.px-kl .kw{-webkit-text-stroke:0!important;}
 .fp-kl,.px-kl{filter:drop-shadow(0 1.5px 0 rgba(255,255,255,.14))!important;}
 .fp-kl.cur,.px-kl.cur{filter:drop-shadow(0 1.5px 0 rgba(255,255,255,.2)) drop-shadow(0 0 14px color-mix(in srgb,var(--kara,#fff) 35%,transparent))!important;}
+/* проигрыш (♪): в активной строке слов нет — нота сама светится цветом обложки и мягко пульсирует */
+.fp-kl.gap.cur,.px-kl.gap.cur{background:linear-gradient(180deg,color-mix(in srgb,var(--kara,#fff) 70%,#fff),var(--kara,#fff))!important;
+  -webkit-background-clip:text!important;background-clip:text!important;animation:kwNote 1.6s ease-in-out infinite;transform-origin:left center;}
+@keyframes kwNote{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
