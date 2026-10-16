@@ -4211,3 +4211,6 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 .mm-fp.ly #fpCover,.mm-fp.ly .fp-cover{animation:none!important;}
 /* листы меню — поверх полного плеера и окна караоке (три точки в плеере открывали меню под ним) */
 .px-sheet{z-index:10100;}
+/* боковые вырезы камеры в горизонтальной ориентации (Android 15 рисует до края) */
+:root{--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);}
+@media(orientation:landscape) and (max-height:520px){.app{padding-left:var(--sal);padding-right:var(--sar);box-sizing:border-box;}}

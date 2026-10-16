@@ -60,6 +60,10 @@
   function state(){
     const sb=document.getElementById('sidebar');
     if(!sb||!sb.classList.contains('open'))return null;                       // открыт чат — дока нет
+    // экран входа/регистрации (или ещё не вошли) — дока нет: он ложился поверх формы
+    const ov=document.getElementById('usernameOverlay');
+    if(typeof myUsername==='undefined'||!myUsername||(ov&&getComputedStyle(ov).display!=='none'))return null;
+    if(document.getElementById('lgGate'))return null;                         // окно соглашения
     if(document.querySelector('#mmFp,#pxKara'))return null;
     const sp=document.getElementById('spPanel'),top=sp&&sp.classList.contains('open')?[...sp.querySelectorAll('.sp-page')].pop():null;
     if(top&&(top.classList.contains('mx-page')||top.querySelector('#mmPlPage,#mxLiked,#mxGroup,#mmOfList'))){

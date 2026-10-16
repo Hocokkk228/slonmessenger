@@ -346,3 +346,11 @@ function _callSetRoute(k){
   const C=window.Capacitor?.Plugins?.SlonCall;if(!C)return;
   C.setRoute({route:k}).then(st=>{_callRoutesPaint(st);document.getElementById('routeMenu')?.remove();}).catch(()=>{});
 }
+
+// ── Отступы системных панелей от Android (MainActivity.pushInsets): статус-бар, навигация, вырез камеры ──
+// Загрузчик переписывает страницу — переменные, выставленные до этого, теряются; берём сохранённые.
+(function _slonInsets(){
+  const ap=()=>{const i=window.__slonInsets;if(!i)return;const d=document.documentElement;
+    d.style.setProperty('--sat',i.t+'px');d.style.setProperty('--sab',i.b+'px');d.style.setProperty('--sal',i.l+'px');d.style.setProperty('--sar',i.r+'px');};
+  ap();addEventListener('slon-insets',ap);document.addEventListener('DOMContentLoaded',ap);
+})();
