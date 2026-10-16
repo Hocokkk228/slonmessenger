@@ -3,6 +3,11 @@ package com.sloncomp.slon
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -38,6 +43,10 @@ class SlonPlayerService : MediaSessionService() {
             cacheInst = s
             return s
         }
+        /** Затухание между треками, мс (0 — выкл). Меняет SlonPlayer.setFade; хранится в настройках. */
+        @Volatile var fadeMs = 3000L
+        /** Пока JS уводит звук перед переключением кнопкой — громкость не трогаем. */
+        @Volatile var hold = false
         fun dataSource(c: Context): CacheDataSource.Factory {
             val http = DefaultHttpDataSource.Factory().setUserAgent("SLON").setAllowCrossProtocolRedirects(true)
             return CacheDataSource.Factory().setCache(cache(c))
@@ -47,6 +56,29 @@ class SlonPlayerService : MediaSessionService() {
     }
 
     private var session: MediaSession? = null
+    private val h = Handler(Looper.getMainLooper())
+    private var fadeInAt = 0L          // когда новый трек реально зазвучал (0 — ещё нет)
+    private var fadePending = false
+
+    // конец трека плавно гаснет, следующий плавно появляется (работает и с погашенным экраном)
+    private val fadeTick = object : Runnable {
+        override fun run() {
+            val p = session?.player ?: return
+            if (!hold) {
+                var v = 1f
+                val f = fadeMs
+                if (f > 0) {
+                    if (fadePending && p.currentPosition > 50) { fadePending = false; fadeInAt = SystemClock.elapsedRealtime() }
+                    val fin = if (fadePending) 0f else if (fadeInAt > 0) ((SystemClock.elapsedRealtime() - fadeInAt) / 900f).coerceIn(0f, 1f) else 1f
+                    val d = p.duration; val t = p.currentPosition
+                    val out = if (d > f * 3) ((d - t).toFloat() / f).coerceIn(0f, 1f) else 1f
+                    v = fin * out
+                }
+                if (kotlin.math.abs(p.volume - v) > 0.01f) p.volume = v
+            }
+            if (p.isPlaying) h.postDelayed(this, 50)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -59,6 +91,13 @@ class SlonPlayerService : MediaSessionService() {
         val open = packageManager.getLaunchIntentForPackage(packageName)?.let {
             PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
+        fadeMs = getSharedPreferences("slon_player", MODE_PRIVATE).getLong("fade", 3000L)
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) { h.removeCallbacks(fadeTick); if (isPlaying) h.post(fadeTick) }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (fadeMs > 0) { fadePending = true; player.volume = 0f } else player.volume = 1f
+            }
+        })
         val b = MediaSession.Builder(this, player)
         if (open != null) b.setSessionActivity(open)
         session = b.build()
@@ -73,6 +112,7 @@ class SlonPlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        h.removeCallbacks(fadeTick)
         session?.run { player.release(); release() }
         session = null
         super.onDestroy()

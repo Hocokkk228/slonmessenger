@@ -24,10 +24,18 @@ function _npNow(){
   if(!t||!t.title||!_pxAudio||_pxAudio.paused||String(_pxAudioId)!==String(t.id))return null;
   let c=/^https:\/\//.test(t.cover||'')?t.cover:'';
   if(!c&&t.mm&&typeof _npCover==='function'){const it=_mmFind(t.mm);const x=it&&_npCover(it);if(/^https:\/\//.test(x||''))c=x;}
+  // обложка только на устройстве (из тегов файла) — другим не видна; берём из каталога (найдём один раз)
+  if(!c&&typeof _mmCovMap!=='undefined'){
+    const k=(String(t.artist||'')+'|'+String(t.title)).toLowerCase(),v=_mmCovMap[k];
+    if(typeof v==='string'&&/^https:\/\//.test(v))c=v;
+    else if(v===undefined&&typeof _plMatch==='function'&&!_npCovAsk[k]){_npCovAsk[k]=1;
+      _plMatch(t.title,t.artist).then(h=>{_mmCovMap[k]=h&&h.cover?h.cover:Date.now();try{localStorage.setItem('sl_mmcov',JSON.stringify(_mmCovMap));}catch(e){}
+        if(h&&h.cover)_npSentKey='';}).catch(()=>{});}     // нашли — статус уйдёт ещё раз, уже с обложкой
+  }
   const d=_pxAudio.duration,left=isFinite(d)&&d?Math.max(30,d-_pxAudio.currentTime):240;
   return {t:String(t.title),a:String(t.artist||''),c,left:Math.round(left)};
 }
-let _npSentKey='',_npSentAt=0,_npStopAt=0,_npAsked=false;
+let _npSentKey='',_npSentAt=0,_npStopAt=0,_npAsked=false;const _npCovAsk={};
 async function _npTick(){
   if(!myUsername||typeof api!=='function')return;
   const now=_npNow(),share=_npShare();

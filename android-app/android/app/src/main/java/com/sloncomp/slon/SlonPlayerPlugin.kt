@@ -29,6 +29,8 @@ import java.util.concurrent.Executors
  *  setQueue({items:[{id,url,title,artist,cover}], index, pos, play, shuffle, repeat}) · play · pause · seek({pos}) ·
  *  next · prev · jump({index}) · setShuffle({on}) · setRepeat({mode:'off'|'one'|'all'}) · stop · state ·
  *  cache({urls}) — скачать заранее для игры без сети · cached({urls}) — какие уже на устройстве.
+ *  insertNext({item}) — «играть следующим» · move({from,to}) · remove({index}) — правка очереди без пересборки ·
+ *  skip({dir, ms}) — переключить с уводом звука · setFade({ms}) — затухание между треками (0 — выкл).
  * События: «state» {playing, pos, dur, index, id, ended}, «error» {id, message}, «cached» {url, ok}.
  */
 @OptIn(UnstableApi::class)
@@ -124,6 +126,59 @@ class SlonPlayerPlugin : Plugin() {
     @PluginMethod fun setRepeat(call: PluginCall) { val m = call.getString("mode", "off") ?: "off"; withCtl { it.repeatMode = repeatOf(m); call.resolve() } }
     @PluginMethod fun stop(call: PluginCall) = withCtl { it.stop(); it.clearMediaItems(); call.resolve() }
     @PluginMethod fun state(call: PluginCall) = withCtl { call.resolve(stateOf(it)) }
+
+    // ── очередь: «играть следующим», перетаскивание, убрать — без пересборки (трек не прерывается) ──
+    @PluginMethod
+    fun insertNext(call: PluginCall) {
+        val o = call.getObject("item") ?: return call.reject("no item")
+        val item = itemOf(o)
+        withCtl { c ->
+            var cur = c.currentMediaItemIndex
+            for (i in c.mediaItemCount - 1 downTo 0) {
+                if (i != cur && c.getMediaItemAt(i).mediaId == item.mediaId) { c.removeMediaItem(i); if (i < cur) cur-- }
+            }
+            c.addMediaItem(cur + 1, item)
+            call.resolve()
+        }
+    }
+    @PluginMethod
+    fun move(call: PluginCall) {
+        val from = call.getInt("from", -1) ?: -1; val to = call.getInt("to", -1) ?: -1
+        withCtl { c -> if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount) c.moveMediaItem(from, to); call.resolve() }
+    }
+    @PluginMethod
+    fun remove(call: PluginCall) {
+        val i = call.getInt("index", -1) ?: -1
+        withCtl { c -> if (i in 0 until c.mediaItemCount && i != c.currentMediaItemIndex) c.removeMediaItem(i); call.resolve() }
+    }
+    // переключение кнопкой: звук уводится за ms, потом следующий/предыдущий (он сам плавно появится)
+    @PluginMethod
+    fun skip(call: PluginCall) {
+        val dir = call.getInt("dir", 1) ?: 1
+        val ms = (call.getInt("ms", 220) ?: 220).coerceIn(0, 1500)
+        withCtl { c ->
+            val v0 = c.volume; val t0 = android.os.SystemClock.elapsedRealtime()
+            SlonPlayerService.hold = true
+            val step = object : Runnable {
+                override fun run() {
+                    val k = if (ms == 0) 1f else ((android.os.SystemClock.elapsedRealtime() - t0) / ms.toFloat()).coerceIn(0f, 1f)
+                    c.volume = v0 * (1f - k)
+                    if (k < 1f) { main.postDelayed(this, 16); return }
+                    SlonPlayerService.hold = false
+                    if (dir > 0) c.seekToNextMediaItem() else c.seekToPrevious()
+                    c.play(); call.resolve()
+                }
+            }
+            main.post(step)
+        }
+    }
+    @PluginMethod
+    fun setFade(call: PluginCall) {
+        val ms = (call.getDouble("ms", 3000.0) ?: 3000.0).toLong().coerceIn(0L, 12000L)
+        SlonPlayerService.fadeMs = ms
+        context.getSharedPreferences("slon_player", android.content.Context.MODE_PRIVATE).edit().putLong("fade", ms).apply()
+        withCtl { c -> if (ms == 0L) c.volume = 1f; call.resolve() }
+    }
 
     private fun repeatOf(m: String) = when (m) { "one" -> Player.REPEAT_MODE_ONE; "all" -> Player.REPEAT_MODE_ALL; else -> Player.REPEAT_MODE_OFF }
 

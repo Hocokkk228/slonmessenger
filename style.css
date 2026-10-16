@@ -4167,3 +4167,24 @@ body.glass-off .fp-bg::before{filter:blur(30px);}
 .lt-inv{display:flex;align-items:center;gap:14px;margin:6px 0 14px;font-size:15px;line-height:1.4;}
 .lt-inv span{font-size:13px;color:var(--text2);}
 @media(max-width:640px){.lt-badge{top:auto;bottom:calc(150px + var(--sab,0px));}}
+
+/* ════════ Эффекты под трек: дроп («БАМ») и смена исполнителя на фите ════════ */
+@keyframes fxBam{0%{transform:none}6%{transform:scale(1.1) translate(-1.5%,1%)}12%{transform:scale(1.07) translate(2%,-1.5%) rotate(1deg)}
+  20%{transform:scale(1.05) translate(-2%,1.2%) rotate(-1deg)}28%{transform:scale(1.04) translate(1.5%,-.5%)}38%{transform:scale(1.03) translate(-.8%,.4%)}
+  58%{transform:scale(1.02) translate(0,0)}60%{transform:scale(1.02) translate(3%,0);opacity:.75}62%{transform:scale(1.02) translate(-2%,0);opacity:1}64%{transform:scale(1.01) translate(0,0)}100%{transform:none}}
+@keyframes fxBamBg{0%{filter:brightness(1)}5%{filter:brightness(1.9) saturate(1.6)}40%{filter:brightness(1.15)}100%{filter:brightness(1)}}
+@keyframes fxBamIsl{0%,100%{transform:translateX(-50%) scale(1)}10%{transform:translateX(-50%) scale(1.14)}25%{transform:translateX(-52%) scale(1.06)}40%{transform:translateX(-48%) scale(1.04)}60%{transform:translateX(-50%) scale(1.02)}}
+body.fx-bam #fpCover,body.fx-bam .px-kara-art{animation:fxBam 1.3s cubic-bezier(.2,.9,.3,1);}
+body.fx-bam #mmFp .fp-bg,body.fx-bam .px-kara-bg{animation:fxBamBg 1.2s ease-out;}
+body.fx-bam #mmMini{animation:fxBam 1s cubic-bezier(.2,.9,.3,1);}
+body.fx-bam #mmFp .fp-kl.cur,body.fx-bam .px-kl.cur{animation:fxBam .9s cubic-bezier(.2,.9,.3,1);transform-origin:left center;}
+@keyframes fxFeat{0%{transform:none;filter:none}8%{transform:translateX(-7px) skewX(-7deg);filter:hue-rotate(60deg) drop-shadow(5px 0 0 rgba(255,0,90,.75)) drop-shadow(-5px 0 0 rgba(0,220,255,.75))}
+  16%{transform:translateX(6px) skewX(5deg);filter:hue-rotate(-40deg) drop-shadow(-4px 0 0 rgba(255,0,90,.7)) drop-shadow(4px 0 0 rgba(0,220,255,.7))}
+  26%{transform:translateX(-3px);filter:drop-shadow(2px 0 0 rgba(255,0,90,.5)) drop-shadow(-2px 0 0 rgba(0,220,255,.5))}40%,100%{transform:none;filter:none}}
+body.fx-feat #fpCover,body.fx-feat .px-kara-art{animation:fxFeat .9s steps(12,end);}
+.fx-who{position:fixed;left:50%;top:calc(70px + var(--sat,0px));transform:translate(-50%,-20px) scale(.9);opacity:0;z-index:10095;pointer-events:none;
+  padding:8px 16px;border-radius:22px;font-weight:700;font-size:15px;color:#fff;transition:opacity .3s,transform .45s cubic-bezier(.2,1.4,.3,1);
+  background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.05)),rgba(20,20,30,.35);-webkit-backdrop-filter:blur(16px) saturate(1.7);backdrop-filter:blur(16px) saturate(1.7);
+  box-shadow:inset 1.2px 1.2px 1px rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.1),0 10px 30px rgba(0,0,0,.35);}
+.fx-who.show{opacity:1;transform:translate(-50%,0) scale(1);}
+@media(prefers-reduced-motion:reduce){body.fx-bam *,body.fx-feat *{animation:none!important;}}
