@@ -4070,10 +4070,10 @@ body.glass-off .fp-bg::before{filter:blur(30px);}
 @keyframes trcP{0%{transform:translateX(-42%) scale(.8) rotate(-5deg);opacity:0;filter:blur(8px)}55%{opacity:1;filter:blur(0)}100%{transform:none;opacity:1;filter:none}}
 @keyframes trtN{0%{transform:translateX(18px);opacity:0;filter:blur(4px)}100%{transform:none;opacity:1;filter:none}}
 @keyframes trtP{0%{transform:translateX(-18px);opacity:0;filter:blur(4px)}100%{transform:none;opacity:1;filter:none}}
-.trc-n{animation:trcN .6s cubic-bezier(.2,1,.3,1) both;}
-.trc-p{animation:trcP .6s cubic-bezier(.2,1,.3,1) both;}
-.trt-n{animation:trtN .5s cubic-bezier(.2,1,.3,1) both .06s;}
-.trt-p{animation:trtP .5s cubic-bezier(.2,1,.3,1) both .06s;}
+.trc-n{animation:trcN .6s cubic-bezier(.2,1,.3,1) backwards;}
+.trc-p{animation:trcP .6s cubic-bezier(.2,1,.3,1) backwards;}
+.trt-n{animation:trtN .5s cubic-bezier(.2,1,.3,1) backwards .06s;}
+.trt-p{animation:trtP .5s cubic-bezier(.2,1,.3,1) backwards .06s;}
 
 /* ════════ Очередь: перетаскивание ════════ */
 .mq-hint{font-size:12px;color:var(--text2);margin:-4px 0 8px;}
@@ -4171,7 +4171,7 @@ body.glass-off .fp-bg::before{filter:blur(30px);}
 /* ════════ Эффекты под трек: дроп («БАМ») и смена исполнителя на фите ════════ */
 @keyframes fxBam{0%{transform:none}6%{transform:scale(1.1) translate(-1.5%,1%)}12%{transform:scale(1.07) translate(2%,-1.5%) rotate(1deg)}
   20%{transform:scale(1.05) translate(-2%,1.2%) rotate(-1deg)}28%{transform:scale(1.04) translate(1.5%,-.5%)}38%{transform:scale(1.03) translate(-.8%,.4%)}
-  58%{transform:scale(1.02) translate(0,0)}60%{transform:scale(1.02) translate(3%,0);opacity:.75}62%{transform:scale(1.02) translate(-2%,0);opacity:1}64%{transform:scale(1.01) translate(0,0)}100%{transform:none}}
+  58%{transform:scale(1.02) translate(0,0)}60%{transform:scale(1.02) translate(3%,0)}62%{transform:scale(1.02) translate(-2%,0)}64%{transform:scale(1.01) translate(0,0)}100%{transform:none}}
 @keyframes fxBamBg{0%{filter:brightness(1)}5%{filter:brightness(1.9) saturate(1.6)}40%{filter:brightness(1.15)}100%{filter:brightness(1)}}
 @keyframes fxBamIsl{0%,100%{transform:translateX(-50%) scale(1)}10%{transform:translateX(-50%) scale(1.14)}25%{transform:translateX(-52%) scale(1.06)}40%{transform:translateX(-48%) scale(1.04)}60%{transform:translateX(-50%) scale(1.02)}}
 body.fx-bam #fpCover,body.fx-bam .px-kara-art{animation:fxBam 1.3s cubic-bezier(.2,.9,.3,1);}
@@ -4207,3 +4207,7 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 /* плашки «обновить приложение» / «включить уведомления» — над доком, а не под ним */
 .notif-ask{z-index:9700;}
 @media(max-width:640px){.notif-ask{bottom:calc(96px + var(--sab,0px));}}
+/* открыт текст — обложка спрятана: никакие анимации (переход трека, дроп) её не трогают */
+.mm-fp.ly #fpCover,.mm-fp.ly .fp-cover{animation:none!important;}
+/* листы меню — поверх полного плеера и окна караоке (три точки в плеере открывали меню под ним) */
+.px-sheet{z-index:10100;}
