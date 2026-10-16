@@ -3885,10 +3885,10 @@ video.mv-media{cursor:default;}
 /* ════════ Жидкое стекло: общие параметры и уровни качества (js/glass.js) ════════
    Размытие пересчитывается на каждом кадре прокрутки, цена ~ радиусу — поэтому радиус умеренный и общий,
    без цепочек фильтров (brightness = лишний проход). Блеск и грань — дешёвые inset-тени. */
-:root{--g-blur:16px;--g-sat:1.7;--g-tint:42%;--g-hi:rgba(255,255,255,.22);--g-edge:rgba(255,255,255,.08);--g-sh:0 8px 26px rgba(0,0,0,.26);
+:root{--g-blur:18px;--g-sat:1.9;--g-tint:24%;--g-hi:rgba(255,255,255,.22);--g-edge:rgba(255,255,255,.08);--g-sh:0 8px 26px rgba(0,0,0,.26);
   --g-sheen:linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.02) 55%,rgba(255,255,255,0));}
-body.glass-lo{--g-blur:8px;--g-sat:1.35;--g-tint:64%;}
-body.glass-off{--g-tint:88%;}
+body.glass-lo{--g-blur:9px;--g-sat:1.5;--g-tint:46%;}
+body.glass-off{--g-tint:86%;}
 @media(max-width:640px){
   /* настоящее стекло: крупные «парящие» элементы */
   .chat-hdr .ch-back,.ch-pill,.chat-hdr .ch-acts,body #pinnedBar.pinned-bar,
@@ -3896,7 +3896,7 @@ body.glass-off{--g-tint:88%;}
   #chatPane .emoji-panel,.modal .mbox,.sp-topbar.solid,.fab-menu-item,.sb-glass-top{
     background:var(--g-sheen),color-mix(in srgb,var(--bg2) var(--g-tint),transparent)!important;
     -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;
-    box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge),var(--g-sh)!important;border-color:transparent!important;}
+    box-shadow:var(--g-rim),var(--g-sh)!important;border-color:transparent!important;}
   .sp-topbar.solid,.sb-glass-top{box-shadow:inset 0 -1px 0 var(--g-edge)!important;}
   /* кнопка «+» — цветное стекло */
   .sidebar .fab-btn{background:var(--g-sheen),color-mix(in srgb,var(--accent) 82%,transparent)!important;
@@ -3942,7 +3942,7 @@ body.glass-off *,body.glass-off *::before,body.glass-off *::after{-webkit-backdr
   .route-menu,#chatPane .emoji-panel,.modal .mbox,.fab-menu-item,.mm-mini{
     background:var(--g-sheen),color-mix(in srgb,var(--bg2) var(--g-tint),transparent)!important;
     -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat))!important;
-    box-shadow:inset 0 1px 0 var(--g-hi),inset 0 0 0 1px var(--g-edge),var(--g-sh)!important;border-color:transparent!important;}
+    box-shadow:var(--g-rim),var(--g-sh)!important;border-color:transparent!important;}
   .chat-hdr::before{background:linear-gradient(180deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,0) 60%)!important;}
   .sidebar .fab-btn{background:var(--g-sheen),color-mix(in srgb,var(--accent) 84%,transparent)!important;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 1px rgba(255,255,255,.12),0 8px 22px color-mix(in srgb,var(--accent) 40%,rgba(0,0,0,.3))!important;}
@@ -3954,3 +3954,83 @@ body.glass-off *,body.glass-off *::before,body.glass-off *::after{-webkit-backdr
   /* фон затемнения под окнами — тоже размыт, но слабее */
   .modal{background:rgba(0,0,0,.45)!important;}
 }
+
+/* ════════ Стекло v2: как в пункте управления ColorOS ════════
+   прозрачная подложка + светлая грань (сильнее сверху-слева, слабее снизу-справа) + внутреннее свечение «толщины» */
+:root{
+  --g-rim:inset 1.2px 1.2px 1px rgba(255,255,255,.34),inset -1px -1px 1px rgba(255,255,255,.13),inset 0 0 0 1px rgba(255,255,255,.07),inset 0 0 22px rgba(255,255,255,.055);
+  --g-sh:0 10px 30px rgba(0,0,0,.28);
+  --g-sheen:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.03) 38%,rgba(255,255,255,0) 60%,rgba(255,255,255,.05));
+}
+body[data-theme="light"],body[data-theme="liketg"],body[data-theme="arctic"]{
+  --g-tint:38%;
+  --g-rim:inset 1.2px 1.2px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.55),inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 22px rgba(255,255,255,.35);
+  --g-sh:0 10px 30px rgba(16,35,47,.16);
+}
+body.glass-lo[data-theme="light"],body.glass-lo[data-theme="liketg"],body.glass-lo[data-theme="arctic"]{--g-tint:58%;}
+/* стекло без размытия: подложка плотнее, грань та же */
+body.glass-off{--g-tint:86%;}
+/* остальные места, где грань была отдельной */
+.sp-topbar.solid,.sb-glass-top{box-shadow:var(--g-rim)!important;}
+@media(max-width:640px){
+  .sdock-glass{box-shadow:var(--g-rim),0 12px 34px rgba(0,0,0,.34)!important;}
+  .date-separator span,.sb-scroll .sb-inp{box-shadow:var(--g-rim)!important;}
+}
+@media(min-width:641px){
+  .sidebar{background:var(--g-sheen),color-mix(in srgb,var(--bg2) calc(var(--g-tint) + 12%),transparent)!important;box-shadow:var(--g-rim),0 12px 40px rgba(0,0,0,.24)!important;}
+  .sidebar .sb-inp{box-shadow:var(--g-rim)!important;}
+  .date-separator span{box-shadow:var(--g-rim)!important;}
+}
+
+/* «печатает…» — над парящим полем ввода, а не под ним */
+#chatPane .typing-wrap{position:absolute!important;left:0;right:0;margin:0 auto!important;z-index:5;pointer-events:none;
+  bottom:calc(var(--inp-h,58px) + 18px);min-height:0;padding:0;}
+@media(max-width:640px){#chatPane .typing-wrap{left:12px;right:12px;width:auto!important;bottom:calc(var(--inp-h,58px) + var(--sab) + 12px);}}
+#chatPane:has(#typing.show) .msgs{padding-bottom:calc(var(--inp-h,58px) + 52px)!important;}
+@media(max-width:640px){#chatPane:has(#typing.show) .msgs{padding-bottom:calc(var(--inp-h,58px) + var(--sab) + 44px)!important;}}
+#typing.show{background:var(--g-sheen),color-mix(in srgb,var(--bg2) calc(var(--g-tint) + 20%),transparent);
+  -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));box-shadow:var(--g-rim);}
+
+/* телефон: экраны настроек и музыки — шапка ниже статус-бара, стеклянная, контент уходит под неё */
+@media(max-width:640px){
+  .sp-page-hdr{position:absolute;left:0;right:0;top:0;z-index:6;padding-top:calc(8px + var(--sat));
+    background:var(--g-sheen),color-mix(in srgb,var(--bg2) calc(var(--g-tint) + 30%),transparent)!important;
+    -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));box-shadow:var(--g-rim)!important;}
+  .sp-page>.sp-page-body{padding-top:calc(56px + var(--sat));}
+  .fo-badge{top:auto;bottom:calc(86px + var(--sab));font-size:10px;padding:4px 9px;opacity:.9;}
+}
+
+/* ════════ Полный плеер: обложка размыта за стеклом, кнопки — стекло ════════ */
+.fp-bg::before{content:'';position:absolute;inset:-20%;background:var(--fp-cov) center/cover no-repeat;filter:blur(48px) saturate(1.7);opacity:.6;transform:translateZ(0);}
+.fp-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.35) 70%,rgba(0,0,0,.55));}
+.fp-cap,.mx-fp .fp-hd .fp-ib{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07))!important;border:none!important;
+  -webkit-backdrop-filter:blur(var(--g-blur)) saturate(1.6);backdrop-filter:blur(var(--g-blur)) saturate(1.6);
+  box-shadow:inset 1.2px 1.2px 1px rgba(255,255,255,.4),inset -1px -1px 1px rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.08),inset 0 0 24px rgba(255,255,255,.07),0 10px 30px rgba(0,0,0,.25)!important;}
+/* кнопка воспроизведения — светлое «стекло-линза» */
+.fp-ctl2 .fp-pp{background:linear-gradient(160deg,rgba(255,255,255,.95),rgba(255,255,255,.72))!important;color:#111;
+  box-shadow:inset 0 1px 1px #fff,inset 0 -2px 6px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.3)!important;}
+/* отдельные кнопки в капсуле — стеклянные кружки при нажатии */
+.fp-cap button:not(.fp-pp){border-radius:50%;width:46px;height:46px;transition:transform .18s cubic-bezier(.2,1.4,.3,1),background .2s;}
+.fp-cap button:not(.fp-pp):active{background:rgba(255,255,255,.14);box-shadow:inset 1px 1px 1px rgba(255,255,255,.35),inset 0 0 12px rgba(255,255,255,.08);}
+body.glass-off .fp-bg::before{filter:blur(30px);}
+
+/* ════════ Караоке: стеклянный текст (как цифры часов на экране блокировки) ════════
+   будущие строки — полупрозрачное стекло с гранью; текущая — заливается по словам в темпе пения,
+   пока строка идёт — по ней течёт перелив; прошедшие — стекло посветлее */
+.fp-kl{color:transparent!important;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.42))!important;
+  -webkit-background-clip:text!important;background-clip:text!important;-webkit-text-stroke:.6px rgba(255,255,255,.28);
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.18));transition:opacity .3s;}
+.fp-kl.past{background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.7))!important;-webkit-background-clip:text!important;background-clip:text!important;}
+.fp-kl.plain{background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.92))!important;-webkit-background-clip:text!important;background-clip:text!important;}
+.fp-kl.cur{background:none!important;-webkit-text-stroke:0;}
+.fp-kl .kw{color:transparent;-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:.6px rgba(255,255,255,.25);
+  background-image:
+    linear-gradient(105deg,transparent 0%,transparent 35%,rgba(255,255,255,.85) 50%,transparent 65%,transparent 100%),
+    linear-gradient(90deg,var(--kara,#fff) var(--wp,0%),rgba(255,255,255,.3) var(--wp,0%));
+  background-size:250% 100%,100% 100%;background-repeat:no-repeat;background-position:var(--sx,120%) 0,0 0;}
+.fp-kl.cur .kw{animation:kwFlow 2.2s linear infinite;}
+.fp-kl.cur .kw.done{-webkit-text-stroke:0;}
+@keyframes kwFlow{from{--sx:120%}to{--sx:-20%}}
+@property --sx{syntax:'<percentage>';inherits:false;initial-value:120%;}
+
+.fp-kl:not(.cur) .kw{background:none!important;-webkit-text-stroke:0;animation:none;}
