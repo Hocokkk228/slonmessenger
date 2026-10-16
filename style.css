@@ -4204,3 +4204,6 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 .fx-marks i{position:absolute;top:-3px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:rgba(255,255,255,.55);}
 .fx-marks i.s2{background:color-mix(in srgb,var(--kara,#fff) 80%,#fff);width:7px;height:7px;top:-3.5px;}
 .fx-marks i.s3{background:var(--kara,#ffd23f);width:9px;height:9px;top:-4.5px;margin-left:-4.5px;box-shadow:0 0 8px var(--kara,#ffd23f);}
+/* плашки «обновить приложение» / «включить уведомления» — над доком, а не под ним */
+.notif-ask{z-index:9700;}
+@media(max-width:640px){.notif-ask{bottom:calc(96px + var(--sab,0px));}}

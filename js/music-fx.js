@@ -6,7 +6,7 @@
 // • Фит: если в тексте песни есть заголовки «[Куплет 2: Kai Angel]», при смене исполнителя — свой эффект
 //   (глитч-сдвиг цвета) и плашка с именем того, кто сейчас читает.
 
-const _DROP_K='sl_drops3';     // [{t, s: 1 лёгкий | 2 средний | 3 жёсткий}]
+const _DROP_K='sl_drops4';     // [{t, s: 1 лёгкий | 2 средний | 3 жёсткий}]
 const _dropsDb=(()=>{try{return JSON.parse(localStorage.getItem(_DROP_K)||'{}')||{};}catch(e){return {};}})();
 const _dropsSave=()=>{try{localStorage.setItem(_DROP_K,JSON.stringify(_dropsDb));}catch(e){}};
 let _dropBusy=false,_dropFired=new Set(),_dropKey='';
@@ -34,7 +34,7 @@ async function _dropScan(it){
   for(let w=50;w<n-20;w++){
     const before=avg(E,w-40,w),after=avg(E,w,w+20),afterF=avg(F,w,w+20);
     const r=after/(before+1e-6);
-    if(r<1.35||afterF<loud50)continue;
+    if(r<1.25||afterF<loud50*.9)continue;
     // сила. Жёсткий дроп — перед ним бас почти пропадает (брейк), а потом бьёт в полную (проверено на «2017»:
     // «Этот рэпер диссит VIPERR» — бас до 0,1 от обычного, после ×9). Средний — бас был, но заметно вырос.
     const brk=before<=bass80*.25&&after>=bass80*.75&&afterF>=loud80*.8;
@@ -43,9 +43,9 @@ async function _dropScan(it){
     let best=w,jump=-1;for(let k=w-5;k<=w+5;k++){const j=E[k]-avg(E,k-5,k);if(j>jump){jump=j;best=k;}}
     cand.push({t:best/10,s:lvl,score:r*(afterF/(loud80||1))});
   }
-  // сначала сильные; между событиями — не меньше 8 с; до 12 за трек
+  // сначала сильные; между событиями — не меньше 5 с; до 24 за трек
   cand.sort((x,y)=>y.s-x.s||y.score-x.score);
-  const out=[];for(const c of cand){if(out.every(o=>Math.abs(o.t-c.t)>8))out.push({t:Math.round(c.t*10)/10,s:c.s});if(out.length>=12)break;}
+  const out=[];for(const c of cand){if(out.every(o=>Math.abs(o.t-c.t)>5))out.push({t:Math.round(c.t*10)/10,s:c.s});if(out.length>=24)break;}
   return out.sort((x,y)=>x.t-y.t);
 }
 async function _dropPrep(){

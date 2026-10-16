@@ -220,7 +220,8 @@ async function _fromStore(){
 }
 function _verNewer(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)>(y[i]||0);}return false;}
 function _offerUpdate(info){
-  if($('updAsk')||_storeInfo)return;
+  if(_storeInfo)return;
+  const was=$('updAsk');if(was){document.body.appendChild(was);requestAnimationFrame(()=>was.classList.add('show'));return;}   // уже есть — показать снова, поверх всего
   const el=document.createElement('div');el.id='updAsk';el.className='notif-ask';
   el.innerHTML=`<div class="na-ico"><img src="icons/icon-96.png" alt=""></div>
     <div class="na-txt"><b>Доступна новая версия ${esc(info.version)}</b><span>${esc(info.notes||'Исправления и улучшения')}</span></div>
