@@ -56,6 +56,8 @@ function _dropsNow(){
 function _fxBam(){
   const b=document.body;b.classList.remove('fx-bam');void b.offsetWidth;b.classList.add('fx-bam');
   clearTimeout(_fxBam._t);_fxBam._t=setTimeout(()=>b.classList.remove('fx-bam'),1400);
+  for(const host of [document.getElementById('mmFp'),document.getElementById('pxKara')]){if(!host)continue;
+    host.querySelector(':scope>.fx-flash')?.remove();const f=document.createElement('div');f.className='fx-flash';host.appendChild(f);setTimeout(()=>f.remove(),1200);}
   if(navigator.vibrate&&matchMedia('(max-width:640px)').matches)try{navigator.vibrate([35,40,70]);}catch(e){}
 }
 
