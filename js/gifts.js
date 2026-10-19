@@ -17,8 +17,18 @@ function _msIco(cls){
     <path d="M8.6 7.2c1-1 2.2-1.4 3.4-1.4" stroke="#fff6cc" stroke-width="1" fill="none" stroke-linecap="round" opacity=".9"/></svg>`;
 }
 
-// ── Плюшевый слоник (подарок): художественная картинка img/gifts/plush.webp + анимация ──
-const GIFT_IMG={plush:'img/gifts/plush.webp'};
+const GIFT_IMG={
+  plush:'img/gifts/plush.webp',
+  hw_slon_pumpkin_hat:'img/gifts/hw_slon_pumpkin_hat.png',
+  hw_slon_ghost:'img/gifts/hw_slon_ghost.png',
+  hw_slon_mummy:'img/gifts/hw_slon_mummy.png',
+  hw_slon_witch:'img/gifts/hw_slon_witch.png',
+  hw_slon_pumpkin_body:'img/gifts/hw_slon_pumpkin_body.png',
+  hw_slon_skeleton:'img/gifts/hw_slon_skeleton.png',
+  hw_slon_vampire:'img/gifts/hw_slon_vampire.png',
+  hw_slon_devil:'img/gifts/hw_slon_devil.png',
+  hw_slon_space:'img/gifts/hw_slon_space.png'
+};
 function _giftSvg(id,cls){
   const src=GIFT_IMG[id];if(!src)return '';
   return `<svg class="gift-svg gp${cls?' '+cls:''}" viewBox="0 0 120 120" aria-hidden="true">

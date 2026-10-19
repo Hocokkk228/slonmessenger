@@ -15,7 +15,19 @@ const BUILTIN_ADMINS = (process.env.ADMINS || 'mamedov,vadimslonik67').split(','
 const MAX_FAILS = 10, LOCK_MS = 5 * 60 * 1000, RESET_TTL = 15 * 60 * 1000;
 // ── Подарки и мини-слоники (внутренняя валюта: 100 мини-слоников = 20 ₽) ──
 // Цены — только на сервере: клиент не может подарить дешевле.
-const GIFTS = { plush: { price: 50, title: 'Плюшевый слоник' } };
+const GIFTS = {
+  plush: { price: 50, title: 'Плюшевый слоник' },
+  // Хеллоуинские слоники (коллекция)
+  hw_slon_pumpkin_hat: { price: 70, title: 'Слоник в тыкве' },
+  hw_slon_ghost: { price: 90, title: 'Слоник-привидение' },
+  hw_slon_mummy: { price: 110, title: 'Слоник-мумия' },
+  hw_slon_witch: { price: 130, title: 'Слоник-колдун' },
+  hw_slon_pumpkin_body: { price: 150, title: 'Слоник-тыковка' },
+  hw_slon_skeleton: { price: 180, title: 'Слоник-скелет' },
+  hw_slon_vampire: { price: 210, title: 'Слоник-вампир' },
+  hw_slon_devil: { price: 250, title: 'Слоник-чертёнок' },
+  hw_slon_space: { price: 300, title: 'Звёздный слоник' }
+};
 const PM_MAX = 5, PM_SIZE = 15 * 1024 * 1024;
 const QUEUE_TTL = 7 * 24 * 3600e3, CONN_TTL = 61 * 60 * 1000;           // соединение шлюза живёт не дольше 60 минут
 const MEDIA_MAX = 100 * 1024 * 1024, WS_BUDGET = 90 * 1024;              // сообщение в сокет — до ~96 КБ
