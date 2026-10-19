@@ -738,6 +738,7 @@ const routes = {
     await q('UPSERT INTO mymusic (u,id,title,artist,album,dur,size,mime,cover,ts) VALUES ($u,$i,$ti,$ar,$al,$du,$s,$m,$c,$t);', {
       u, i: id, ti: String(d.title || '').slice(0, 200), ar: String(d.artist || '').slice(0, 200), al: String(d.album || '').slice(0, 200),
       du: Math.round(+d.dur || 0), s: size, m: String(d.mime).slice(0, 60), c: cv, t: now() });
+    await bcast(u, { t: 'self', payload: { type: 'mm_sync', id, ts: now() } });
     const base = `https://${S3_HOST}/${BUCKET}/${key}`;
     return J({ ok: true, id, put: presign('PUT', key), url: base, putCover: cv ? presign('PUT', key + '.jpg') : '', coverUrl: cv ? base + '.jpg' : '' });
   },
@@ -1185,16 +1186,31 @@ async function scSearch(q) {
     const s = dur % 60;
     const durStr = m + ':' + (s < 10 ? '0' : '') + s;
 
-    let artist = (t.user && (t.user.username || t.user.full_name)) || '';
+    let artist = '';
     let title = t.title || '';
 
-    // Если в названии уже есть "Artist - Title", разбиваем аккуратно
+    // 1. Приоритет официальным метаданным трека (дистрибьютор/лейбл)
+    if (t.publisher_metadata && t.publisher_metadata.artist) {
+      artist = String(t.publisher_metadata.artist).trim();
+    }
+
+    // 2. Если в названии указано "Artist - Title", берем из названия
     if (title.includes(' - ')) {
       const parts = title.split(' - ');
       if (parts[0].trim() && parts[1].trim()) {
         artist = parts[0].trim();
         title = parts.slice(1).join(' - ').trim();
       }
+    }
+
+    // 3. Fallback: имя владельца канала
+    if (!artist) {
+      artist = (t.user && (t.user.username || t.user.full_name)) || '';
+    }
+
+    // 4. Очищаем лишние хвосты (например "Kai Angel - " внутри названия трека)
+    if (artist && title.toLowerCase().startsWith(artist.toLowerCase() + ' - ')) {
+      title = title.slice(artist.length + 3).trim();
     }
 
     const cover = (t.artwork_url || (t.user && t.user.avatar_url) || '').replace('-large', '-t500x500');

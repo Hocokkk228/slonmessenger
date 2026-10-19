@@ -115,6 +115,7 @@ async function _hubDispatch(m){
       if(p.type==='profile_sync'){if(typeof _psRemote==='function')_psRemote(p);}
       else if(p.type==='call_sync'){if(typeof _callSyncApply==='function')_callSyncApply(p.key,p);}
       else if(p.type==='dev_active'){if(typeof _onDevActive==='function')_onDevActive(p);}
+      else if(p.type==='mm_sync'){if(typeof _mmLoad==='function'){_mmLoad(true).then(()=>{if(typeof _mxRefresh==='function')_mxRefresh();if(typeof _mmPaint==='function')_mmPaint();});}}
       break;}
     case 'ml':
       if(m.rec?.del||m.rec?.gone||m.chg)_mlOnChange(m.key,m.rec);
