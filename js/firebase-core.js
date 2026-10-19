@@ -340,40 +340,55 @@ function _fbSilentConnect(pid){
 }
 
 function _fetchProfile(pid){
-  if(!window._fbDb||!pid)return;
-  // Отписываемся от старой подписки если есть
+  if(!pid)return;
+
+  // 1. Сначала пробуем наш сервер (Yandex Cloud SQL — всегда актуален)
+  if(typeof api==='function'){
+    api('/profiles?u='+encodeURIComponent(pid)).then(res=>{
+      if(res&&res.ok&&res.profiles&&res.profiles[pid]){
+        const d=res.profiles[pid];
+        _applyFetchedProfile(pid, d);
+      }
+    }).catch(()=>{});
+  }
+
+  // 2. Firebase RTDB (для совместимости со старыми клиентами)
+  if(!window._fbDb)return;
   if(_profileWatchers[pid])_profileWatchers[pid]();
   const r=window._fbRef(window._fbDb,'profiles/'+pid);
   const unsub=window._fbOnValue(r,snap=>{
     const d=snap.val();
     if(!d)return;
-    // Если профиль содержит redirect — следуем за ним
     if(d.redirectTo&&d.redirectTo!==pid){_fetchProfile(d.redirectTo);return;}
-    // Если контакт сменил username — iid поможет его найти
-    const newUsername=d.username||pid;
-    const newName=d.nick&&d.nick!==''?d.nick:'@'+newUsername;
-    peerNames[pid]=newName;
-    if(d.avatar!==undefined){peerAvatars[pid]=d.avatar||null;updateSbAvatar(pid);}
-    if(d.bio!==undefined)peerBios[pid]=d.bio||'';
-    if(d.profileBg)peerProfileBgs[pid]=d.profileBg;
-    if(d.bgColor!==undefined)peerProfileBgColors[pid]=d.bgColor||'';
-    if(d.bgPattern!==undefined)peerProfilePatterns[pid]=d.bgPattern||'';
-    if(d.avFrame!==undefined)peerAvFrames[pid]=d.avFrame||'';
-    if(d.profileWallpaper!==undefined)peerProfileWallpapers[pid]=d.profileWallpaper||'';
-    if(d.profileTheme!==undefined)peerProfileThemes[pid]=d.profileTheme||'';
-    peerLinkedChannels[pid]=d.linkedChannel||'';
-    _applyExtraProfile(pid,d);
-    // Если username изменился — следим и за новым профилем
-    if(newUsername!==pid&&!_profileWatchers[newUsername]){
-      _watchPresence(newUsername);
-      _fetchProfile(newUsername);
-    }
-    if(d.iid){peerIids[pid]=d.iid;mergeByInternalId(pid,d.iid);}
-    updateSbName(pid);
-    if(activeChat===pid)updateChatHeader();
-    saveAll();
+    _applyFetchedProfile(pid, d);
   });
   _profileWatchers[pid]=unsub;
+}
+
+function _applyFetchedProfile(pid, d){
+  if(!d)return;
+  const newUsername=d.username||pid;
+  const newName=d.nick&&d.nick!==''?d.nick:'@'+newUsername;
+  peerNames[pid]=newName;
+  if(d.avatar!==undefined){peerAvatars[pid]=d.avatar||null;updateSbAvatar(pid);}
+  if(d.bio!==undefined)peerBios[pid]=d.bio||'';
+  if(d.profileBg)peerProfileBgs[pid]=d.profileBg;
+  if(d.bgColor!==undefined)peerProfileBgColors[pid]=d.bgColor||'';
+  if(d.bgPattern!==undefined)peerProfilePatterns[pid]=d.bgPattern||'';
+  if(d.avFrame!==undefined)peerAvFrames[pid]=d.avFrame||'';
+  if(d.profileWallpaper!==undefined)peerProfileWallpapers[pid]=d.profileWallpaper||'';
+  if(d.profileTheme!==undefined)peerProfileThemes[pid]=d.profileTheme||'';
+  peerLinkedChannels[pid]=d.linkedChannel||'';
+  _applyExtraProfile(pid,d);
+  if(newUsername!==pid&&!_profileWatchers[newUsername]){
+    _watchPresence(newUsername);
+    _fetchProfile(newUsername);
+  }
+  if(d.iid){peerIids[pid]=d.iid;mergeByInternalId(pid,d.iid);}
+  updateSbName(pid);
+  if(activeChat===pid)updateChatHeader();
+  if(typeof renderProfileScreen==='function'&&typeof activeProfileUser!=='undefined'&&activeProfileUser===pid)renderProfileScreen(pid);
+  saveAll();
 }
 
 function _fbSend(pid,data){
