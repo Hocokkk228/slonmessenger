@@ -31,11 +31,26 @@ const _giftTitle=id=>(_wal.gifts[id]||{}).title||'Подарок';
 const _giftPrice=id=>(_wal.gifts[id]||{}).price||0;
 
 // ── Кошелёк ──
-async function _walLoad(){
-  try{const d=await api('/wallet');_wal.bal=d.bal||0;_wal.log=d.log||[];if(d.gifts)_wal.gifts=d.gifts;}catch(e){}
-  document.querySelectorAll('.wal-bal-v').forEach(el=>el.textContent=_wal.bal==null?'…':_wal.bal);
+let _walCachedBal = (()=>{try{const v=localStorage.getItem('sl_wal_bal');return v!=null?+v:null;}catch(e){return null;}})();
+if(_walCachedBal!=null)_wal.bal=_walCachedBal;
+
+async function _walLoad(force){
+  if(_wal.bal!=null)document.querySelectorAll('.wal-bal-v').forEach(el=>el.textContent=_wal.bal);
+  try{
+    const d=await api('/wallet');
+    _wal.bal=d.bal||0;
+    _wal.log=d.log||[];
+    if(d.gifts)_wal.gifts=d.gifts;
+    try{localStorage.setItem('sl_wal_bal',String(_wal.bal));}catch(e){}
+  }catch(e){}
+  document.querySelectorAll('.wal-bal-v').forEach(el=>el.textContent=_wal.bal==null?'0':_wal.bal);
   return _wal;
 }
+// Фоновая предзагрузка баланса сразу после старта
+setTimeout(function _walBoot(){
+  if(!myUsername){setTimeout(_walBoot,400);return;}
+  _walLoad().catch(()=>{});
+},300);
 // строка «Мини-слоники» в настройках
 {const f=_spRender;_spRender=function(){
   const r=f.apply(this,arguments);

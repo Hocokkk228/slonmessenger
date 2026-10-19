@@ -206,14 +206,20 @@ async function _pxLyrics(tr){
       </div>
       <div class="px-kara-prog"><span id="pxKaraT">0:00</span><input type="range" id="pxKaraR" min="0" max="1000" value="0" oninput="_pxKaraScrub(this.value)"><span id="pxKaraD">0:00</span></div>
       <div class="px-kara-note" id="pxKaraNote"></div>
+      <div class="px-kara-ofs" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;opacity:0.8;margin-top:4px;">
+        <span id="pxKaraOfsTxt">Синхрон: 0.0с</span>
+        <button style="background:rgba(255,255,255,0.12);border:none;color:#fff;border-radius:12px;padding:2px 8px;cursor:pointer" onclick="_pxKaraShift(-0.5)" title="Сдвинуть текст раньше">-0.5с</button>
+        <button style="background:rgba(255,255,255,0.12);border:none;color:#fff;border-radius:12px;padding:2px 8px;cursor:pointer" onclick="_pxKaraShift(0.5)" title="Сдвинуть текст позже">+0.5с</button>
+        <button style="background:rgba(255,255,255,0.12);border:none;color:#fff;border-radius:12px;padding:2px 8px;cursor:pointer" onclick="_pxKaraShift(0,true)" title="Сбросить сдвиг">Сброс</button>
+      </div>
     </div>`;
   document.body.appendChild(w);requestAnimationFrame(()=>w.classList.add('show'));
   document.addEventListener('keydown',_pxKaraKey);
   const full=tr.src==='file';
   _kr={tr,lines:[],synced:false,raf:0,idx:-2,full};
   _kr.key='sl_kofs_'+(tr.dz||tr.id);
-  try{const v=localStorage.getItem(_kr.key);_kr.off=full||v==null?null:+v;}catch(e){_kr.off=null;}
-  $('pxKaraNote').textContent=full?'':(_kr.off!=null?'Отрывок подстроен под текст · нажми строку, чтобы поправить':'Отрывок: нажми строку, которая сейчас звучит, — текст подстроится');
+  try{const v=localStorage.getItem(_kr.key);_kr.off=v!=null?+v:0;}catch(e){_kr.off=0;}
+  _pxKaraUpdateOfsTxt();
   try{
     // «Kai Angel, 9mice» в тегах → ищем и по первому исполнителю; из версий берём ближайшую по длине
     const hit=await _lrcFind(tr);
@@ -275,6 +281,21 @@ async function _pxKaraLine(i){
   if(!_kr.synced)return;
   if(!_pxKaraAudioIs()||!_pxAudio.src)await _pxPlay(_kr.tr,null);
   if(_pxKaraAudioIs()){_pxAudio.currentTime=_kr.lines[i].t;_kr.idx=-2;if(_pxAudio.paused)try{await _pxAudio.play();}catch(e){}}
+}
+function _pxKaraShift(delta, reset){
+  if(!_kr)return;
+  if(reset)_kr.off=0;
+  else _kr.off=Math.round(((_kr.off||0)+delta)*10)/10;
+  _kr.idx=-2;
+  try{localStorage.setItem(_kr.key,String(_kr.off));}catch(e){}
+  _pxKaraUpdateOfsTxt();
+}
+function _pxKaraUpdateOfsTxt(){
+  const el=$('pxKaraOfsTxt');
+  if(el&&_kr){
+    const o=_kr.off||0;
+    el.textContent='Сдвиг: '+(o>0?'+':'')+o.toFixed(1)+'с';
+  }
 }
 function _pxKaraKey(e){if(e.key==='Escape')_pxKaraClose();else if(e.key===' '&&_kr&&!/INPUT|TEXTAREA/.test(document.activeElement?.tagName||'')){e.preventDefault();_pxKaraToggle();}}
 function _pxKaraClose(instant){
