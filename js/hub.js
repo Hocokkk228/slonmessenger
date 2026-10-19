@@ -24,7 +24,11 @@ function _updShow(on){
   clearTimeout(_updT);
   if(on){
     if(_updOn)return;
-    _updT=setTimeout(()=>{_updOn=true;_updSince=Date.now();el.classList.remove('done');el.classList.add('on');},2500);  // быстро догнали — плашку не показываем вовсе
+    _updT=setTimeout(()=>{
+      _updOn=true;_updSince=Date.now();el.classList.remove('done');el.classList.add('on');
+      // Защита от вечного «Обновление…»: скрываем через 8 сек, если сокет лагает
+      setTimeout(()=>{if(_updOn)_updShow(false);},8000);
+    },2500);  // быстро догнали — плашку не показываем вовсе
   }else{
     if(!_updOn)return;
     _updT=setTimeout(()=>{
@@ -69,7 +73,7 @@ function _hubConnect(){
   ws.onmessage=e=>{_hubLastRx=Date.now();let m;try{m=JSON.parse(e.data);}catch(x){return;}_hubDispatch(m);};
   ws.onclose=ev=>{
     if(_hubWs!==ws)return;
-    _hubUp=false;clearInterval(_hubPing);
+    _hubUp=false;clearInterval(_hubPing);_updShow(false);
     if(ev.code===1008||ev.code===4401)return;          // токен отозван — переподключаться бессмысленно
     // три неудачи подряд — возможно, сессию отозвали (смена пароля/выход): проверяем
     if(_hubRetry===3&&typeof _apiCheckSession==='function')_apiCheckSession();
