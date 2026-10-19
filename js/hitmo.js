@@ -6,13 +6,19 @@ async function _hmSearch(q) {
   q = String(q || '').trim();
   if (!q) return [];
 
-  // 1. Попытка через бэкенд SLON (быстро, кэшировано в РФ, без CORS)
+  // 1. Запрос к нашему бэкенду (в первую очередь YC, т.к. там развернут прокси и S3)
   try {
-    const res = await api('/music/search?q=' + encodeURIComponent(q));
+    const url = (typeof SLON_YC !== 'undefined' && SLON_YC.api ? SLON_YC.api : API_URL) + '?p=' + encodeURIComponent('/music/search?q=' + encodeURIComponent(q));
+    const res = await fetch(url).then(r => r.json());
     if (res && res.ok && Array.isArray(res.tracks) && res.tracks.length) {
       return res.tracks;
     }
-  } catch (e) {}
+  } catch (e) {
+    try {
+      const res = await api('/music/search?q=' + encodeURIComponent(q));
+      if (res && res.ok && Array.isArray(res.tracks) && res.tracks.length) return res.tracks;
+    } catch (err) {}
+  }
 
   // 2. Прямой поиск по зеркалам (Capacitor / Desktop или если разрешён CORS)
   const mirrors = ['https://rus.hitmotop.com', 'https://eu.hitmotop.com'];
@@ -71,9 +77,19 @@ function _hmParseHtml(html, baseUrl) {
 // Получение надёжной ссылки на воспроизведение (кэш в S3 с поддержкой перемотки Range)
 async function _hmUrl(tr) {
   try {
-    const d = await api('/music/url', { id: tr.id, srcUrl: tr.srcUrl, title: tr.title, artist: tr.artist });
-    if (d && d.ok && d.url) return d.url;
-  } catch (e) {}
+    const ycUrl = (typeof SLON_YC !== 'undefined' && SLON_YC.api ? SLON_YC.api : API_URL) + '?p=' + encodeURIComponent('/music/url');
+    const res = await fetch(ycUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: tr.id, srcUrl: tr.srcUrl, title: tr.title, artist: tr.artist })
+    }).then(r => r.json());
+    if (res && res.ok && res.url) return res.url;
+  } catch (e) {
+    try {
+      const d = await api('/music/url', { id: tr.id, srcUrl: tr.srcUrl, title: tr.title, artist: tr.artist });
+      if (d && d.ok && d.url) return d.url;
+    } catch (err) {}
+  }
   return tr.srcUrl;
 }
 
