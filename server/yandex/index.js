@@ -987,10 +987,15 @@ const routes = {
     return J({ ok: true });
   },
 
-  // ════════ Музыка: поиск и треки Hitmo (СНГ музыка, ремиксы, полные треки) ════════
+  // ════════ Музыка: поиск и треки (Hitmo + SoundCloud v2) ════════
   async 'GET /music/search'(r) {
     const q = String(r.qs.get('q') || '').trim();
     if (!q) return J({ ok: true, tracks: [] });
+
+    const tracks = [];
+    const seenTitles = new Set();
+
+    // 1. Поиск по Hitmo (быстро, чарты, СНГ)
     try {
       const encQ = encodeURIComponent(q);
       const mirrors = ['https://rus.hitmotop.com', 'https://eu.hitmotop.com'];
@@ -1003,63 +1008,100 @@ const routes = {
               'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
               'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
             },
-            signal: AbortSignal.timeout(6000)
+            signal: AbortSignal.timeout(4000)
           });
           if (res.ok) { html = await res.text(); baseUrl = m; break; }
         } catch (e) {}
       }
-      if (!html) return J({ ok: true, tracks: [] });
 
-      const tracks = [];
-      const itemRe = /<li[^>]+class=["'][^"']*tracks__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
-      let match;
-      while ((match = itemRe.exec(html)) !== null && tracks.length < 30) {
-        const block = match[1];
-        const titleM = block.match(/<div class="track__title">\s*([\s\S]*?)\s*<\/div>/i);
-        let title = titleM ? titleM[1].replace(/<[^>]+>/g, '').trim() : '';
-        const artistM = block.match(/<div class="track__desc">\s*([\s\S]*?)\s*<\/div>/i);
-        let artist = artistM ? artistM[1].replace(/<[^>]+>/g, '').trim() : '';
-        const timeM = block.match(/<div class="track__fulltime">\s*([\s\S]*?)\s*<\/div>/i);
-        let durStr = timeM ? timeM[1].trim() : '';
-        let dur = 0;
-        if (durStr && durStr.includes(':')) {
-          const parts = durStr.split(':').map(Number);
-          dur = parts[0] * 60 + parts[1];
-        }
-        const coverM = block.match(/url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i);
-        let cover = coverM ? coverM[1] : '';
-        const dlM = block.match(/href="([^"]+\.mp3)"[^>]*class="[^"]*track__download-btn/i) ||
-                    block.match(/class="[^"]*track__download-btn[^"]*"[^>]*href="([^"]+\.mp3)"/i);
-        let rawDl = dlM ? dlM[1] : '';
-        if (rawDl && !rawDl.startsWith('http')) rawDl = baseUrl + (rawDl.startsWith('/') ? '' : '/') + rawDl;
-        const idM = block.match(/data-track-id="(\d+)"/i) || block.match(/\/song\/(\d+)/i) || rawDl.match(/_(\d+)\.mp3/i);
-        let id = idM ? idM[1] : 'hm_' + Math.random().toString(36).slice(2, 10);
+      if (html) {
+        const itemRe = /<li[^>]+class=["'][^"']*tracks__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
+        let match;
+        while ((match = itemRe.exec(html)) !== null && tracks.length < 25) {
+          const block = match[1];
+          const titleM = block.match(/<div class="track__title">\s*([\s\S]*?)\s*<\/div>/i);
+          let title = titleM ? titleM[1].replace(/<[^>]+>/g, '').trim() : '';
+          const artistM = block.match(/<div class="track__desc">\s*([\s\S]*?)\s*<\/div>/i);
+          let artist = artistM ? artistM[1].replace(/<[^>]+>/g, '').trim() : '';
+          const timeM = block.match(/<div class="track__fulltime">\s*([\s\S]*?)\s*<\/div>/i);
+          let durStr = timeM ? timeM[1].trim() : '';
+          let dur = 0;
+          if (durStr && durStr.includes(':')) {
+            const parts = durStr.split(':').map(Number);
+            dur = parts[0] * 60 + parts[1];
+          }
+          const coverM = block.match(/url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i);
+          let cover = coverM ? coverM[1] : '';
+          const dlM = block.match(/href="([^"]+\.mp3)"[^>]*class="[^"]*track__download-btn/i) ||
+                      block.match(/class="[^"]*track__download-btn[^"]*"[^>]*href="([^"]+\.mp3)"/i);
+          let rawDl = dlM ? dlM[1] : '';
+          if (rawDl && !rawDl.startsWith('http')) rawDl = baseUrl + (rawDl.startsWith('/') ? '' : '/') + rawDl;
+          const idM = block.match(/data-track-id="(\d+)"/i) || block.match(/\/song\/(\d+)/i) || rawDl.match(/_(\d+)\.mp3/i);
+          let id = idM ? idM[1] : 'hm_' + Math.random().toString(36).slice(2, 10);
 
-        if (title && rawDl) {
-          tracks.push({ id: 'hitmo_' + id, title, artist, dur, durStr, cover, srcUrl: rawDl });
+          if (title && rawDl) {
+            const normKey = (artist + ' - ' + title).toLowerCase().replace(/[^a-z0-9а-яё]/gi, '');
+            seenTitles.add(normKey);
+            tracks.push({ id: 'hitmo_' + id, title, artist, dur, durStr, cover, srcUrl: rawDl, src: 'hitmo' });
+          }
         }
       }
-      return J({ ok: true, tracks });
+    } catch (e) {}
+
+    // 2. Поиск по SoundCloud v2 API (если треков мало или нет в Hitmo, как 9mice / андерграунд)
+    let scErr = null;
+    try {
+      const scTracks = await scSearch(q);
+      for (const st of scTracks) {
+        const normKey = (st.artist + ' - ' + st.title).toLowerCase().replace(/[^a-z0-9а-яё]/gi, '');
+        if (!seenTitles.has(normKey)) {
+          seenTitles.add(normKey);
+          tracks.push(st);
+        }
+      }
     } catch (e) {
-      return J({ ok: false, error: 'search_failed', message: e.message || 'Ошибка поиска', tracks: [] });
+      scErr = e.message || String(e);
     }
+
+    return J({ ok: true, tracks, scErr });
   },
 
   async 'POST /music/url'(r, d) {
     const srcUrl = d.srcUrl || r.qs.get('srcUrl');
-    let id = String(d.id || r.qs.get('id') || '').replace(/^hitmo_/, '');
+    let id = String(d.id || r.qs.get('id') || '').replace(/^(hitmo_|sc_)/, '');
+    const isSC = String(d.id || '').startsWith('sc_') || (srcUrl && srcUrl.includes('soundcloud'));
     if (!id && srcUrl) {
-      const m = srcUrl.match(/_(\d+)\.mp3/i);
+      const m = srcUrl.match(/_(\d+)\.mp3/i) || srcUrl.match(/soundcloud:tracks:(\d+)/i);
       id = m ? m[1] : sha(srcUrl).slice(0, 16);
     }
     if (!id || !srcUrl) return E('bad_request', 'Не указан трек');
 
-    const s3Key = 'music/' + id + '.mp3';
+    const ext = isSC ? '.m4a' : '.mp3';
+    const mime = isSC ? 'audio/mp4' : 'audio/mpeg';
+    const s3Key = 'music/' + id + ext;
+
+    // Проверяем наличие в S3
     try {
-      const headRes = await fetch(presign('HEAD', s3Key, 60), { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+      const headRes = await fetch(presign('HEAD', s3Key, 60), { method: 'HEAD', signal: AbortSignal.timeout(3000) });
       if (headRes.ok) return J({ ok: true, url: presign('GET', s3Key, 86400 * 7) });
     } catch (e) {}
 
+    // Если это SoundCloud — качаем через HLS/stream
+    if (isSC) {
+      try {
+        const buf = await scDownloadAudio(srcUrl);
+        if (buf && buf.byteLength) {
+          const putRes = await fetch(presign('PUT', s3Key, 300), {
+            method: 'PUT',
+            headers: { 'Content-Type': mime },
+            body: buf
+          });
+          if (putRes.ok) return J({ ok: true, url: presign('GET', s3Key, 86400 * 7) });
+        }
+      } catch (e) {}
+    }
+
+    // Если это Hitmo или прямой MP3
     try {
       const res = await fetch(srcUrl, {
         headers: {
@@ -1070,13 +1112,13 @@ const routes = {
         },
         signal: AbortSignal.timeout(20000)
       });
-      if (!res.ok) return E('upstream_error', 'Hitmo статус: ' + res.status, 502);
+      if (!res.ok) return E('upstream_error', 'Статус источника: ' + res.status, 502);
       const buf = await res.arrayBuffer();
       if (!buf.byteLength) return E('empty', 'Пустой аудиофайл', 502);
 
       const putRes = await fetch(presign('PUT', s3Key, 300), {
         method: 'PUT',
-        headers: { 'Content-Type': 'audio/mpeg' },
+        headers: { 'Content-Type': mime },
         body: buf
       });
       if (!putRes.ok) return E('s3_error', 'Ошибка сохранения в хранилище', 500);
@@ -1090,6 +1132,133 @@ const routes = {
     return routes['POST /music/url'](r, { id: r.qs.get('id'), srcUrl: r.qs.get('srcUrl') });
   },
 };
+
+// ════════ Вспомогательные функции SoundCloud v2 (байпас веб-клиента) ════════
+let SC_CLIENT_ID = 'bQmaW4vAHmJIUxisgjRG4MAWAiDgsk9D';
+let SC_CID_TS = Date.now();
+
+async function getScClientId() {
+  if (SC_CLIENT_ID && Date.now() - SC_CID_TS < 12 * 3600e3) return SC_CLIENT_ID;
+  try {
+    const res = await fetch('https://soundcloud.com', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, signal: AbortSignal.timeout(5000) });
+    const html = await res.text();
+    const scriptUrls = [...html.matchAll(/src="([^"]*assets\/[^\"]+\.js)"/g)].map(m => m[1]);
+    for (const u of scriptUrls.slice(-6)) {
+      try {
+        const jsRes = await fetch(u, { signal: AbortSignal.timeout(4000) });
+        const code = await jsRes.text();
+        const m = code.match(/client_id[:=]"([a-zA-Z0-9]{32})"/);
+        if (m) {
+          SC_CLIENT_ID = m[1];
+          SC_CID_TS = Date.now();
+          return SC_CLIENT_ID;
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return SC_CLIENT_ID;
+}
+
+async function scSearch(q) {
+  const cid = await getScClientId();
+  if (!cid) return [];
+  const searchUrl = 'https://api-v2.soundcloud.com/search/tracks?q=' + encodeURIComponent(q) + '&client_id=' + cid + '&limit=15';
+  const res = await fetch(searchUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+    signal: AbortSignal.timeout(6000)
+  });
+  if (!res.ok) return [];
+  const j = await res.json();
+  const list = j && Array.isArray(j.collection) ? j.collection : [];
+  const out = [];
+
+  for (const t of list) {
+    if (!t || !t.title || !t.media || !Array.isArray(t.media.transcodings)) continue;
+    // Ищем hls / progressive поток
+    const tc = t.media.transcodings.find(x => x.format && x.format.protocol === 'progressive') ||
+               t.media.transcodings.find(x => x.format && x.format.protocol === 'hls') ||
+               t.media.transcodings[0];
+    if (!tc || !tc.url) continue;
+
+    const dur = Math.round((t.duration || 0) / 1000);
+    const m = Math.floor(dur / 60);
+    const s = dur % 60;
+    const durStr = m + ':' + (s < 10 ? '0' : '') + s;
+
+    let artist = (t.user && (t.user.username || t.user.full_name)) || '';
+    let title = t.title || '';
+
+    // Если в названии уже есть "Artist - Title", разбиваем аккуратно
+    if (title.includes(' - ')) {
+      const parts = title.split(' - ');
+      if (parts[0].trim() && parts[1].trim()) {
+        artist = parts[0].trim();
+        title = parts.slice(1).join(' - ').trim();
+      }
+    }
+
+    const cover = (t.artwork_url || (t.user && t.user.avatar_url) || '').replace('-large', '-t500x500');
+
+    out.push({
+      id: 'sc_' + t.id,
+      title,
+      artist,
+      dur,
+      durStr,
+      cover,
+      srcUrl: tc.url,
+      src: 'sc'
+    });
+  }
+  return out;
+}
+
+async function scDownloadAudio(transcodingUrl) {
+  const cid = await getScClientId();
+  if (!cid) throw new Error('No SC client_id');
+
+  const streamInfoRes = await fetch(transcodingUrl + (transcodingUrl.includes('?') ? '&' : '?') + 'client_id=' + cid, {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(6000)
+  });
+  if (!streamInfoRes.ok) throw new Error('SC stream info error ' + streamInfoRes.status);
+  const info = await streamInfoRes.json();
+  if (!info || !info.url) throw new Error('No stream URL in SC response');
+
+  const streamUrl = info.url;
+
+  // Если это прогрессивный MP3
+  if (transcodingUrl.includes('/stream/progressive') || !streamUrl.includes('.m3u8')) {
+    const res = await fetch(streamUrl, { signal: AbortSignal.timeout(20000) });
+    return await res.arrayBuffer();
+  }
+
+  // Если это HLS (.m3u8)
+  const m3u8Res = await fetch(streamUrl, { signal: AbortSignal.timeout(6000) });
+  const m3u8Text = await m3u8Res.text();
+  const initMatch = m3u8Text.match(/#EXT-X-MAP:URI="([^"]+)"/);
+  const segMatches = [...m3u8Text.matchAll(/^(https:\/\/[^\r\n]+)/gm)].map(m => m[1]);
+
+  if (!segMatches.length) throw new Error('No HLS segments');
+
+  const buffers = [];
+  if (initMatch && initMatch[1]) {
+    const initRes = await fetch(initMatch[1], { signal: AbortSignal.timeout(8000) });
+    buffers.push(Buffer.from(await initRes.arrayBuffer()));
+  }
+
+  // Скачиваем сегменты параллельными батчами по 5
+  for (let i = 0; i < segMatches.length; i += 5) {
+    const chunk = segMatches.slice(i, i + 5);
+    const chunkBufs = await Promise.all(chunk.map(async u => {
+      const r = await fetch(u, { signal: AbortSignal.timeout(10000) });
+      return Buffer.from(await r.arrayBuffer());
+    }));
+    buffers.push(...chunkBufs);
+  }
+
+  return Buffer.concat(buffers);
+}
 
 function lowerHeaders(h) { const o = {}; for (const [k, v] of Object.entries(h || {})) o[k.toLowerCase()] = Array.isArray(v) ? v[0] : v; return o; }
 
