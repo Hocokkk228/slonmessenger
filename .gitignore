@@ -26,4 +26,5 @@ server/yandex/.env
 # приложение для Windows: зависимости и сборка
 desktop-app/node_modules/
 desktop-app/dist/
+desktop-app/build/
 desktop-app/offline/

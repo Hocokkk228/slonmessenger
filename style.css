@@ -4457,3 +4457,13 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 .cos-demo-fx .cos-fx-mini:has(>.hwx){position:absolute;inset:0;width:auto;height:auto;display:block;}
 .cos-fx-mini .hwx-leaf{animation-duration:3.5s!important;}
 .cos-fx-mini .hwx-fog{height:60%;bottom:-20%;}
+
+/* ════════ Hitmo музыка ════════ */
+.hm-acts{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.hm-add-btn{border:none;background:var(--hover);color:var(--text1);font-size:12px;font-weight:600;padding:6px 11px;border-radius:14px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;}
+.hm-add-btn:hover:not(:disabled){background:var(--accent);color:#fff;}
+.hm-add-btn.busy{opacity:.7;pointer-events:none;}
+.hm-add-btn.added{background:rgba(52,199,89,.15);color:#34c759;cursor:default;}
+.hm-spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:hmSpin .6s linear infinite;}
+@keyframes hmSpin{to{transform:rotate(360deg)}}
+

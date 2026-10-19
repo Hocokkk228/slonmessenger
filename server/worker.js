@@ -371,6 +371,81 @@ const routes={
     await fbPut('auth/'+u,{migrated:true,reset:{by:a,ts:now}});
     return json({ok:true});
   },
+
+  // ════════ Музыка: Hitmo (СНГ музыка, ремиксы, полные треки) ════════
+  async 'GET /music/search'(req,env){
+    const q=String(new URL(req.url).searchParams.get('q')||'').trim();
+    if(!q)return json({ok:true,tracks:[]});
+    try{
+      const encQ=encodeURIComponent(q);
+      const mirrors=['https://rus.hitmotop.com','https://eu.hitmotop.com'];
+      let html='',baseUrl='';
+      for(const m of mirrors){
+        try{
+          const res=await fetch(m+'/search?q='+encQ,{
+            headers:{
+              'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language':'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+            }
+          });
+          if(res.ok){html=await res.text();baseUrl=m;break;}
+        }catch(e){}
+      }
+      if(!html)return json({ok:true,tracks:[]});
+      const tracks=[];
+      const itemRe=/<li[^>]+class=["'][^"']*tracks__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
+      let match;
+      while((match=itemRe.exec(html))!==null&&tracks.length<30){
+        const block=match[1];
+        const titleM=block.match(/<div class="track__title">\s*([\s\S]*?)\s*<\/div>/i);
+        let title=titleM?titleM[1].replace(/<[^>]+>/g,'').trim():'';
+        const artistM=block.match(/<div class="track__desc">\s*([\s\S]*?)\s*<\/div>/i);
+        let artist=artistM?artistM[1].replace(/<[^>]+>/g,'').trim():'';
+        const timeM=block.match(/<div class="track__fulltime">\s*([\s\S]*?)\s*<\/div>/i);
+        let durStr=timeM?timeM[1].trim():'';
+        let dur=0;
+        if(durStr&&durStr.includes(':')){const parts=durStr.split(':').map(Number);dur=parts[0]*60+parts[1];}
+        const coverM=block.match(/url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i);
+        let cover=coverM?coverM[1]:'';
+        const dlM=block.match(/href="([^"]+\.mp3)"[^>]*class="[^"]*track__download-btn/i)||
+                  block.match(/class="[^"]*track__download-btn[^"]*"[^>]*href="([^"]+\.mp3)"/i);
+        let rawDl=dlM?dlM[1]:'';
+        if(rawDl&&!rawDl.startsWith('http'))rawDl=baseUrl+(rawDl.startsWith('/')?'':'/')+rawDl;
+        const idM=block.match(/data-track-id="(\d+)"/i)||block.match(/\/song\/(\d+)/i)||rawDl.match(/_(\d+)\.mp3/i);
+        let id=idM?idM[1]:'hm_'+Math.random().toString(36).slice(2,10);
+        if(title&&rawDl){tracks.push({id:'hitmo_'+id,title,artist,dur,durStr,cover,srcUrl:rawDl});}
+      }
+      return json({ok:true,tracks});
+    }catch(e){return json({ok:false,error:'search_failed',message:e.message||'Ошибка поиска',tracks:[]});}
+  },
+
+  async 'POST /music/url'(req,env,d){
+    const u=d.srcUrl||new URL(req.url).searchParams.get('srcUrl')||'';
+    if(!u)return err('bad_request','Не указан адрес трека');
+    const streamUrl=new URL(req.url).origin+'/music/stream?u='+encodeURIComponent(u);
+    return json({ok:true,url:streamUrl});
+  },
+
+  async 'GET /music/stream'(req,env){
+    const u=new URL(req.url).searchParams.get('u');
+    if(!u||!/^https?:\/\//i.test(u))return err('bad_request','Неверный адрес');
+    const hd={
+      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer':'https://rus.hitmotop.com/',
+      'Accept-Language':'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Accept':'*/*'
+    };
+    const clientRange=req.headers.get('Range');
+    if(clientRange)hd['Range']=clientRange;
+    const resp=await fetch(u,{headers:hd});
+    const h=new Headers(CORS);
+    h.set('Content-Type',resp.headers.get('Content-Type')||'audio/mpeg');
+    h.set('Accept-Ranges','bytes');
+    if(resp.headers.get('Content-Length'))h.set('Content-Length',resp.headers.get('Content-Length'));
+    if(resp.headers.get('Content-Range'))h.set('Content-Range',resp.headers.get('Content-Range'));
+    return new Response(resp.body,{status:resp.status,headers:h});
+  },
 };
 
 // Пуш-подписки (пока живут в Firebase push_subs/{u}/{id}) — удалить подходящие

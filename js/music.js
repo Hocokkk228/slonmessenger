@@ -129,6 +129,27 @@ async function _mmAddBlob(blob,name){
   if(typeof _lrcFind==='function')_lrcFind({title:rec.title,artist:rec.artist,dur:rec.dur}).catch(()=>{});   // текст — сразу, на будущее
   return it;
 }
+async function _mmAddTrackBlob({ title, artist, coverUrl, audioBlob, dur }){
+  const mime=audioBlob.type&&audioBlob.type.startsWith('audio/')?audioBlob.type:'audio/mpeg';
+  let cover=null;
+  if(coverUrl){
+    try{
+      const cr=await fetch(coverUrl);
+      if(cr.ok)cover=await _pxCoverJpeg(await cr.blob());
+    }catch(e){}
+  }
+  const t=_mmClean(title||'Без названия').slice(0,200),a=_mmClean(artist||'').slice(0,200);
+  const dup=_mm.list.find(x=>x.title.toLowerCase()===t.toLowerCase()&&x.artist.toLowerCase()===a.toLowerCase());
+  if(dup)return dup;
+  const audio=audioBlob.type===mime?audioBlob:new Blob([audioBlob],{type:mime});
+  const rec={id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),cid:'',title:t,artist:a,album:'',dur:dur||(await _pxDur(audio)),size:audio.size,mime,cover,audio,ts:Date.now()};
+  await _mmPutRec(rec);
+  await _mmLoad();
+  const it=_mmItem(rec);_mm.list=[it,..._mm.list.filter(x=>x.id!==it.id)];
+  _mmPaint();_mmUpload(rec.id);
+  if(typeof _lrcFind==='function')_lrcFind({title:rec.title,artist:rec.artist,dur:rec.dur}).catch(()=>{});
+  return it;
+}
 
 // ── облако ──
 async function _mmUpload(id){

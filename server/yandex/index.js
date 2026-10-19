@@ -986,6 +986,109 @@ const routes = {
     await q('DELETE FROM sessions WHERE username=$u; DELETE FROM vault_keys WHERE username=$u;', { u });
     return J({ ok: true });
   },
+
+  // ════════ Музыка: поиск и треки Hitmo (СНГ музыка, ремиксы, полные треки) ════════
+  async 'GET /music/search'(r) {
+    const q = String(r.qs.get('q') || '').trim();
+    if (!q) return J({ ok: true, tracks: [] });
+    try {
+      const encQ = encodeURIComponent(q);
+      const mirrors = ['https://rus.hitmotop.com', 'https://eu.hitmotop.com'];
+      let html = '', baseUrl = '';
+      for (const m of mirrors) {
+        try {
+          const res = await fetch(m + '/search?q=' + encQ, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            signal: AbortSignal.timeout(6000)
+          });
+          if (res.ok) { html = await res.text(); baseUrl = m; break; }
+        } catch (e) {}
+      }
+      if (!html) return J({ ok: true, tracks: [] });
+
+      const tracks = [];
+      const itemRe = /<li[^>]+class=["'][^"']*tracks__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
+      let match;
+      while ((match = itemRe.exec(html)) !== null && tracks.length < 30) {
+        const block = match[1];
+        const titleM = block.match(/<div class="track__title">\s*([\s\S]*?)\s*<\/div>/i);
+        let title = titleM ? titleM[1].replace(/<[^>]+>/g, '').trim() : '';
+        const artistM = block.match(/<div class="track__desc">\s*([\s\S]*?)\s*<\/div>/i);
+        let artist = artistM ? artistM[1].replace(/<[^>]+>/g, '').trim() : '';
+        const timeM = block.match(/<div class="track__fulltime">\s*([\s\S]*?)\s*<\/div>/i);
+        let durStr = timeM ? timeM[1].trim() : '';
+        let dur = 0;
+        if (durStr && durStr.includes(':')) {
+          const parts = durStr.split(':').map(Number);
+          dur = parts[0] * 60 + parts[1];
+        }
+        const coverM = block.match(/url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i);
+        let cover = coverM ? coverM[1] : '';
+        const dlM = block.match(/href="([^"]+\.mp3)"[^>]*class="[^"]*track__download-btn/i) ||
+                    block.match(/class="[^"]*track__download-btn[^"]*"[^>]*href="([^"]+\.mp3)"/i);
+        let rawDl = dlM ? dlM[1] : '';
+        if (rawDl && !rawDl.startsWith('http')) rawDl = baseUrl + (rawDl.startsWith('/') ? '' : '/') + rawDl;
+        const idM = block.match(/data-track-id="(\d+)"/i) || block.match(/\/song\/(\d+)/i) || rawDl.match(/_(\d+)\.mp3/i);
+        let id = idM ? idM[1] : 'hm_' + Math.random().toString(36).slice(2, 10);
+
+        if (title && rawDl) {
+          tracks.push({ id: 'hitmo_' + id, title, artist, dur, durStr, cover, srcUrl: rawDl });
+        }
+      }
+      return J({ ok: true, tracks });
+    } catch (e) {
+      return J({ ok: false, error: 'search_failed', message: e.message || 'Ошибка поиска', tracks: [] });
+    }
+  },
+
+  async 'POST /music/url'(r, d) {
+    const srcUrl = d.srcUrl || r.qs.get('srcUrl');
+    let id = String(d.id || r.qs.get('id') || '').replace(/^hitmo_/, '');
+    if (!id && srcUrl) {
+      const m = srcUrl.match(/_(\d+)\.mp3/i);
+      id = m ? m[1] : sha(srcUrl).slice(0, 16);
+    }
+    if (!id || !srcUrl) return E('bad_request', 'Не указан трек');
+
+    const s3Key = 'music/' + id + '.mp3';
+    try {
+      const headRes = await fetch(presign('HEAD', s3Key, 60), { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+      if (headRes.ok) return J({ ok: true, url: presign('GET', s3Key, 86400 * 7) });
+    } catch (e) {}
+
+    try {
+      const res = await fetch(srcUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://rus.hitmotop.com/',
+          'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Accept': '*/*'
+        },
+        signal: AbortSignal.timeout(20000)
+      });
+      if (!res.ok) return E('upstream_error', 'Hitmo статус: ' + res.status, 502);
+      const buf = await res.arrayBuffer();
+      if (!buf.byteLength) return E('empty', 'Пустой аудиофайл', 502);
+
+      const putRes = await fetch(presign('PUT', s3Key, 300), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'audio/mpeg' },
+        body: buf
+      });
+      if (!putRes.ok) return E('s3_error', 'Ошибка сохранения в хранилище', 500);
+
+      return J({ ok: true, url: presign('GET', s3Key, 86400 * 7) });
+    } catch (e) {
+      return E('fetch_failed', e.message || 'Не удалось загрузить трек', 500);
+    }
+  },
+  async 'GET /music/url'(r) {
+    return routes['POST /music/url'](r, { id: r.qs.get('id'), srcUrl: r.qs.get('srcUrl') });
+  },
 };
 
 function lowerHeaders(h) { const o = {}; for (const [k, v] of Object.entries(h || {})) o[k.toLowerCase()] = Array.isArray(v) ? v[0] : v; return o; }

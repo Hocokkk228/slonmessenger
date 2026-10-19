@@ -168,10 +168,40 @@ async function _mxSearchRun(){
   if(ar.length)h+=`<div class="mx-h2">Исполнители</div>`+ar.map(g=>_mxCard(`_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxArtCv(g),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
   if(pl.length)h+=`<div class="mx-h2">Плейлисты</div>`+pl.map(p=>_mxCard(`_mxRqAdd();_spMusicPl('${esc(p.id)}')`,_mmPlCover(p),p.name,'Плейлист · '+_mxN(_mmPlItems(p).length))).join('');
   if(tr.length)h+=`<div class="mx-h2">Мои треки</div>`+tr.map(it=>_mxTrRow(it,`_mxRqAdd();_mm.src='lib';_mmPlay('${esc(it.id)}',${esc(JSON.stringify(tr.map(x=>x.id))).replace(/"/g,'&quot;')})`)).join('');
-  h+=`<div class="mx-h2">В каталоге <i>отрывки</i></div><div id="mxDz"><div class="px-empty">Ищем…</div></div>`;
+  h+=`<div class="mx-h2">Hitmo <i>полные треки и ремиксы</i></div><div id="mxHm"><div class="px-empty">Ищем в Hitmo…</div></div>`;
+  h+=`<div class="mx-h2">Deezer <i>отрывки</i></div><div id="mxDz"><div class="px-empty">Ищем…</div></div>`;
   box.innerHTML=h||'<div class="px-empty">Ничего не нашли</div>';
   _mmPaintPlay();
   const my=_mxS.q;
+
+  // Hitmo: полные треки, ремиксы, прослушивание и добавление в медиатеку
+  if(typeof _hmSearch==='function'){
+    _hmSearch(my).then(tracks=>{
+      if(my!==_mxS.q)return;
+      window._mxHm=tracks;
+      const d=$('mxHm');
+      if(d){
+        d.innerHTML=tracks.length?tracks.map((t,i)=>{
+          const inLib=_mm.list.some(x=>x.title.toLowerCase()===t.title.toLowerCase()&&x.artist.toLowerCase()===t.artist.toLowerCase());
+          return `<div class="mm-tr" onclick="_hmPlay(window._mxHm[${i}],this.querySelector('.px-play'))">
+            ${_mxCv(t.cover)}
+            <div class="mm-tr-t"><b>${esc(t.title)}</b><span>${esc(t.artist)}${t.durStr?' · '+t.durStr:''}</span></div>
+            <div class="hm-acts" onclick="event.stopPropagation()">
+              <button class="hm-add-btn${inLib?' added':''}" ${inLib?'disabled':''} onclick="_hmAdd(window._mxHm[${i}],this)">${inLib?'✓ В медиатеке':'+ В медиатеку'}</button>
+              <button class="px-play" data-trplay="hm_${t.id}" onclick="_hmPlay(window._mxHm[${i}],this)">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+            </div>
+          </div>`;
+        }).join(''):'<div class="px-empty">В Hitmo ничего не найдено</div>';
+        _pxBtns();
+      }
+    }).catch(e=>{
+      const d=$('mxHm');if(d)d.innerHTML='<div class="px-empty">Hitmo временно недоступен</div>';
+    });
+  }
+
+  // Deezer: 30-секундные отрывки
   try{const r=await _dzSearch(_mxS.q);if(my!==_mxS.q)return;window._mxDz=r;
     const d=$('mxDz');if(d)d.innerHTML=r.length?r.slice(0,12).map((t,i)=>`<div class="mm-tr">${_mxCv(t.cover)}<div class="mm-tr-t"><b>${esc(t.title)}</b><span>${esc(t.artist)} · отрывок</span></div><button class="px-play" data-trplay="${t.id}" onclick="_pxPlay(window._mxDz[${i}],this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>`).join(''):'<div class="px-empty">Ничего</div>';
     _pxBtns();}catch(e){const d=$('mxDz');if(d)d.innerHTML='<div class="px-empty">Каталог недоступен</div>';}
