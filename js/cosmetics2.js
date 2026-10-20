@@ -19,7 +19,7 @@ AV_FRAMES.push(
 for(const f of AV_FRAMES)AV_FRAME_MAP[f.id]=f;
 Object.assign(AV_FRAME_CARD_BG,{
   venom:'#0a0a12',inkburst:'#101018',cloudmoon:'#0c1430',bubble:'#07203a',
-  cutecat:'#2d1624',sakura:'#2c1424',bunny:'#25162c',heartsparkle:'#2a1222',angelic:'#152233',blood:'#2a0408'
+  cutecat:'#2d1624',sakura:'#2c1424',bunny:'#25162c',heartsparkle:'#2a1222',angelic:'#152233'
 });
 
 function _cosInkBurst(){
@@ -68,7 +68,6 @@ function _cosBubble(){
   if(id==='venom')return _cosInkBurst().replace('</svg>','<g class="vn-sign" transform="translate(50,92) scale(1.25)"><circle r="15" fill="#050507"/>'+_venomSign()+'</g></svg>');
   if(id==='cloudmoon')return _cosCloudMoon();
   if(id==='bubble')return _cosBubble();
-  if(id==='blood')return _cosBloodRealistic();
   if(id==='cutecat')return _cosCuteCat();
   if(id==='sakura')return _cosSakura();
   if(id==='bunny')return _cosBunny();
@@ -76,50 +75,6 @@ function _cosBubble(){
   if(id==='angelic')return _cosAngelic();
   return f.apply(this,arguments);
 };}
-
-// ════════ Настоящий векторный ассет крови: капли СНИЗУ без перекрытия аватара ════════
-function _cosBloodRealistic(){
-  return _cosSvg('avf-blood-wrap',[-10,-10,120,135],`
-    <defs>
-      <radialGradient id="blDrop" cx="35%" cy="25%" r="70%">
-        <stop offset="0%" stop-color="#ff4a58"/>
-        <stop offset="40%" stop-color="#bd0014"/>
-        <stop offset="90%" stop-color="#610009"/>
-        <stop offset="100%" stop-color="#2a0003"/>
-      </radialGradient>
-      <linearGradient id="blRimLine" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#80000a" stop-opacity="0"/>
-        <stop offset="25%" stop-color="#bd0014" stop-opacity="0.9"/>
-        <stop offset="50%" stop-color="#ff2e3b" stop-opacity="1"/>
-        <stop offset="75%" stop-color="#bd0014" stop-opacity="0.9"/>
-        <stop offset="100%" stop-color="#80000a" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <!-- Тонкий ободок с каплями СТРОГО по внешнему нижнему краю круга (лицо 100% открыто) -->
-    <path d="M16,74 C24,88 36,96 50,96 C64,96 76,88 84,74" fill="none" stroke="url(#blRimLine)" stroke-width="2.6" stroke-linecap="round"/>
-    <path d="M22,82 C30,92 40,97 50,97 C60,97 70,92 78,82" fill="none" stroke="#ff4a58" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
-    <!-- Стекающая капля слева (чистая плавная форма капли без углов) -->
-    <g class="avf-blood-drop avf-blood-drop-1" transform="translate(28, 92)">
-      <path fill="url(#blDrop)" d="M0,0 C-1,2 -2.5,5 -2,8 C-1.5,12 1.5,12 2,8 C2.5,5 1,2 0,0 Z"/>
-      <ellipse cx="-0.6" cy="7" rx="0.6" ry="1.4" fill="#ffffff" opacity="0.65"/>
-    </g>
-    <!-- Стекающая капля справа -->
-    <g class="avf-blood-drop avf-blood-drop-2" transform="translate(72, 90)">
-      <path fill="url(#blDrop)" d="M0,0 C-0.8,1.8 -2,4 -1.6,6.5 C-1.2,10 1.2,10 1.6,6.5 C2,4 0.8,1.8 0,0 Z"/>
-      <ellipse cx="-0.5" cy="5.5" rx="0.5" ry="1.2" fill="#ffffff" opacity="0.65"/>
-    </g>
-    <!-- Основная капля по центру снизу с физикой каплепадения -->
-    <g class="avf-blood-drop avf-blood-drop-3" transform="translate(50, 96)">
-      <path fill="url(#blDrop)" d="M0,0 C-1.2,2.5 -3,6 -2.4,10 C-1.6,15 1.6,15 2.4,10 C3,6 1.2,2.5 0,0 Z"/>
-      <ellipse cx="-0.8" cy="9" rx="0.8" ry="1.8" fill="#ffffff" opacity="0.7"/>
-    </g>
-    <!-- Небольшие брызги-бусины по внешнему ободку -->
-    <circle cx="18" cy="80" r="1.6" fill="url(#blDrop)"/>
-    <circle cx="14" cy="87" r="1" fill="url(#blDrop)"/>
-    <circle cx="82" cy="79" r="1.4" fill="url(#blDrop)"/>
-    <circle cx="86" cy="85" r="0.9" fill="url(#blDrop)"/>
-  `);
-}
 
 // ════════ МИЛЫЕ РАМОЧКИ ════════
 function _cosCuteCat(){

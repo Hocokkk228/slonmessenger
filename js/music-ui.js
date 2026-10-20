@@ -535,12 +535,141 @@ function _slonWaveUpdateBtn(){
   }
 }
 
-// Обновляем кнопку при play/pause любого аудио
-{const _origMmPB=_mmPlayBtns;_mmPlayBtns=function(){const r=_origMmPB.apply(this,arguments);_slonWaveUpdateBtn();return r;};}
-if(_pxAudio){
-  _pxAudio.addEventListener('play',_slonWaveUpdateBtn);
-  _pxAudio.addEventListener('pause',_slonWaveUpdateBtn);
-  _pxAudio.addEventListener('ended',_slonWaveUpdateBtn);
+// Слушатели событий аудио для точного обновления иконки волны
+{const _origMmPB=_mmPlayBtns;
+_mmPlayBtns=function(){
+  const r=_origMmPB.apply(this,arguments);
+  _slonWaveUpdateBtn();
+  return r;
+};}
+
+if(typeof _mmHook==='function'){
+  const _origMmHook=_mmHook;
+  _mmHook=function(){
+    _origMmHook.apply(this,arguments);
+    if(_pxAudio&&!_pxAudio._slonWaveHooked){
+      _pxAudio._slonWaveHooked=true;
+      ['play','pause','ended','timeupdate'].forEach(ev=>_pxAudio.addEventListener(ev,_slonWaveUpdateBtn));
+    }
+  };
+}
+
+if(typeof _pxPlay==='function'){
+  const _origPxPlay=_pxPlay;
+  _pxPlay=async function(tr,btn){
+    const r=await _origPxPlay.apply(this,arguments);
+    if(_pxAudio&&!_pxAudio._slonWaveHooked){
+      _pxAudio._slonWaveHooked=true;
+      ['play','pause','ended','timeupdate'].forEach(ev=>_pxAudio.addEventListener(ev,_slonWaveUpdateBtn));
+    }
+    if(tr&&_pxAudio&&String(_pxAudioId)===String(tr.id)){
+      if($('mmFp')&&typeof _fpPaint==='function')_fpPaint();
+    }
+    _slonWaveUpdateBtn();
+    return r;
+  };
+}
+
+// Синхронизация всех компонентов интерфейса при переключении трека
+function _mmSyncTrackUI(trObj){
+  if(!trObj)return;
+  _islTr=trObj;
+  _mm.cur=trObj;
+
+  // 1. Полноэкранный плеер (mmFp) — обложка, название, артист, текст караоке
+  if($('mmFp')&&typeof _fpPaint==='function'){
+    _fpPaint();
+  }
+
+  // 2. Караоке-оверлей (pxKara) — загрузка текста и обложки
+  if($('pxKara')&&typeof _pxLyrics==='function'){
+    if(!window._kr||!window._kr.tr||String(window._kr.tr.id)!==String(trObj.id)){
+      _pxLyrics(trObj);
+    }
+  }
+
+  // 3. Динамический остров (slIsl)
+  if(typeof _isl==='function'){
+    const w=$('slIsl');
+    if(w)w.dataset.k='';
+    _isl();
+  }
+
+  // 4. Мобильный миниплеер (mmMini)
+  if(typeof _mini==='function'&&typeof _mobPl==='function'&&_mobPl()){
+    _mini(true);
+  }
+
+  // 5. Системные медиа-кнопки (MediaSession)
+  if(typeof _mmMediaSession==='function'){
+    _mmMediaSession(trObj);
+  }
+
+  // 6. Списки и кнопки
+  if(typeof _mmBar==='function')_mmBar();
+  if(typeof _mmPaint==='function')_mmPaint();
+  if(typeof _mmPaintPlay==='function')_mmPaintPlay();
+  _slonWaveUpdateBtn();
+}
+
+// Предзагрузка аудиопотока в кэш браузера (без звука)
+function _slonWavePrewarmAudio(url){
+  if(!url||typeof Audio==='undefined')return;
+  try{
+    if(!window._slonWaveAudioPreloader){
+      window._slonWaveAudioPreloader=new Audio();
+      window._slonWaveAudioPreloader.preload='auto';
+      window._slonWaveAudioPreloader.volume=0;
+      window._slonWaveAudioPreloader.muted=true;
+    }
+    if(window._slonWaveAudioPreloader.src!==url){
+      window._slonWaveAudioPreloader.src=url;
+      window._slonWaveAudioPreloader.load();
+    }
+  }catch(e){}
+}
+
+// Мгновенная предзагрузка текстов и аудио для следующих 5 треков в очереди
+async function _slonWavePrefetchNext(){
+  if(_mm.src!=='slon_wave'||!_mm.queue||!_mm.queue.length)return;
+  const curIdx=_mm.qi>=0?_mm.qi:0;
+  const len=_mm.queue.length;
+
+  for(let offset=1;offset<=5;offset++){
+    const idx=(curIdx+offset)%len;
+    const id=_mm.queue[idx];
+    const isNext=(offset===1);
+
+    const scItem=window._slonWaveScPool&&window._slonWaveScPool[id];
+    const locItem=typeof _mmFind==='function'?_mmFind(id):null;
+
+    const meta=scItem?{artist:scItem.artist,title:scItem.title,dur:scItem.dur}
+              :locItem?{artist:locItem.artist,title:locItem.title,dur:locItem.dur}
+              :null;
+
+    // 1. Предзагрузка текста песни в кэш IndexedDB (slon_lrc)
+    if(meta&&meta.title&&typeof _lrcFind==='function'){
+      _lrcFind(meta).catch(()=>{});
+    }
+
+    // 2. Предзагрузка аудиопотока
+    if(scItem){
+      if(!scItem._cachedStreamUrl&&scItem._scRaw&&typeof _hmUrl==='function'){
+        _hmUrl(scItem._scRaw).then(u=>{
+          if(u){
+            scItem._cachedStreamUrl=u;
+            if(isNext)_slonWavePrewarmAudio(u);
+          }
+        }).catch(()=>{});
+      }else if(scItem._cachedStreamUrl&&isNext){
+        _slonWavePrewarmAudio(scItem._cachedStreamUrl);
+      }
+    }else if(locItem&&isNext&&typeof _mmSrc==='function'){
+      _mmSrc(locItem).then(u=>{
+        if(u)_slonWavePrewarmAudio(u);
+      }).catch(()=>{});
+    }
+  }
 }
 
 async function _slonWaveStart(){
@@ -618,14 +747,39 @@ async function _slonWaveStart(){
     return;
   }
 
-  _mm.shuffle=true;
+  // Режим последовательного проигрывания перемешанной очереди (без случайных скачков)
+  _mm.shuffle=false;
   _mm.played=new Set();
   _mm.src='slon_wave';
   const ids=combined.map(x=>x.id);
-  _mmPlay(ids[0],ids);
+
+  // Предзагружаем первый трек для мгновенного старта
+  const firstId=ids[0];
+  if(window._slonWaveScPool[firstId]&&!window._slonWaveScPool[firstId]._cachedStreamUrl&&typeof _hmUrl==='function'){
+    try{
+      window._slonWaveScPool[firstId]._cachedStreamUrl=await _hmUrl(window._slonWaveScPool[firstId]._scRaw);
+    }catch(e){}
+  }
+
+  _mmPlay(firstId,ids);
   toast(`🐘 SLON Волна запущена: ${combined.length} треков!`);
   _slonWaveUpdateBtn();
+  _slonWavePrefetchNext();
 }
+
+// Бесшовный шаг в SLON Волне (циклический переход по очереди без зависаний)
+{const _origMmStep=_mmStep;
+_mmStep=function(d){
+  if(_mm.src==='slon_wave'&&_mm.queue&&_mm.queue.length){
+    if(d<0&&_pxAudio&&_pxAudio.currentTime>4){_pxAudio.currentTime=0;return;}
+    let nextIndex=_mm.qi+d;
+    if(nextIndex<0)nextIndex=_mm.queue.length-1;
+    if(nextIndex>=_mm.queue.length)nextIndex=0;
+    _mmPlay(_mm.queue[nextIndex],_mm.queue);
+    return;
+  }
+  return _origMmStep.apply(this,arguments);
+};}
 
 // Бесшовный запуск треков SoundCloud внутри очереди плеера
 {const _origMmPlay=_mmPlay;
@@ -633,7 +787,11 @@ _mmPlay=async function(id,list){
   if(_mm.src==='slon_wave'&&window._slonWaveScPool&&window._slonWaveScPool[id]){
     const scItem=window._slonWaveScPool[id];
     try{
-      const streamUrl=await _hmUrl(scItem._scRaw);
+      let streamUrl=scItem._cachedStreamUrl;
+      if(!streamUrl){
+        streamUrl=await _hmUrl(scItem._scRaw);
+        scItem._cachedStreamUrl=streamUrl;
+      }
       const trObj={
         id:'mm_'+id,
         src:'file',
@@ -642,23 +800,38 @@ _mmPlay=async function(id,list){
         artist:scItem.artist,
         cover:scItem.coverUrl||'',
         dur:scItem.dur||0,
-        mm:id
+        mm:id,
+        isSc:true
       };
-      _mm.cur=trObj;
-      _islTr=trObj;
+
       _mm.queue=list||_mm.queue;
       _mm.qi=_mm.queue.indexOf(id);
+      if(_mm.qi<0)_mm.qi=0;
+
+      // Моментально переключаем визуальный интерфейс
+      _mmSyncTrackUI(trObj);
+
       await _pxPlay(trObj,null);
       _mmHook();
-      _mmBar();
-      _mmPaint();
-      _slonWaveUpdateBtn();
+      _mmSyncTrackUI(trObj);
+
+      // Фоновая предзагрузка следующих 5 треков
+      _slonWavePrefetchNext();
     }catch(e){
-      toast('Ошибка воспроизведения: '+(e.message||''));
+      toast('Ошибка воспроизведения, переключаю…');
+      setTimeout(()=>{if(_mm.src==='slon_wave')_mmStep(1);},700);
     }
     return;
   }
-  return _origMmPlay.apply(this,arguments);
+
+  const res=await _origMmPlay.apply(this,arguments);
+  if(_mm.cur){
+    _mmSyncTrackUI(_mm.cur);
+  }
+  if(_mm.src==='slon_wave'){
+    _slonWavePrefetchNext();
+  }
+  return res;
 };}
 
 function _slonWaveOpenTune(){
