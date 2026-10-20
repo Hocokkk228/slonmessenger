@@ -77,7 +77,7 @@ _spMusic=function(){
     <nav class="mx-nav">${[['home','Главная'],['search','Поиск'],['lib','Медиатека']].map(([k,t])=>`<button data-t="${k}" onclick="_mxTab('${k}')">${_MX_ICO[k]}<span>${t}</span></button>`).join('')}</nav></div>`,
     {right:`<button class="sp-tb-btn" onclick="_mmPlNew()" title="Создать плейлист">${_MM_ICO.plus}</button>`});
   page.classList.add('mx-page');
-  _mxS.edit=false;_mxTab(_mxS.tab||'lib');
+  _mxS.edit=false;_mxTab('home');
   _mmFamLoad();
   _mmLoad(true).then(()=>_mxRefresh()).catch(()=>{});
   return page;

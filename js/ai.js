@@ -22,6 +22,7 @@ function _tryLocalMath(txt){
 async function _callPollinationsAi(userText){
   const ctrl=new AbortController();
   const timeoutId=setTimeout(()=>ctrl.abort(),12000);
+  const sys=typeof SLON_AI_SYSTEM_PROMPT!=='undefined'?SLON_AI_SYSTEM_PROMPT:'Ты — СЛОН AI, встроенный помощник мессенджера SLON.';
   try{
     const resp=await fetch('https://text.pollinations.ai/',{
       method:'POST',
@@ -29,7 +30,7 @@ async function _callPollinationsAi(userText){
       signal:ctrl.signal,
       body:JSON.stringify({
         messages:[
-          {role:'system',content:typeof SLON_AI_SYSTEM_PROMPT!=='undefined'?SLON_AI_SYSTEM_PROMPT:'Ты — СЛОН AI, встроенный помощник мессенджера SLON.'},
+          {role:'system',content:sys},
           {role:'user',content:userText}
         ],
         model:'openai',
@@ -37,13 +38,23 @@ async function _callPollinationsAi(userText){
       })
     });
     clearTimeout(timeoutId);
-    if(!resp.ok)return null;
-    const text=await resp.text();
-    if(text&&text.trim().length>1)return text.trim();
+    if(resp.ok){
+      const text=await resp.text();
+      if(text&&text.trim().length>1)return text.trim();
+    }
   }catch(e){
     clearTimeout(timeoutId);
-    console.warn('[SLON AI] AI endpoint error:',e.message);
   }
+
+  // Запасной GET запрос на случай проблем с POST
+  try{
+    const getResp=await fetch(`https://text.pollinations.ai/${encodeURIComponent(userText)}?system=${encodeURIComponent(sys)}&model=openai`);
+    if(getResp.ok){
+      const t=await getResp.text();
+      if(t&&t.trim().length>1)return t.trim();
+    }
+  }catch(e){}
+
   return null;
 }
 
@@ -124,34 +135,5 @@ async function aiReply(txt){
 }
 
 function _aiReplyFallback(txt){
-  const t=txt.toLowerCase();
-  if(t.includes('привет')||t.includes('здравствуй')||t.includes('хай'))
-    return'Привет! Чем могу помочь?';
-  if(t.includes('как дела')||t.includes('как ты'))
-    return'Отлично, спасибо что спросил! Всегда готов помочь';
-  if(t.includes('slon')||t.includes('слон'))
-    return'SLON — это мессенджер с чатами, звонками, каналами и группами!';
-  if(t.includes('помог')||t.includes('help')||t.includes('что умеешь'))
-    return'Я СЛОН AI! Спроси меня про любую кнопку или функцию мессенджера — разберёмся';
-  if(t.includes('звонок')||t.includes('позвони'))
-    return'Для звонка открой чат с контактом и нажми на иконку телефона или камеры в шапке';
-  if(t.includes('канал'))
-    return'Канал создаётся через кнопку снизу справа в списке чатов → "Новый канал"';
-  if(t.includes('группа'))
-    return'Группа создаётся через кнопку → "Новая группа", сначала выбираешь участников, потом название';
-  if(t.includes('тема')||t.includes('цвет')||t.includes('оформлен'))
-    return'Тему можно сменить через ☰ → Тема — там 19 вариантов!';
-  if(t.includes('пока')||t.includes('до свидания')||t.includes('bye'))
-    return'Пока-пока! Возвращайся!';
-  if(t.includes('спасибо')||t.includes('благодар'))
-    return'Всегда пожалуйста!';
-  const replies=[
-    'Интересно! Расскажи подробнее',
-    'Понял тебя! Что-то ещё?',
-    'Хм, дай подумаю...',
-    'Отличная мысль!',
-    'Я весь внимание!',
-    'Спроси меня про любую функцию мессенджера',
-  ];
-  return replies[Math.floor(Math.random()*replies.length)];
+  return 'Я СЛОН AI. Кажется, сейчас возникли временные трудности с подключением к нейросети. Проверь интернет-соединение и напиши мне снова!';
 }

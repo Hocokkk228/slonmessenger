@@ -97,15 +97,33 @@
   addEventListener('resize',()=>{if(dock)moveInd(true);});
   // свайп по доку: в музыке вправо → к чатам; на основной влево → в музыку
   function swipe(){
-    let x0=0,y0=0,go=false;
-    dock.addEventListener('touchstart',e=>{const t=e.touches[0];x0=t.clientX;y0=t.clientY;go=true;},{passive:true});
-    dock.addEventListener('touchmove',e=>{if(!go)return;const t=e.touches[0],dx=t.clientX-x0;if(Math.abs(t.clientY-y0)>30){go=false;return;}
-      dock.style.setProperty('--sd-drag',Math.max(-40,Math.min(40,dx*.35))+'px');},{passive:true});
-    dock.addEventListener('touchend',e=>{
-      if(!go)return;go=false;const dx=(e.changedTouches[0]||{}).clientX-x0;dock.style.removeProperty('--sd-drag');
-      if(Math.abs(dx)<60)return;
-      if(page==='music'&&dx>0){closeMyProfilePanel();active='chats';setPage('main');}
-      else if(page==='main'&&dx<0){_dockTap('main','music');}
+    let x0=0,y0=0,t0=0,go=false;
+    dock.addEventListener('touchstart',e=>{
+      const t=e.touches[0];x0=t.clientX;y0=t.clientY;t0=Date.now();go=true;
     },{passive:true});
+    dock.addEventListener('touchmove',e=>{
+      if(!go)return;
+      const t=e.touches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+      if(Math.abs(dy)>Math.abs(dx)*1.3&&Math.abs(dy)>22){go=false;dock.style.removeProperty('--sd-drag');return;}
+      dock.style.setProperty('--sd-drag',Math.max(-50,Math.min(50,dx*.4))+'px');
+    },{passive:true});
+    const onEnd=e=>{
+      if(!go)return;go=false;dock.style.removeProperty('--sd-drag');
+      const t=(e.changedTouches&&e.changedTouches[0])||{};
+      const dx=(t.clientX||0)-x0;
+      const dt=Date.now()-t0;
+      const fast=Math.abs(dx)>25&&dt<320;
+      if(Math.abs(dx)>=40||fast){
+        if(page==='music'&&dx>0){
+          if(typeof _tabGo==='function')_tabGo('chats');
+          else if(typeof closeMyProfilePanel==='function')closeMyProfilePanel();
+          active='chats';setPage('main');
+        }else if(page==='main'&&dx<0){
+          if(typeof _dockTap==='function')_dockTap('main','music');
+        }
+      }
+    };
+    dock.addEventListener('touchend',onEnd,{passive:true});
+    dock.addEventListener('touchcancel',onEnd,{passive:true});
   }
 })();
