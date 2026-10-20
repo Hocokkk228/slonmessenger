@@ -174,6 +174,7 @@ function _mxHome(){
   h+=`<div class="mx-grid">`+[{on:'_mxOpenLiked()',cv:`<span class="mx-liked-cv sm">${_MX_ICO.heart}</span>`,t:'Любимые треки'},
     ...pls.slice(0,5).map(p=>({on:`_spMusicPl('${esc(p.id)}')`,cv:_mmPlCover(p),t:p.name}))]
     .map(x=>`<div class="mx-tile" onclick="${x.on}">${x.cv}<b>${esc(x.t)}</b></div>`).join('')+`</div>`;
+  h+=_slonWaveHomeCard();
   if(rec.length)h+=`<div class="mx-h2">Недавно слушал</div><div class="mx-row">${rec.slice(0,12).map(it=>`<div class="mx-sq" onclick="_mm.src='lib';_mmPlay('${esc(it.id)}',_mxRecentGet().map(k=>(_mm.list.find(x=>x.id===k||x.cid===k)||{}).id).filter(Boolean))">${_mxCv(it.coverUrl)}<b>${esc(it.title)}</b><span>${esc(it.artist)}</span></div>`).join('')}</div>`;
   const A=_mxGroups('artist');
   if(A.length)h+=`<div class="mx-h2">Твои исполнители</div><div class="mx-row">${A.slice(0,12).map(g=>`<div class="mx-sq art" onclick="_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})">${_mxArtCv(g)}<b>${esc(g.name)}</b></div>`).join('')}</div>`;
@@ -191,7 +192,26 @@ async function _mxSearchRun(){
   const ar=_mxGroups('artist').filter(g=>g.name.toLowerCase().includes(q)).slice(0,8);
   const pl=_mmPls().filter(p=>p.name.toLowerCase().includes(q));
   let h='';
-  if(ar.length)h+=`<div class="mx-h2">Исполнители</div>`+ar.map(g=>_mxCard(`_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxArtCv(g),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
+  if(ar.length){
+    const topAr=ar[0];
+    const topTracks=topAr.items.map(x=>x.id);
+    const topTracksJ=esc(JSON.stringify(topTracks)).replace(/"/g,'&quot;');
+    h+=`<div class="mx-h2">Исполнитель</div>
+      <div class="mx-art-card-featured" onclick="_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(topAr.name)).replace(/"/g,'&quot;')})">
+        <div class="mx-art-feat-av">${_mxArtCv(topAr)}</div>
+        <div class="mx-art-feat-info">
+          <div class="mx-art-feat-badge">Исполнитель</div>
+          <div class="mx-art-feat-name">${esc(topAr.name)}</div>
+          <div class="mx-art-feat-meta">${_mxN(topAr.items.length)} в медиатеке · нажми для профиля</div>
+        </div>
+        <button class="mx-art-feat-play" onclick="event.stopPropagation();_mxRqAdd();_mm.src='artist:${esc(topAr.name)}';_mmPlay('${esc(topAr.items[0].id)}',${topTracksJ})" title="Слушать">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+        </button>
+      </div>`;
+    if(ar.length>1){
+      h+=`<div class="mx-h2" style="font-size:13px;opacity:0.8;margin-top:4px">Другие исполнители</div>`+ar.slice(1).map(g=>_mxCard(`_mxRqAdd();_mxOpenGroup('artist',${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})`,_mxArtCv(g),g.name,'Исполнитель · '+_mxN(g.items.length))).join('');
+    }
+  }
   if(pl.length)h+=`<div class="mx-h2">Плейлисты</div>`+pl.map(p=>_mxCard(`_mxRqAdd();_spMusicPl('${esc(p.id)}')`,_mmPlCover(p),p.name,'Плейлист · '+_mxN(_mmPlItems(p).length))).join('');
   if(tr.length)h+=`<div class="mx-h2">Мои треки</div>`+tr.map(it=>_mxTrRow(it,`_mxRqAdd();_mm.src='lib';_mmPlay('${esc(it.id)}',${esc(JSON.stringify(tr.map(x=>x.id))).replace(/"/g,'&quot;')})`)).join('');
   h+=`<div class="mx-h2">Треки</div><div id="mxHm"><div class="px-empty">Поиск треков…</div></div>`;
@@ -292,12 +312,310 @@ function _mxOpenLiked(){
   page._paint=paint;paint();
 }
 function _mxOpenGroup(kind,name){
+  if(kind==='artist'){
+    _mxOpenArtistProfile(name);
+    return;
+  }
   const g=_mxGroups(kind).find(x=>x.name===name);if(!g)return;
   _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>');
   const b=$('mxGroup');
-  const cv=kind==='artist'?(_mxArtPic(name)||g.cover):g.cover;
-  b.innerHTML=_mxListPage({title:name,cover:cv,round:kind==='artist',items:g.items,src:kind+':'+name});
+  const cv=g.cover;
+  b.innerHTML=_mxListPage({title:name,cover:cv,round:false,items:g.items,src:kind+':'+name});
   _mxHeroColor(cv,'#mxGroup .mx-hero');_mmPaintPlay();
+}
+
+function _mxOpenArtistProfile(name){
+  const g=_mxGroups('artist').find(x=>x.name===name);if(!g)return;
+  _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>');
+  const b=$('mxGroup');
+  const cv=_mxArtPic(name)||g.cover;
+
+  // Сортировка: самые популярные (лайки, недавние) первыми
+  const likes=new Set(_mxLikes());
+  const recList=_mxRecentGet();
+  const recMap=new Map(recList.map((k,idx)=>[k, recList.length - idx]));
+  const sortedItems=[...g.items].sort((a,b)=>{
+    const aScore=(likes.has(a.id)||likes.has(a.cid)?1000:0) + (recMap.get(a.id)||recMap.get(a.cid)||0);
+    const bScore=(likes.has(b.id)||likes.has(b.cid)?1000:0) + (recMap.get(b.id)||recMap.get(b.cid)||0);
+    return bScore - aScore;
+  });
+
+  const ids=sortedItems.map(x=>x.id);
+  const idsJ=esc(JSON.stringify(ids)).replace(/"/g,'&quot;');
+  const all=sortedItems.length&&sortedItems.every(_mxOnDev);
+
+  // Первые 4 трека открыты, остальные — под кнопкой с анимацией
+  const topCount=4;
+  const firstTracks=sortedItems.slice(0,topCount);
+  const moreTracks=sortedItems.slice(topCount);
+
+  // Недавние релизы и альбомы
+  const albumGroups={};
+  sortedItems.forEach(it=>{
+    const alb=it.album||'Синглы';
+    if(!albumGroups[alb])albumGroups[alb]=[];
+    albumGroups[alb].push(it);
+  });
+  const releases=Object.entries(albumGroups);
+
+  const allArtistsCount=_mxGroups('artist').length;
+  const isWaveArt=_slonWaveGetArtists().some(a=>a.toLowerCase()===name.toLowerCase());
+
+  let h=`<div class="mx-hero" style="--hc:transparent">
+      <div class="mx-hero-cv round">${_mxCv(cv)}</div>
+      <div class="mx-hero-t">${esc(name)}</div>
+      <div class="mx-hero-s">Исполнитель · ${_mxN(sortedItems.length)} в медиатеке</div>
+    </div>
+    <div class="mx-acts">
+      <button class="mx-ib" title="${all?'Всё на устройстве':'Скачать всё на устройство'}" onclick="_mxDlAll(${idsJ})">${all?_MX_ICO.dlOk:_MX_ICO.dl}</button>
+      <button class="mx-pill" style="margin-left:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px;" onclick="_slonWaveToggleArtistQuick(${esc(JSON.stringify(name)).replace(/"/g,'&quot;')},this)">
+        🌊 ${isWaveArt?'В SLON Волне':'В SLON Волну'}
+      </button>
+      <i></i>
+      <button class="mx-ib mm-shuf${_mm.shuffle?' on':''}" onclick="_mmShufToggle()" title="Перемешивание">${_MM_ICO.shuffle}</button>
+      <button class="mx-play" data-mmsrc="artist:${esc(name)}" onclick="_mmSrcPlay('artist:${esc(name)}',${idsJ})">${_MM_ICO.play}</button>
+    </div>
+
+    <!-- Популярные треки -->
+    <div class="mx-h2" style="margin-top:16px;">Популярные треки</div>
+    <div class="mx-list">
+      ${firstTracks.map(it=>_mxTrRow(it,`_mm.src='artist:${esc(name)}';_mmPlay('${esc(it.id)}',${idsJ})`)).join('')}
+    </div>
+    ${moreTracks.length ? `
+      <div class="mx-art-expand-wrap" id="mxArtMoreWrap">
+        <div class="mx-list">
+          ${moreTracks.map(it=>_mxTrRow(it,`_mm.src='artist:${esc(name)}';_mmPlay('${esc(it.id)}',${idsJ})`)).join('')}
+        </div>
+      </div>
+      <button class="mx-art-more-btn" id="mxArtMoreBtn" data-orig-text="Показать ещё ${moreTracks.length} треков" onclick="_mxToggleArtistTracks(this)">
+        <span>Показать ещё ${moreTracks.length} треков</span>
+        <svg class="mx-art-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>
+      </button>
+    ` : ''}
+
+    <!-- Недавние релизы -->
+    <div class="mx-h2" style="margin-top:20px;">Недавние релизы и альбомы</div>
+    <div class="mx-row">
+      ${releases.map(([albName, tracks])=>{
+        const albCv=tracks[0]?.coverUrl||cv;
+        const albIdsJ=esc(JSON.stringify(tracks.map(x=>x.id))).replace(/"/g,'&quot;');
+        return `<div class="mx-sq" onclick="_mm.src='album:${esc(albName)}';_mmPlay('${esc(tracks[0].id)}',${albIdsJ})">
+          ${_mxCv(albCv)}
+          <b>${esc(albName)}</b>
+          <span>${_mxN(tracks.length)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Переход ко всем исполнителям -->
+    <div class="mx-all-artists-banner" onclick="_mxOpenAllArtists()">
+      <div class="mx-all-art-ico">
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
+      </div>
+      <div class="mx-all-art-t">
+        <b>Все исполнители</b>
+        <span>Открыть вкладку со всеми ${allArtistsCount} артистами в твоей медиатеке</span>
+      </div>
+      <svg class="mx-arr" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+    </div>
+  `;
+
+  b.innerHTML=h;
+  _mxHeroColor(cv,'#mxGroup .mx-hero');
+  _mmPaintPlay();
+}
+
+function _mxToggleArtistTracks(btn){
+  const wrap=$('mxArtMoreWrap');if(!wrap||!btn)return;
+  const isExp=wrap.classList.toggle('expanded');
+  btn.classList.toggle('expanded',isExp);
+  const span=btn.querySelector('span');
+  if(span){
+    span.textContent=isExp?'Свернуть':btn.dataset.origText||'Показать ещё';
+  }
+}
+
+function _slonWaveToggleArtistQuick(name, btn){
+  const chosen=new Set(_slonWaveGetArtists().map(x=>x.toLowerCase()));
+  const k=name.toLowerCase();
+  let nowIn=false;
+  if(chosen.has(k)){chosen.delete(k);nowIn=false;}
+  else{chosen.add(k);nowIn=true;}
+  const allGroups=_mxGroups('artist');
+  const names=allGroups.filter(g=>chosen.has(g.name.toLowerCase())).map(g=>g.name);
+  _slonWaveSetArtists(names);
+  if(btn)btn.innerHTML=`🌊 ${nowIn?'В SLON Волне':'В SLON Волну'}`;
+  toast(nowIn?`«${name}» добавлен в SLON Волну`:`«${name}» убран из SLON Волны`);
+}
+
+function _mxOpenAllArtists(){
+  _mxChipGo('art');
+  while(typeof _spPop==='function'&&$('mxGroup'))_spPop();
+}
+
+// ════════ SLON Волна: персональный умный микс любимых артистов ════════
+const _slonWaveGetArtists=()=>{
+  try{
+    const v=JSON.parse(localStorage.getItem('sl_wave_artists')||'[]');
+    return Array.isArray(v)?v:[];
+  }catch(e){return [];}
+};
+const _slonWaveSetArtists=(arr)=>{
+  try{localStorage.setItem('sl_wave_artists',JSON.stringify(arr));}catch(e){}
+};
+
+function _slonWaveHomeCard(){
+  const chosen=_slonWaveGetArtists();
+  const sub=chosen.length?`${chosen.length} выбр. исполнителей · умный микс без повторов`:'Выбери исполнителей для персональной волны треков';
+  return `<div class="mx-wave-card" onclick="_slonWaveStart()">
+    <div class="mx-wave-bg"></div>
+    <div class="mx-wave-icon">
+      <span class="mx-wave-slon">🐘</span>
+      <span class="mx-wave-bars"><i></i><i></i><i></i><i></i></span>
+    </div>
+    <div class="mx-wave-info">
+      <div class="mx-wave-title">SLON Волна</div>
+      <div class="mx-wave-sub">${esc(sub)}</div>
+    </div>
+    <div class="mx-wave-acts" onclick="event.stopPropagation()">
+      <button class="mx-wave-tune-btn" onclick="_slonWaveOpenTune()" title="Выбрать исполнителей">
+        <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" fill="currentColor"/></svg>
+      </button>
+      <button class="mx-wave-play-btn" onclick="_slonWaveStart()" title="Запустить волну">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function _slonWavePoolGen(artists){
+  let pool=[];
+  if(!artists||!artists.length){
+    pool=_mm.list.slice();
+  }else{
+    const artSet=new Set(artists.map(a=>a.toLowerCase().trim()));
+    pool=_mm.list.filter(t=>artSet.has((_mxArtistOf(t)||'').toLowerCase().trim()));
+  }
+  for(let i=pool.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pool[i],pool[j]]=[pool[j],pool[i]];
+  }
+  return pool;
+}
+
+function _slonWaveStart(){
+  const chosen=_slonWaveGetArtists();
+  let pool=_slonWavePoolGen(chosen);
+  if(!pool.length){
+    if(!_mm.list.length){toast('Сначала добавь треки в медиатеку');return;}
+    toast('Выбери исполнителей для SLON Волны');
+    _slonWaveOpenTune();
+    return;
+  }
+  _mm.shuffle=true;
+  _mm.played=new Set();
+  _mm.src='slon_wave';
+  const ids=pool.map(x=>x.id);
+  _mmPlay(ids[0],ids);
+  toast('🐘 Запущена SLON Волна!');
+}
+
+function _slonWaveOpenTune(){
+  const allGroups=_mxGroups('artist');
+  let chosen=new Set(_slonWaveGetArtists().map(x=>x.toLowerCase()));
+  if(!chosen.size&&allGroups.length){
+    allGroups.slice(0,5).forEach(g=>chosen.add(g.name.toLowerCase()));
+  }
+
+  const renderTune=(filter='')=>{
+    const f=filter.trim().toLowerCase();
+    const list=f?allGroups.filter(g=>g.name.toLowerCase().includes(f)):allGroups;
+    return `
+      <div class="slon-wave-tune-head">
+        <h3>🐘 Настройка SLON Волны</h3>
+      </div>
+      <input class="slon-wave-search-inp" id="slonWaveQ" placeholder="Поиск исполнителя…" value="${esc(filter)}" oninput="_slonWaveTuneFilter(this.value)">
+      <div class="slon-wave-quick-acts">
+        <button class="slon-wave-quick-btn" onclick="_slonWaveSelectAll(true)">Выбрать всех</button>
+        <button class="slon-wave-quick-btn" onclick="_slonWaveSelectAll(false)">Снять выбор</button>
+      </div>
+      <div class="slon-wave-art-list" id="slonWaveList">
+        ${list.length?list.map(g=>{
+          const isSel=chosen.has(g.name.toLowerCase());
+          return `<div class="slon-wave-art-item${isSel?' sel':''}" onclick="_slonWaveToggleArt(${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})">
+            <div class="slon-wave-art-av">${_mxArtCv(g)}</div>
+            <div class="slon-wave-art-name">
+              ${esc(g.name)}
+              <div class="slon-wave-art-meta">${_mxN(g.items.length)}</div>
+            </div>
+            <div class="slon-wave-check">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
+            </div>
+          </div>`;
+        }).join(''):'<div class="px-empty">Исполнители не найдены</div>'}
+      </div>
+      <button class="slon-wave-launch-btn" onclick="_slonWaveSaveAndPlay()">Запустить волну (${chosen.size})</button>
+    `;
+  };
+
+  window._slonWaveChosen=chosen;
+  window._slonWaveFilter='';
+  _pxSheet(renderTune());
+}
+
+function _slonWaveToggleArt(name){
+  const k=name.toLowerCase();
+  if(window._slonWaveChosen.has(k))window._slonWaveChosen.delete(k);
+  else window._slonWaveChosen.add(k);
+  _slonWaveTuneUpdateList();
+}
+
+function _slonWaveSelectAll(sel){
+  const allGroups=_mxGroups('artist');
+  if(sel){
+    allGroups.forEach(g=>window._slonWaveChosen.add(g.name.toLowerCase()));
+  }else{
+    window._slonWaveChosen.clear();
+  }
+  _slonWaveTuneUpdateList();
+}
+
+function _slonWaveTuneFilter(q){
+  window._slonWaveFilter=q;
+  _slonWaveTuneUpdateList();
+}
+
+function _slonWaveTuneUpdateList(){
+  const f=(window._slonWaveFilter||'').trim().toLowerCase();
+  const allGroups=_mxGroups('artist');
+  const list=f?allGroups.filter(g=>g.name.toLowerCase().includes(f)):allGroups;
+  const box=$('slonWaveList');
+  if(box){
+    box.innerHTML=list.length?list.map(g=>{
+      const isSel=window._slonWaveChosen.has(g.name.toLowerCase());
+      return `<div class="slon-wave-art-item${isSel?' sel':''}" onclick="_slonWaveToggleArt(${esc(JSON.stringify(g.name)).replace(/"/g,'&quot;')})">
+        <div class="slon-wave-art-av">${_mxArtCv(g)}</div>
+        <div class="slon-wave-art-name">
+          ${esc(g.name)}
+          <div class="slon-wave-art-meta">${_mxN(g.items.length)}</div>
+        </div>
+        <div class="slon-wave-check">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
+        </div>
+      </div>`;
+    }).join(''):'<div class="px-empty">Исполнители не найдены</div>';
+  }
+  const btn=document.querySelector('.slon-wave-launch-btn');
+  if(btn)btn.textContent=`Запустить волну (${window._slonWaveChosen.size})`;
+}
+
+function _slonWaveSaveAndPlay(){
+  const allGroups=_mxGroups('artist');
+  const names=allGroups.filter(g=>window._slonWaveChosen.has(g.name.toLowerCase())).map(g=>g.name);
+  _slonWaveSetArtists(names);
+  _pxSheetClose();
+  _slonWaveStart();
+  if(typeof _mxRefreshSoft==='function')_mxRefreshSoft();
 }
 // меню трека: + «В любимые»
 {const f=_mmMenu;_mmMenu=function(id){

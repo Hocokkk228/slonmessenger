@@ -10,7 +10,7 @@ function buildThemeGrids(){
     THEMES.filter(t=>!t.premium).forEach(t=>{
       const d=document.createElement('div');d.className='tp-opt'+(t.id===cur?' sel':'');
       d.innerHTML=`<div class="tp-prev" style="background:${t.grad}"></div><div class="tp-lbl">${esc(t.lbl)}</div>`;
-      d.onclick=()=>setTheme(t.id);freeRow.appendChild(d);
+      d.onclick=(e)=>setTheme(t.id,e);freeRow.appendChild(d);
     });
     freeSection.appendChild(freeRow);grid.appendChild(freeSection);
     // Premium
@@ -21,20 +21,96 @@ function buildThemeGrids(){
       const locked=!hasPremium;
       const d=document.createElement('div');d.className='tp-opt'+(t.id===cur?' sel':'')+(locked?' prem-locked':'');
       d.innerHTML=`<div class="tp-prev" style="background:${t.grad}">${locked?`<div class="tp-lock-badge">${_tpLockSvg}</div>`:''}</div><div class="tp-lbl">${esc(t.lbl)}</div>`;
-      d.onclick=()=>hasPremium?setTheme(t.id):toast('Нужна подписка SLON PREMIUM');
+      d.onclick=(e)=>hasPremium?setTheme(t.id,e):toast('Нужна подписка SLON PREMIUM');
       premRow.appendChild(d);
     });
     premSection.appendChild(premRow);grid.appendChild(premSection);
   });
 }
 
-function applyTheme(t,save=true){
-  document.body.setAttribute('data-theme',t);
-  if(save){LS.set('sl_theme',t);toast('Тема: '+(THEMES.find(x=>x.id===t)?.lbl||t));}
-  buildThemeGrids();$('themePanel').classList.remove('show');
+window.addEventListener('pointerdown',e=>{
+  if(e&&typeof e.clientX==='number'){
+    window._lastPointerEv={clientX:e.clientX,clientY:e.clientY};
+  }
+},{capture:true,passive:true});
+
+function applyTheme(t,save=true,ev=null){
+  const cur=document.body.getAttribute('data-theme')||LS.get('sl_theme','dark');
+  const doApply=()=>{
+    document.body.setAttribute('data-theme',t);
+    if(save){LS.set('sl_theme',t);toast('Тема: '+(THEMES.find(x=>x.id===t)?.lbl||t));}
+    buildThemeGrids();$('themePanel')?.classList.remove('show');
+  };
+
+  if(!save||t===cur){
+    doApply();
+    return;
+  }
+
+  // Центр кнопки темы / точка клика (анимация как в Telegram)
+  let x=window.innerWidth/2, y=window.innerHeight/2;
+  const ptrEv=ev||window._lastPointerEv;
+  if(ptrEv&&typeof ptrEv.clientX==='number'){
+    x=ptrEv.clientX; y=ptrEv.clientY;
+  }else{
+    const tbBtn=document.querySelector('.tb-icon-btn[onclick*="toggleThemePanel"]')||document.getElementById('themePanel');
+    if(tbBtn){
+      const r=tbBtn.getBoundingClientRect();
+      x=r.left+r.width/2; y=r.top+r.height/2;
+    }
+  }
+
+  const endRadius=Math.hypot(
+    Math.max(x, window.innerWidth-x),
+    Math.max(y, window.innerHeight-y)
+  );
+
+  // Плавная круговая анимация View Transition из центра кнопки
+  if(typeof document.startViewTransition==='function'){
+    try{
+      const transition=document.startViewTransition(()=>{
+        doApply();
+      });
+      transition.ready.then(()=>{
+        document.documentElement.animate(
+          {
+            clipPath:[
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${endRadius}px at ${x}px ${y}px)`
+            ]
+          },
+          {
+            duration:520,
+            easing:'cubic-bezier(0.32, 0.72, 0, 1)',
+            pseudoElement:'::view-transition-new(root)'
+          }
+        );
+      }).catch(()=>{});
+      return;
+    }catch(e){}
+  }
+
+  // Fallback кругового обволакивания
+  try{
+    const th=THEMES.find(item=>item.id===t);
+    const bg=th?(th.grad||th.bg||'#181e28'):'#181e28';
+    const rip=document.createElement('div');
+    rip.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:${endRadius*2}px;height:${endRadius*2}px;margin-left:-${endRadius}px;margin-top:-${endRadius}px;border-radius:50%;background:${bg};pointer-events:none;z-index:999999;transform:scale(0);transition:transform 0.48s cubic-bezier(0.32,0.72,0,1),opacity 0.22s ease 0.42s;opacity:0.96;`;
+    document.body.appendChild(rip);
+    requestAnimationFrame(()=>{
+      rip.style.transform='scale(1)';
+      setTimeout(()=>{
+        doApply();
+        rip.style.opacity='0';
+        setTimeout(()=>rip.remove(),250);
+      },200);
+    });
+  }catch(e){
+    doApply();
+  }
 }
 
-function setTheme(t){applyTheme(t,true);}
+function setTheme(t,ev=null){applyTheme(t,true,ev);}
 
 function toggleThemePanel(){$('themePanel').classList.toggle('show');}
 
