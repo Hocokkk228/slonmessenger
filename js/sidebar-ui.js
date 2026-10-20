@@ -616,5 +616,8 @@ function closeContactsPanel(){
 function setupMobile(){
   const isMob=window.innerWidth<=640;
   const mb=$('menuBtn');if(mb)mb.style.display=isMob?'flex':'none';
-  if(isMob&&$('sidebar'))$('sidebar').classList.remove('open');
+  // Если на мобилке и нет активного чата или открыт список — держим список открытым
+  if(isMob&&$('sidebar')&&currentView!=='chat'){
+    $('sidebar').classList.add('open');
+  }
 }

@@ -58,18 +58,23 @@
   };
   // что сейчас на экране → страница и вкладка
   function state(){
-    const sb=document.getElementById('sidebar');
-    if(!sb||!sb.classList.contains('open'))return null;                       // открыт чат — дока нет
-    // экран входа/регистрации (или ещё не вошли) — дока нет: он ложился поверх формы
+    // экран входа/регистрации (или ещё не вошли) — дока нет
     const ov=document.getElementById('usernameOverlay');
-    if(typeof myUsername==='undefined'||!myUsername||(ov&&getComputedStyle(ov).display!=='none'))return null;
+    if(typeof myUsername==='undefined'||!myUsername||(ov&&ov.classList.contains('show')))return null;
     if(document.getElementById('lgGate'))return null;                         // окно соглашения
     if(document.querySelector('#mmFp,#pxKara'))return null;
+    const cs=document.getElementById('callScreen');
+    if(cs&&(cs.classList.contains('show')||cs.classList.contains('active')))return null;
+
     const sp=document.getElementById('spPanel'),top=sp&&sp.classList.contains('open')?[...sp.querySelectorAll('.sp-page')].pop():null;
     if(top&&(top.classList.contains('mx-page')||top.querySelector('#mmPlPage,#mxLiked,#mxGroup,#mmOfList'))){
       return {p:'music',k:top.classList.contains('mx-page')&&typeof _mxS!=='undefined'?_mxS.tab:''};}
     if(sp&&sp.classList.contains('open'))return {p:'main',k:top?'':'settings'};
     if(document.getElementById('contactsPanel')?.classList.contains('show'))return {p:'main',k:'contacts'};
+
+    const sb=document.getElementById('sidebar');
+    if(sb&&!sb.classList.contains('open'))return null;                       // открыт чат — дока нет
+
     return {p:'main',k:'chats'};
   }
   function sync(){
