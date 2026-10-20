@@ -19,6 +19,34 @@ function _tryLocalMath(txt){
   return null;
 }
 
+async function _callPollinationsAi(userText){
+  const ctrl=new AbortController();
+  const timeoutId=setTimeout(()=>ctrl.abort(),12000);
+  try{
+    const resp=await fetch('https://text.pollinations.ai/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      signal:ctrl.signal,
+      body:JSON.stringify({
+        messages:[
+          {role:'system',content:typeof SLON_AI_SYSTEM_PROMPT!=='undefined'?SLON_AI_SYSTEM_PROMPT:'Ты — СЛОН AI, встроенный помощник мессенджера SLON.'},
+          {role:'user',content:userText}
+        ],
+        model:'openai',
+        temperature:0.7
+      })
+    });
+    clearTimeout(timeoutId);
+    if(!resp.ok)return null;
+    const text=await resp.text();
+    if(text&&text.trim().length>1)return text.trim();
+  }catch(e){
+    clearTimeout(timeoutId);
+    console.warn('[SLON AI] AI endpoint error:',e.message);
+  }
+  return null;
+}
+
 async function _callHfChatRouter(userText){
   for(const model of HF_CHAT_MODELS){
     try{
@@ -78,8 +106,13 @@ async function aiReply(txt){
   if(mathResult!==null)return txt.trim()+' = '+mathResult+'';
 
   try{
-    const reply=await _callHfChatRouter(txt);
+    const reply=await _callPollinationsAi(txt);
     if(reply)return reply;
+  }catch(e){console.warn('[SLON AI] smart AI error:',e.message);}
+
+  try{
+    const replyRouter=await _callHfChatRouter(txt);
+    if(replyRouter)return replyRouter;
   }catch(e){console.warn('[SLON AI] chat router error:',e.message);}
 
   try{
