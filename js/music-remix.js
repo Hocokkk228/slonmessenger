@@ -25,6 +25,9 @@
 
   function _setupWebAudio(audio) {
     if (!audio || _hookedAudio === audio) return;
+    // Если аудио кросс-доменное (семейный трек или без CORS), не подключаем createMediaElementSource,
+    // чтобы браузер не мутил звук по CORS-политике.
+    const isExternal = audio.src && (audio.src.startsWith('http') || audio.src.startsWith('blob:')) && !audio.crossOrigin;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
@@ -34,8 +37,8 @@
         document.addEventListener('pointerdown', resume, { once: true });
       }
 
-      // Пробуем подключить MediaElementSourceNode
-      if (!_mediaSource) {
+      // Подключаем только если не внешнее или если есть анонимный CORS
+      if (!_mediaSource && (!isExternal || audio.crossOrigin)) {
         _mediaSource = _audioCtx.createMediaElementSource(audio);
         _dryGain = _audioCtx.createGain();
         _wetGain = _audioCtx.createGain();
@@ -55,8 +58,7 @@
       }
       _hookedAudio = audio;
     } catch (e) {
-      // Если браузер или CORS блокирует Web Audio — сохраняем штатную работу
-      console.warn('[Remix Audio] WebAudio reverb fallback:', e.message);
+      console.warn('[Remix Audio] WebAudio fallback (direct audio enabled):', e.message);
     }
   }
 

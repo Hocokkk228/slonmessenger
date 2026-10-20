@@ -245,8 +245,9 @@ function _pxKaraTick(){
   const r=$('pxKaraR');if(r&&!r.matches(':active'))r.value=d?Math.round(t/d*1000):0;
   const tt=$('pxKaraT');if(tt)tt.textContent=_rcFmt(t*1000);const dd=$('pxKaraD');if(dd)dd.textContent=_rcFmt(d*1000);
   if(!_kr.synced||!_kr.lines.length)return;
-  const LEAD_TIME = 0.35; // естественное упреждение на 350мс, чтобы строка загоралась к началу фразы
-  const tl=t+(_kr.off||0)+LEAD_TIME;   // время в песне (с учётом смещения и опережения)
+  const rate=(a&&a.playbackRate)||1.0;
+  const lead=0.22*rate;   // адаптивное упреждение под скорость воспроизведения
+  const tl=t+(_kr.off||0)+lead;   // время в песне (с учётом смещения и опережения)
   const L=_kr.lines;let i=-1;
   for(let k=0;k<L.length;k++){if(L[k].t<=tl)i=k;else break;}
   const body=$('pxKaraBody');if(!body)return;

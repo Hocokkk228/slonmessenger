@@ -289,7 +289,6 @@ function _isl(){
     w.dataset.k=key;
     const cv=t.cover?`<img src="${esc(t.cover)}" alt="">`:`<span class="mm-cv-none">${_MM_ICO.note}</span>`;
     w.innerHTML=_islOpen?`<div class="isl-top">${cv}<div class="isl-t"><b>${esc(t.title||'')}</b><span>${esc(t.artist||'')}</span></div>
-        <div class="isl-badge-slon" title="SLON Музыка"><svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" fill="currentColor"/></svg></div>
         <button class="isl-x" onclick="_islCollapse()" title="Свернуть">${_MM_ICO.x}</button></div>
       <div class="isl-prog"><span id="islT">0:00</span><input type="range" id="islR" min="0" max="1000" value="0" oninput="_islSeek(this.value)"><span id="islD">0:00</span></div>
       <div class="isl-ctl"><button onclick="_islStep(-1)"${q?'':' class="dim"'}>${_MM_ICO.prev}</button>
@@ -297,9 +296,9 @@ function _isl(){
         <button onclick="_islStep(1)"${q?'':' class="dim"'}>${_MM_ICO.next}</button>
         <button class="isl-ly" onclick="_pxLyrics(_islTr);_islCollapse();" title="Текст песни (караоке)">${_MM_ICO.lyr}</button></div>
       <div class="isl-remix">
-        <button class="remix-chip${(window._mmRemixMode||'normal')==='normal'?' active':''}" data-mode="normal" onclick="_setAudioRemix('normal')">♫ Обычный</button>
-        <button class="remix-chip${window._mmRemixMode==='speedup'?' active':''}" data-mode="speedup" onclick="_setAudioRemix('speedup')">⚡ Speed Up</button>
-        <button class="remix-chip${window._mmRemixMode==='slowed'?' active':''}" data-mode="slowed" onclick="_setAudioRemix('slowed')">🌙 Slowed + Reverb</button>
+        <button class="remix-chip${(window._mmRemixMode||'normal')==='normal'?' active':''}" data-mode="normal" onclick="_setAudioRemix('normal')">Обычный</button>
+        <button class="remix-chip${window._mmRemixMode==='speedup'?' active':''}" data-mode="speedup" onclick="_setAudioRemix('speedup')">Speed Up</button>
+        <button class="remix-chip${window._mmRemixMode==='slowed'?' active':''}" data-mode="slowed" onclick="_setAudioRemix('slowed')">Slowed + Reverb</button>
       </div>`
     :`${cv}<div class="isl-mt">${esc(t.title||'')}</div><span class="isl-eq"><i></i><i></i><i></i><i></i></span>`;
     _mmMediaSession(t);
@@ -1082,9 +1081,9 @@ function _fpOpen(){
     <div class="fp-prog"><input type="range" id="fpR" min="0" max="1000" value="0" oninput="_islSeek(this.value)"><div><span id="fpT">0:00</span><span id="fpD">0:00</span></div></div>
     <div class="fp-ctl"><button onclick="_islStep(-1)">${_MM_ICO.prev}</button><button class="fp-pp" id="fpPP" onclick="_islToggle()"></button><button onclick="_islStep(1)">${_MM_ICO.next}</button></div>
     <div class="fp-remix-row">
-      <button class="remix-chip${(window._mmRemixMode||'normal')==='normal'?' active':''}" data-mode="normal" onclick="_setAudioRemix('normal')">♫ Обычный</button>
-      <button class="remix-chip${window._mmRemixMode==='speedup'?' active':''}" data-mode="speedup" onclick="_setAudioRemix('speedup')">⚡ Speed Up</button>
-      <button class="remix-chip${window._mmRemixMode==='slowed'?' active':''}" data-mode="slowed" onclick="_setAudioRemix('slowed')">🌙 Slowed + Reverb</button>
+      <button class="remix-chip${(window._mmRemixMode||'normal')==='normal'?' active':''}" data-mode="normal" onclick="_setAudioRemix('normal')">Обычный</button>
+      <button class="remix-chip${window._mmRemixMode==='speedup'?' active':''}" data-mode="speedup" onclick="_setAudioRemix('speedup')">Speed Up</button>
+      <button class="remix-chip${window._mmRemixMode==='slowed'?' active':''}" data-mode="slowed" onclick="_setAudioRemix('slowed')">Slowed + Reverb</button>
     </div>
     <div class="fp-row"><button class="fp-ib big" id="fpDl" onclick="_fpDl()"></button><button class="fp-ib big" id="fpLyB" onclick="_fpLyToggle()" title="Текст">${_MM_ICO.lyr}</button></div>`;
   document.body.appendChild(w);

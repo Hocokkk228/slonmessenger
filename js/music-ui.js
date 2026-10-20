@@ -29,10 +29,36 @@ function _mxLike(id){
   const i=L.findIndex(x=>x===it.cid||x===it.id);
   if(i>=0){L.splice(i,1);toast('Убрано из любимых');}else{L.unshift(k);toast('Добавлено в любимые');}
   _pxSave(true);_mxRefresh();_fpExtraPaint();
+  if(window._fbDb&&typeof window._fbSet==='function'&&myUsername){
+    try{window._fbSet(window._fbRef(window._fbDb,'user_music_likes/'+myUsername),L);}catch(e){}
+  }
 }
 function _mxLikedItems(){return _mxLikes().map(k=>_mm.list.find(x=>x.id===k||x.cid===k)).filter(Boolean);}
 const _mxRecentGet=()=>{try{return JSON.parse(localStorage.getItem('sl_mm_recent_'+myUsername)||'[]');}catch(e){return [];}};
-function _mxRecentAdd(it){if(!it)return;const k=_mxKey(it);let r=_mxRecentGet().filter(x=>x!==k);r.unshift(k);r=r.slice(0,24);try{localStorage.setItem('sl_mm_recent_'+myUsername,JSON.stringify(r));}catch(e){}}
+function _mxRecentAdd(it){
+  if(!it)return;const k=_mxKey(it);let r=_mxRecentGet().filter(x=>x!==k);r.unshift(k);r=r.slice(0,24);
+  try{localStorage.setItem('sl_mm_recent_'+myUsername,JSON.stringify(r));}catch(e){}
+  if(window._fbDb&&typeof window._fbSet==='function'&&myUsername){
+    try{window._fbSet(window._fbRef(window._fbDb,'user_music_recent/'+myUsername),r);}catch(e){}
+  }
+}
+function _mxSyncRecentFb(){
+  if(!window._fbDb||typeof window._fbOnValue!=='function'||!myUsername)return;
+  window._fbOnValue(window._fbRef(window._fbDb,'user_music_recent/'+myUsername),snap=>{
+    const val=snap.val();
+    if(Array.isArray(val)&&val.length){
+      try{localStorage.setItem('sl_mm_recent_'+myUsername,JSON.stringify(val));}catch(e){}
+      if(typeof _mxS!=='undefined'&&_mxS.tab==='home'&&$('mxBody'))_mxRefresh();
+    }
+  });
+  window._fbOnValue(window._fbRef(window._fbDb,'user_music_likes/'+myUsername),snap=>{
+    const val=snap.val();
+    if(Array.isArray(val)){
+      const p=_pxMe();if(p){p.mmLikes=val;_pxSave(false);if(typeof _mxS!=='undefined'&&_mxS.tab==='home'&&$('mxBody'))_mxRefresh();}
+    }
+  });
+}
+setTimeout(_mxSyncRecentFb,2500);
 _mm.repeat=(()=>{try{return localStorage.getItem('sl_mm_rep')||'off';}catch(e){return 'off';}})();
 function _mxRepeat(){
   _mm.repeat=_mm.repeat==='off'?'all':_mm.repeat==='all'?'one':'off';
