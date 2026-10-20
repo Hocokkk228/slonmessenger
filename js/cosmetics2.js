@@ -77,51 +77,47 @@ function _cosBubble(){
   return f.apply(this,arguments);
 };}
 
-// ════════ Реалистичная физика и визуал крови ════════
+// ════════ Настоящий векторный ассет крови: капли СНИЗУ без перекрытия аватара ════════
 function _cosBloodRealistic(){
-  return _cosSvg('avf-blood-wrap',[-20,-20,140,140],`
+  return _cosSvg('avf-blood-wrap',[-10,-10,120,135],`
     <defs>
-      <linearGradient id="blRim" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#ff2e3b"/>
-        <stop offset="45%" stop-color="#a80012"/>
-        <stop offset="100%" stop-color="#3d0006"/>
-      </linearGradient>
-      <radialGradient id="blDrop" cx="35%" cy="30%" r="70%">
-        <stop offset="0%" stop-color="#ff6b76"/>
-        <stop offset="35%" stop-color="#c90016"/>
-        <stop offset="85%" stop-color="#69000a"/>
+      <radialGradient id="blDrop" cx="35%" cy="25%" r="70%">
+        <stop offset="0%" stop-color="#ff4a58"/>
+        <stop offset="40%" stop-color="#bd0014"/>
+        <stop offset="90%" stop-color="#610009"/>
         <stop offset="100%" stop-color="#2a0003"/>
       </radialGradient>
-      <linearGradient id="blGleam" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
-        <stop offset="100%" stop-color="#ff7a85" stop-opacity="0"/>
+      <linearGradient id="blRimLine" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#80000a" stop-opacity="0"/>
+        <stop offset="25%" stop-color="#bd0014" stop-opacity="0.9"/>
+        <stop offset="50%" stop-color="#ff2e3b" stop-opacity="1"/>
+        <stop offset="75%" stop-color="#bd0014" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#80000a" stop-opacity="0"/>
       </linearGradient>
     </defs>
-    <!-- Верхний и боковой наплыв крови по контуру аватара -->
-    <path class="avf-blood-rim" fill="url(#blRim)" d="M12,42 C14,18 30,3 50,3 C70,3 86,18 88,42 C85,38 78,44 72,39 C66,35 60,42 52,38 C44,35 38,43 32,38 C24,42 18,36 12,42 Z"/>
-    <!-- Стекающие капли по ободку -->
-    <path fill="url(#blRim)" d="M18,38 Q17,56 22,66 Q20,52 24,40 Z"/>
-    <path fill="url(#blRim)" d="M46,38 Q45,58 50,68 Q48,54 52,40 Z"/>
-    <path fill="url(#blRim)" d="M78,36 Q81,54 76,64 Q80,50 82,38 Z"/>
-    <!-- Глянец/блик на верхнем наплыве -->
-    <path d="M26,10 C34,6 44,5 50,5 C58,5 68,7 74,11" fill="none" stroke="url(#blGleam)" stroke-width="2.2" stroke-linecap="round"/>
-    <!-- 3 капли с вязким растяжением, шейкой и отрывом под гравитацией -->
-    <g class="avf-blood-drop avf-blood-drop-1" transform="translate(18, 70)">
-      <path fill="url(#blDrop)" d="M0,0 C-3,4 -5,10 0,16 C5,10 3,4 0,0 Z"/>
-      <ellipse cx="-1" cy="11" rx="1.2" ry="2.2" fill="#fff" opacity="0.75" transform="rotate(-15)"/>
+    <!-- Тонкий ободок с каплями СТРОГО по внешнему нижнему краю круга (лицо 100% открыто) -->
+    <path d="M16,74 C24,88 36,96 50,96 C64,96 76,88 84,74" fill="none" stroke="url(#blRimLine)" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M22,82 C30,92 40,97 50,97 C60,97 70,92 78,82" fill="none" stroke="#ff4a58" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+    <!-- Стекающая капля слева (чистая плавная форма капли без углов) -->
+    <g class="avf-blood-drop avf-blood-drop-1" transform="translate(28, 92)">
+      <path fill="url(#blDrop)" d="M0,0 C-1,2 -2.5,5 -2,8 C-1.5,12 1.5,12 2,8 C2.5,5 1,2 0,0 Z"/>
+      <ellipse cx="-0.6" cy="7" rx="0.6" ry="1.4" fill="#ffffff" opacity="0.65"/>
     </g>
-    <g class="avf-blood-drop avf-blood-drop-2" transform="translate(78, 66)">
-      <path fill="url(#blDrop)" d="M0,0 C-2.5,3 -4,8 0,13 C4,8 2.5,3 0,0 Z"/>
-      <ellipse cx="-0.8" cy="9" rx="1" ry="1.8" fill="#fff" opacity="0.7" transform="rotate(-15)"/>
+    <!-- Стекающая капля справа -->
+    <g class="avf-blood-drop avf-blood-drop-2" transform="translate(72, 90)">
+      <path fill="url(#blDrop)" d="M0,0 C-0.8,1.8 -2,4 -1.6,6.5 C-1.2,10 1.2,10 1.6,6.5 C2,4 0.8,1.8 0,0 Z"/>
+      <ellipse cx="-0.5" cy="5.5" rx="0.5" ry="1.2" fill="#ffffff" opacity="0.65"/>
     </g>
-    <g class="avf-blood-drop avf-blood-drop-3" transform="translate(48, 86)">
-      <path fill="url(#blDrop)" d="M0,0 C-2,3 -3.5,7 0,11 C3.5,7 2,3 0,0 Z"/>
-      <ellipse cx="-0.6" cy="7.5" rx="0.8" ry="1.5" fill="#fff" opacity="0.7"/>
+    <!-- Основная капля по центру снизу с физикой каплепадения -->
+    <g class="avf-blood-drop avf-blood-drop-3" transform="translate(50, 96)">
+      <path fill="url(#blDrop)" d="M0,0 C-1.2,2.5 -3,6 -2.4,10 C-1.6,15 1.6,15 2.4,10 C3,6 1.2,2.5 0,0 Z"/>
+      <ellipse cx="-0.8" cy="9" rx="0.8" ry="1.8" fill="#ffffff" opacity="0.7"/>
     </g>
-    <!-- Нижний ободок с брызгами -->
-    <circle cx="28" cy="88" r="2.2" fill="url(#blDrop)"/>
-    <circle cx="23" cy="95" r="1.4" fill="url(#blDrop)"/>
-    <circle cx="72" cy="85" r="1.8" fill="url(#blDrop)"/>
+    <!-- Небольшие брызги-бусины по внешнему ободку -->
+    <circle cx="18" cy="80" r="1.6" fill="url(#blDrop)"/>
+    <circle cx="14" cy="87" r="1" fill="url(#blDrop)"/>
+    <circle cx="82" cy="79" r="1.4" fill="url(#blDrop)"/>
+    <circle cx="86" cy="85" r="0.9" fill="url(#blDrop)"/>
   `);
 }
 

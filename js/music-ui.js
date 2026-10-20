@@ -467,10 +467,21 @@ const _slonWaveSetArtists=(arr)=>{
 function _slonWaveHomeCard(){
   const chosen=_slonWaveGetArtists();
   const sub=chosen.length?`${chosen.length} выбр. исполнителей · умный микс без повторов`:'Выбери исполнителей для персональной волны треков';
-  return `<div class="mx-wave-card" onclick="_slonWaveStart()">
+  const isPlaying=_mm.src==='slon_wave'&&_pxAudio&&!_pxAudio.paused;
+  const playIco=isPlaying
+    ?'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/></svg>'
+    :'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+  return `<div class="mx-wave-card" id="mxWaveCard" onclick="${isPlaying?'_slonWavePause()':'_slonWaveStart()'}">
     <div class="mx-wave-bg"></div>
     <div class="mx-wave-icon">
-      <span class="mx-wave-slon">🐘</span>
+      <svg class="mx-wave-slon-svg" viewBox="0 0 100 100" width="30" height="30">
+        <path d="M42 26C34 15 15 12 9 25 3 39 8 60 18 69c3 2 6 0 7-3 4-9 8-26 8-40z" fill="#fff"/>
+        <path d="M58 26c8-11 27-14 33-1 6 14 1 35-9 44-3 2-6 0-7-3-4-9-8-26-8-40z" fill="#fff"/>
+        <path d="M50 12c-10 0-16 7-17 17-1 11 0 21 2 28h30c2-7 3-17 2-28-1-10-7-17-17-17z" fill="#fff"/>
+        <path d="M42 49c0 11 1 21 3 30 1 6 2 10 2 14 0 4 1 6 3 6s3-2 3-6c0-4 1-8 2-14 2-9 3-19 3-30z" fill="#fff"/>
+        <path d="M39 55c-2 9-5 17-9 23-2 3-5 5-6 3-1-2 1-4 3-7 4-6 8-13 10-20z" fill="#fff"/>
+        <path d="M61 55c2 9 5 17 9 23 2 3 5 5 6 3 1-2-1-4-3-7-4-6-8-13-10-20z" fill="#fff"/>
+      </svg>
       <span class="mx-wave-bars"><i></i><i></i><i></i><i></i></span>
     </div>
     <div class="mx-wave-info">
@@ -481,8 +492,8 @@ function _slonWaveHomeCard(){
       <button class="mx-wave-tune-btn" onclick="_slonWaveOpenTune()" title="Выбрать исполнителей">
         <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" fill="currentColor"/></svg>
       </button>
-      <button class="mx-wave-play-btn" onclick="_slonWaveStart()" title="Запустить волну">
-        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+      <button class="mx-wave-play-btn" id="slonWavePlayBtn" onclick="event.stopPropagation();${isPlaying?'_slonWavePause()':'_slonWaveStart()'}" title="${isPlaying?'Пауза':'Запустить волну'}">
+        ${playIco}
       </button>
     </div>
   </div>`;
@@ -503,22 +514,152 @@ function _slonWavePoolGen(artists){
   return pool;
 }
 
-function _slonWaveStart(){
+function _slonWavePause(){
+  if(_pxAudio&&!_pxAudio.paused)_pxAudio.pause();
+  _slonWaveUpdateBtn();
+}
+
+function _slonWaveUpdateBtn(){
+  const btn=$('slonWavePlayBtn');
+  const card=$('mxWaveCard');
+  const isPlaying=_mm.src==='slon_wave'&&_pxAudio&&!_pxAudio.paused;
+  if(btn){
+    btn.innerHTML=isPlaying
+      ?'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/></svg>'
+      :'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+    btn.title=isPlaying?'Пауза':'Запустить волну';
+    btn.setAttribute('onclick','event.stopPropagation();'+(isPlaying?'_slonWavePause()':'_slonWaveStart()'));
+  }
+  if(card){
+    card.setAttribute('onclick',isPlaying?'_slonWavePause()':'_slonWaveStart()');
+  }
+}
+
+// Обновляем кнопку при play/pause любого аудио
+{const _origMmPB=_mmPlayBtns;_mmPlayBtns=function(){const r=_origMmPB.apply(this,arguments);_slonWaveUpdateBtn();return r;};}
+if(_pxAudio){
+  _pxAudio.addEventListener('play',_slonWaveUpdateBtn);
+  _pxAudio.addEventListener('pause',_slonWaveUpdateBtn);
+  _pxAudio.addEventListener('ended',_slonWaveUpdateBtn);
+}
+
+async function _slonWaveStart(){
+  // Если волна уже играет — ставим на паузу
+  if(_mm.src==='slon_wave'&&_pxAudio&&!_pxAudio.paused){
+    _slonWavePause();
+    return;
+  }
+  // Если волна на паузе — возобновляем
+  if(_mm.src==='slon_wave'&&_pxAudio&&_pxAudio.paused&&_pxAudio.src){
+    try{await _pxAudio.play();}catch(e){}
+    _slonWaveUpdateBtn();
+    return;
+  }
+
   const chosen=_slonWaveGetArtists();
-  let pool=_slonWavePoolGen(chosen);
-  if(!pool.length){
-    if(!_mm.list.length){toast('Сначала добавь треки в медиатеку');return;}
+  if(!chosen.length&&!_mm.list.length){
+    toast('Сначала добавь треки в медиатеку');
+    return;
+  }
+  if(!chosen.length){
     toast('Выбери исполнителей для SLON Волны');
     _slonWaveOpenTune();
     return;
   }
+
+  // 1. Локальный пул треков выбранных артистов
+  let pool=_slonWavePoolGen(chosen);
+
+  // 2. Подтягиваем треки из SoundCloud / Hitmo для официальных артистов
+  toast('🐘 Загружаю треки артистов из SoundCloud…');
+  const scTracks=[];
+  if(typeof _hmSearch==='function'){
+    const fetches=chosen.slice(0, 10).map(async art=>{
+      try{
+        const tracks=await _hmSearch(art);
+        if(Array.isArray(tracks)&&tracks.length){
+          scTracks.push(...tracks.slice(0, 12));
+        }
+      }catch(e){}
+    });
+    await Promise.allSettled(fetches);
+  }
+
+  // Дедуплицируем треки SoundCloud с уже имеющимися локальными
+  const localTitles=new Set(pool.map(t=>(t.title||'').toLowerCase().trim()));
+  const uniqueSc=scTracks.filter(t=>!localTitles.has((t.title||'').toLowerCase().trim()));
+
+  // Форматируем треки SoundCloud
+  window._slonWaveScPool=window._slonWaveScPool||{};
+  const scPlayable=uniqueSc.map(t=>{
+    const id='sc_'+(t.id||Math.random().toString(36).slice(2)).replace(/^(sc_|hitmo_)/,'');
+    const trObj={
+      id,
+      title:t.title,
+      artist:t.artist,
+      coverUrl:t.cover||'',
+      dur:t.dur||0,
+      isSc:true,
+      _scRaw:t
+    };
+    window._slonWaveScPool[id]=trObj;
+    return trObj;
+  });
+
+  // Объединенный перемешанный пул (локальные + SoundCloud)
+  const combined=[...pool,...scPlayable];
+  for(let i=combined.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [combined[i],combined[j]]=[combined[j],combined[i]];
+  }
+
+  if(!combined.length){
+    toast('Не найдены треки выбранных исполнителей');
+    return;
+  }
+
   _mm.shuffle=true;
   _mm.played=new Set();
   _mm.src='slon_wave';
-  const ids=pool.map(x=>x.id);
+  const ids=combined.map(x=>x.id);
   _mmPlay(ids[0],ids);
-  toast('🐘 Запущена SLON Волна!');
+  toast(`🐘 SLON Волна запущена: ${combined.length} треков!`);
+  _slonWaveUpdateBtn();
 }
+
+// Бесшовный запуск треков SoundCloud внутри очереди плеера
+{const _origMmPlay=_mmPlay;
+_mmPlay=async function(id,list){
+  if(_mm.src==='slon_wave'&&window._slonWaveScPool&&window._slonWaveScPool[id]){
+    const scItem=window._slonWaveScPool[id];
+    try{
+      const streamUrl=await _hmUrl(scItem._scRaw);
+      const trObj={
+        id:'mm_'+id,
+        src:'file',
+        url:streamUrl,
+        title:scItem.title,
+        artist:scItem.artist,
+        cover:scItem.coverUrl||'',
+        dur:scItem.dur||0,
+        mm:id
+      };
+      _mm.cur=trObj;
+      _islTr=trObj;
+      _mm.queue=list||_mm.queue;
+      _mm.qi=_mm.queue.indexOf(id);
+      await _pxPlay(trObj,null);
+      _mmHook();
+      _mmBar();
+      _mmPaint();
+      _slonWaveUpdateBtn();
+    }catch(e){
+      toast('Ошибка воспроизведения: '+(e.message||''));
+    }
+    return;
+  }
+  return _origMmPlay.apply(this,arguments);
+};}
 
 function _slonWaveOpenTune(){
   const allGroups=_mxGroups('artist');

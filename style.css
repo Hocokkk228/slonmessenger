@@ -2042,11 +2042,18 @@ body.app-entering .main,body.app-entering .sidebar{animation:appEnter .8s cubic-
 .avf{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;}
 /* — кровь: 1-2 капли стекают в левом нижнем углу — */
 .avf-blood{overflow:visible;}
-.avf-blood>i{position:absolute;width:11%;height:17%;background:radial-gradient(120% 70% at 40% 25%,#ff2a2a,#c40000 45%,#7a0000);border-radius:50% 50% 50% 50%/72% 72% 28% 28%;transform-origin:top center;box-shadow:0 1px 3px rgba(0,0,0,.35),inset -1px -2px 3px rgba(0,0,0,.35),inset 1px 1px 2px rgba(255,120,120,.5);}
-.avf-blood>i::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);border-left:.35em solid transparent;border-right:.35em solid transparent;}
-.avf-blood>i:nth-child(1){left:8%;bottom:18%;animation:avfDrip 3.4s ease-in infinite;}
-.avf-blood>i:nth-child(2){left:20%;bottom:26%;width:8%;height:13%;animation:avfDrip 4.2s ease-in infinite 1.6s;}
-@keyframes avfDrip{0%{transform:translateY(-30%) scaleY(.5);opacity:0;}18%{opacity:1;}45%{transform:translateY(10%) scaleY(1);}72%{transform:translateY(120%) scaleY(1.5);opacity:1;}100%{transform:translateY(190%) scaleY(2);opacity:0;}}
+.avf-blood>i{position:absolute;width:11%;height:17%;background:radial-gradient(ellipse 110% 80% at 40% 25%,#ff4a4a,#c40000 40%,#7a0000 80%);border-radius:50% 50% 50% 50%/65% 65% 35% 35%;transform-origin:top center;box-shadow:0 1px 3px rgba(0,0,0,.35),inset -1px -2px 3px rgba(0,0,0,.35),inset 1px 1px 2px rgba(255,120,120,.5);}
+.avf-blood>i:nth-child(1){left:8%;bottom:18%;animation:avfDrip 4.2s ease-in-out infinite;}
+.avf-blood>i:nth-child(2){left:20%;bottom:26%;width:8%;height:13%;animation:avfDrip 5.4s ease-in-out infinite 2s;}
+@keyframes avfDrip{
+  0%{transform:translateY(-20%) scaleY(.6) scaleX(.9);opacity:0;}
+  12%{transform:translateY(0) scaleY(.85) scaleX(1);opacity:1;}
+  30%{transform:translateY(5%) scaleY(1);opacity:1;}
+  50%{transform:translateY(30%) scaleY(1.15) scaleX(.9);opacity:1;}
+  70%{transform:translateY(90%) scaleY(1.4) scaleX(.75);opacity:.9;}
+  85%{transform:translateY(150%) scaleY(1.7) scaleX(.6);opacity:.5;}
+  100%{transform:translateY(200%) scaleY(1.9) scaleX(.45);opacity:0;}
+}
 /* — паутина: классические угловые сети + паучок — */
 .avf-cobweb .avf-web{position:absolute;overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
 .avf-cobweb .avf-web.tl{top:-7%;left:-7%;width:64%;height:64%;}
@@ -4699,7 +4706,7 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
   display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;
   box-shadow:0 4px 12px rgba(52,130,255,0.45);
 }
-.mx-wave-slon{font-size:22px;}
+.mx-wave-slon-svg{display:block;width:30px;height:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.25));}
 .mx-wave-bars{
   position:absolute;bottom:4px;right:4px;display:flex;align-items:flex-end;gap:2px;height:12px;
 }
