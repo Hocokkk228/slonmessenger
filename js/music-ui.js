@@ -16,7 +16,9 @@ const _MX_ICO={
   queue:'<svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4v6.18A3 3 0 1 0 19 19V12h3v-2z"/></svg>',
   edit:'<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zm17.7-10.2a1 1 0 0 0 0-1.42l-2.33-2.33a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75z"/></svg>',
   lyrics:'<svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-5 14H7v-2h7zm3-4H7v-2h10zm0-4H7V7h10z"/></svg>',
-  imp:'<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/></svg>'
+  imp:'<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/></svg>',
+  expand:'<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+  collapse:'<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>'
 };
 const _mxS={tab:'lib',chip:'all',q:'',edit:false};
 
@@ -97,12 +99,47 @@ function _mxGroups(kind){
 const _mxCv=(url,cls)=>url?`<img class="${cls||''}" src="${esc(url)}" alt="" loading="lazy">`:`<span class="mm-cv-none ${cls||''}">${_MM_ICO.note}</span>`;
 const _mxN=n=>n+' '+_mmPlural(n);
 
+// ── полноэкранный режим музыки и хелперы шапки ──
+function _mxPushHdrBtns(extraRight=''){
+  const isFs = document.body.classList.contains('mx-fullscreen-body') || document.querySelector('.sidebar')?.classList.contains('mx-fullscreen-active');
+  return `<button class="sp-tb-btn mx-expand-btn" id="mxExpandBtn" onclick="_mxToggleFullscreen()" title="${isFs?'Свернуть в панель':'Развернуть на весь экран'}">${isFs?_MX_ICO.collapse:_MX_ICO.expand}</button>${extraRight}`;
+}
+
+window._mxToggleFullscreen = function(force){
+  const sidebar = document.querySelector('.sidebar');
+  const spPanel = document.getElementById('spPanel');
+  const page = document.querySelector('.mx-page');
+  if (!sidebar) return;
+
+  const isFs = typeof force === 'boolean' ? force : !sidebar.classList.contains('mx-fullscreen-active');
+  sidebar.classList.toggle('mx-fullscreen-active', isFs);
+  if (spPanel) spPanel.classList.toggle('mx-fullscreen-active', isFs);
+  if (page) page.classList.toggle('mx-fullscreen', isFs);
+  document.body.classList.toggle('mx-fullscreen-body', isFs);
+
+  document.querySelectorAll('.mx-expand-btn').forEach(btn => {
+    btn.innerHTML = isFs ? _MX_ICO.collapse : _MX_ICO.expand;
+    btn.title = isFs ? 'Свернуть в панель' : 'Развернуть на весь экран';
+  });
+
+  window.dispatchEvent(new Event('resize'));
+};
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && document.body.classList.contains('mx-fullscreen-body')) {
+    _mxToggleFullscreen(false);
+  }
+});
+
 // ── страница «Медиатека» с нижней навигацией ──
 _spMusic=function(){
   const page=_spPush('Музыка',`<div class="mx" id="mxRoot"><div class="mx-body" id="mxBody"></div>
     <nav class="mx-nav">${[['home','Главная'],['search','Поиск'],['lib','Медиатека']].map(([k,t])=>`<button data-t="${k}" onclick="_mxTab('${k}')">${_MX_ICO[k]}<span>${t}</span></button>`).join('')}</nav></div>`,
-    {right:`<button class="sp-tb-btn" onclick="_mmPlNew()" title="Создать плейлист">${_MM_ICO.plus}</button>`});
+    {right:_mxPushHdrBtns(`<button class="sp-tb-btn" onclick="_mmPlNew()" title="Создать плейлист">${_MM_ICO.plus}</button>`)});
   page.classList.add('mx-page');
+  page._onClose = function(){
+    if (typeof _mxToggleFullscreen === 'function') _mxToggleFullscreen(false);
+  };
   _mxS.edit=false;_mxTab('home');
   _mmFamLoad();
   _mmLoad(true).then(()=>_mxRefresh()).catch(()=>{});
@@ -306,7 +343,7 @@ _mmPlPagePaint=function(id){
 };
 {const f=_spMusicPl;_spMusicPl=function(id){_mxS.edit=false;const r=f.apply(this,arguments);$('mmPlPage')?.classList.add('mx-pl');return r;};}
 function _mxOpenLiked(){
-  const page=_spPush('Любимые треки','<div class="mm-page mx-pl" id="mxLiked"></div>');
+  const page=_spPush('Любимые треки','<div class="mm-page mx-pl" id="mxLiked"></div>',{right:_mxPushHdrBtns()});
   const paint=()=>{const b=$('mxLiked');if(!b)return;const l=_mxLikedItems();
     b.innerHTML=_mxListPage({title:'Любимые треки',coverHtml:`<span class="mx-liked-cv big">${_MX_ICO.heart}</span>`,items:l,src:'likes',owner:true});_mmPaintPlay();};
   page._paint=paint;paint();
@@ -317,7 +354,7 @@ function _mxOpenGroup(kind,name){
     return;
   }
   const g=_mxGroups(kind).find(x=>x.name===name);if(!g)return;
-  _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>');
+  _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>',{right:_mxPushHdrBtns()});
   const b=$('mxGroup');
   const cv=g.cover;
   b.innerHTML=_mxListPage({title:name,cover:cv,round:false,items:g.items,src:kind+':'+name});
@@ -326,7 +363,7 @@ function _mxOpenGroup(kind,name){
 
 function _mxOpenArtistProfile(name){
   const g=_mxGroups('artist').find(x=>x.name===name);if(!g)return;
-  _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>');
+  _spPush(esc(name),'<div class="mm-page mx-pl" id="mxGroup"></div>',{right:_mxPushHdrBtns()});
   const b=$('mxGroup');
   const cv=_mxArtPic(name)||g.cover;
 

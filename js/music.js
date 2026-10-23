@@ -855,7 +855,7 @@ async function _mmPlCreate(){
 }
 function _spMusicPl(id){
   const p=_mmPlById(id);if(!p)return;
-  const page=_spPush(esc(p.name),`<div class="mm-page" id="mmPlPage" data-pl="${esc(id)}"></div>`);
+  const page=_spPush(esc(p.name),`<div class="mm-page" id="mmPlPage" data-pl="${esc(id)}"></div>`, typeof _mxPushHdrBtns==='function'?{right:_mxPushHdrBtns()}:{});
   _mmPlPagePaint(id);
   return page;
 }
