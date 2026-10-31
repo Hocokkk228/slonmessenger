@@ -188,10 +188,10 @@ function _mlPost(chat,rec){
   // у кого шифрования никогда не было (старая версия).
   const must=typeof _e2eMust==='function'&&_e2eMust(chat==='saved'?myUsername:chat);
   const ready=typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp;
-  if((ready||must)&&!clean._plain){
+  if((ready||must||clean.mk)&&!clean._plain){
     return (async()=>{
       if(ready&&await _e2ePost(chat,key,clean))return;
-      if(must||_e2eMust(chat==='saved'?myUsername:chat)){_e2eOutboxAdd(chat,key,clean);return;}
+      if(must||clean.mk||_e2eMust(chat==='saved'?myUsername:chat)){_e2eOutboxAdd(chat,key,clean);return;}
       if((clean.k||'text')==='text'&&chat!=='saved')
         sendData(conns[chat]||chat,{type:'msg',id:clean.id,text:clean.text,ts:clean.ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
       return _mlPost(chat,{...clean,_plain:1,mk:undefined});
@@ -416,7 +416,7 @@ saveAll=function(){
 // Досылается при переподключении к серверу; сервер идемпотентен по ключу.
 const _obKey=()=>'sl_u_'+myUsername+'_outbox';
 function _obLoad(){try{const a=JSON.parse(localStorage.getItem(_obKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
-function _obSave(a){try{localStorage.setItem(_obKey(),JSON.stringify(a.slice(-500)));}catch(e){}}
+function _obSave(a){try{localStorage.setItem(_obKey(),JSON.stringify(a));}catch(e){console.warn('outbox save failed',e);}}
 function _obAdd(chat,rec){
   const a=_obLoad();
   if(a.some(x=>x.rec&&x.rec.id===rec.id))return;      // уже в очереди
@@ -431,17 +431,17 @@ async function _obDrain(){
   _obDraining=true;
   try{
     let a=_obLoad();if(!a.length){_obBadge();return;}
-    const rest=[];
+    const done=new Set();
     for(const it of a){
       if(!it||!it.rec||!it.chat){continue;}
       // сообщение удалили из истории — не досылаем
       const exists=(chatHist[it.chat]||[]).some(m=>m.id===it.rec.id)||it.chat==='saved';
-      if(!exists)continue;
-      if(!_hubUp){rest.push(it);continue;}            // связь снова пропала — оставляем на потом
-      try{await _mlPost0(it.chat,{...it.rec,_fromOutbox:1});}
-      catch(e){rest.push(it);}
+      if(!exists){done.add(it.rec.id);continue;}
+      if(!_hubUp)continue;            // связь снова пропала — оставляем на потом
+      try{const post=_mlPost0(it.chat,{...it.rec,_fromOutbox:1});if(!post)continue;await post;done.add(it.rec.id);}
+      catch(e){}
     }
-    _obSave(rest);_obBadge();
+    _obSave(_obLoad().filter(it=>!done.has(it?.rec?.id)));_obBadge();
   }finally{_obDraining=false;}
 }
 // маленький счётчик «ждут отправки» в статусе списка чатов

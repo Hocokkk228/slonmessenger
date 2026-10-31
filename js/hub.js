@@ -142,7 +142,7 @@ async function _hubDispatch(m){
     case 'ml_ack':{
       for(const [chat,hist] of Object.entries(chatHist)){
         const msg=(hist||[]).find(x=>x&&(x._mk===m.key||(_mlKey(x.ts,x.id)===m.key)));
-        if(msg){msg._mk=m.key;if(msg.status==='sent'||!msg.status){msg.status='delivered';_updateMsgStatus(msg.id,'delivered');saveAll();}break;}
+        if(msg){msg._mk=m.key;if(msg.status==='sent'||msg.status==='wait'||!msg.status){msg.status='delivered';_updateMsgStatus(msg.id,'delivered');saveAll();}break;}
       }
       break;}
   }

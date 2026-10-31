@@ -67,6 +67,7 @@ async function makeThumb(dataUrl,maxPx=400,q=0.75){
   });
 }
 
+const _msgWaitSvg='<svg viewBox="0 0 24 24" aria-label="Ожидает отправки"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.5 2"/></svg>';
 function sendMsg(){
   const inp=$('msgInp'),txt=inp.value.trim();if(!txt)return;
   // SLON-канал
@@ -290,7 +291,7 @@ function appendMsg(msg,container){
   if(isOut&&msg.type==='call'&&!msg.status)msg.status=(msg.callOutcome==='answered'||msg.callOutcome==='declined')?'read':'delivered';
   if(!isOut&&msg.unenc)statusIcon=' <span class="ticks unenc" title="Пришло без сквозного шифрования">⚠︎</span>';
   if(isOut){
-    if(msg.status==='wait') statusIcon=' <span class="ticks wait" title="Ждёт шифрования — уйдёт, когда появится связь">🕓︎</span>';
+    if(msg.status==='wait') statusIcon=' <span class="ticks wait" title="Ожидает отправки">'+_msgWaitSvg+'</span>';
     else if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
     else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
     else statusIcon=' <span class="ticks sent">✓</span>';
@@ -495,7 +496,7 @@ function _updateMsgStatus(mid,status){
   if(el){
     if(status==='read'){el.textContent='✓✓';el.className='ticks read';}
     else if(status==='delivered'){el.textContent='✓✓';el.className='ticks';}
-    else if(status==='wait'){el.textContent='🕓︎';el.className='ticks wait';}
+    else if(status==='wait'){el.innerHTML=_msgWaitSvg;el.className='ticks wait';el.title='Ожидает отправки';}
     else{el.textContent='✓';el.className='ticks sent';}
   }
 }

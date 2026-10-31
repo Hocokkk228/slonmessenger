@@ -533,7 +533,7 @@ async function _e2eSafetyCode(peer){
 // а собеседник уже на шифровании — сообщение ждёт, а не уходит открытым текстом.
 const _e2eObKey=()=>_e2eK('outbox');
 function _e2eObGet(){try{return JSON.parse(localStorage.getItem(_e2eObKey())||'[]');}catch(e){return [];}}
-function _e2eObSet(a){try{localStorage.setItem(_e2eObKey(),JSON.stringify(a.slice(-300)));}catch(e){}}
+function _e2eObSet(a){try{localStorage.setItem(_e2eObKey(),JSON.stringify(a));}catch(e){console.warn('[e2e] outbox save failed',e);}}
 function _e2eOutboxAdd(chat,key,rec){
   const a=_e2eObGet();if(!a.some(x=>x.key===key))a.push({chat,key,rec});_e2eObSet(a);
   const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);if(m){m.status='wait';if(typeof _updateMsgStatus==='function')_updateMsgStatus(rec.id,'wait');}
