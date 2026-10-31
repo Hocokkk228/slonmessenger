@@ -387,9 +387,7 @@ function _e2eRepairPlaceholders(){
 // Сообщение было «недоступно» — ключ появился, перерисовываем
 function _e2eRetry(key){
   const rec=_e2eWaiting[key];delete _e2eWaiting[key];
-  const hist=chatHist[rec.chat];if(!hist)return;
-  const i=hist.findIndex(m=>m._mk===key);
-  if(i>=0){hist.splice(i,1);document.querySelector('[data-msg-id="'+rec.id+'"]')?.remove();}
+  if(!rec||!chatHist[rec.chat])return;
   _mlOnAdd(key,rec);
 }
 

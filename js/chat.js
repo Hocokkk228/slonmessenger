@@ -827,12 +827,13 @@ async function sendFileTo(fid,name,mime,isImg,data,ts,caption){
   }else if(activeChat!=='ai'&&(activeChat==='saved'||_fbMode||conns[activeChat]?.open)){
     const chat=activeChat;
     // Через журнал: дойдёт, даже если собеседник офлайн, и появится на всех устройствах
-    if(typeof _mlSendMedia==='function'&&_mlOn()){
+    if(typeof _mlSendMedia==='function'&&(_mlOn()||(typeof _mlHubReady==='function'&&_mlHubReady()))){
       const m=(chatHist[chat]||[]).find(x=>x.id===fid);
       const ok=await _mlSendMedia(chat,fid,isImg?'photo':'file',data,{name,mime,ts,size:m?.fileInfo?.size||'',caption},
         pct=>_setMsgUploadProgress(fid,Math.min(99,pct)));
       _setMsgUploadProgress(fid,100);setTimeout(()=>_setMsgUploadProgress(fid,null),500);
       if(ok)return;
+      if(typeof _e2eMust==='function'&&_e2eMust(chat))return; // не пересылаем файл открытым текстом при сбое журнала
     }
     if(chat!=='saved')await doSend(conns[chat]||chat,chat);
   }

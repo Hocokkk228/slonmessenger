@@ -176,11 +176,12 @@ const _mlSessionStart=Date.now();
 function _mlKey(ts,id){return String(ts||0).padStart(13,'0')+'_'+String(id).replace(/[^A-Za-z0-9_-]/g,'_');}
 function _mlRef(owner,key){return window._fbRef(window._fbDb,'ml/'+owner+(key?'/'+key:''));}
 function _mlOn(){return !!(_fbMode&&window._fbDb&&myUsername&&_mlUser===myUsername);}
+function _mlHubReady(){return !!(myUsername&&typeof _hubUp!=='undefined'&&_hubUp&&typeof _apiToken==='function'&&_apiToken());}
 function _mlSeenKey(){return _getAccountPrefix(myUsername)+'mlSeen';}
 
 // Записать сообщение себе и собеседнику (для «Избранного» — только себе)
 function _mlPost(chat,rec){
-  if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId?.(chat))return null;
+  if(!(_mlOn()||_mlHubReady())||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId?.(chat))return null;
   const key=_mlKey(rec.ts,rec.id);
   const clean={};for(const k in rec)if(rec[k]!==undefined&&rec[k]!==null)clean[k]=rec[k];
   // Сквозное шифрование (Signal): получилось — всё. Собеседник уже на шифровании, а сейчас оно
@@ -243,7 +244,7 @@ function _mlDelete(chat,msg,forAll){
 // Медиа-сообщение: сначала кусками в mstore, потом запись в журнал.
 // Получатель может быть офлайн — заберёт, когда зайдёт.
 async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
-  if(!_mlOn()||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId(chat))return false;
+  if(!(_mlOn()||_mlHubReady())||!chat||chat==='ai'||chat.startsWith('g_')||_isChannelId(chat))return false;
   try{
     // На наш сервер; если у устройства ещё нет токена — по-старому, в Firebase
     let m,mk;
@@ -308,6 +309,26 @@ async function _mlMaterialize(key,r0){
 }
 const ML_PREVIEW={text:null,photo:'Фото',file:'Файл',voice:'Голосовое',slon:'Слонкружок',gift:'Подарок'};
 
+// Временная ошибка загрузки медиа не должна навсегда пропускать запись.
+// Повторы редкие и не тормозят основную отправку и чтение журнала.
+const _mlMediaRetry=new Map();
+function _mlRetryMedia(key,rec){
+  const user=myUsername,token=user+':'+key;
+  let item=_mlMediaRetry.get(token);
+  if(!item){item={n:0,timer:0};_mlMediaRetry.set(token,item);}
+  if(item.timer||item.n>=4)return;
+  const delay=[5000,15000,40000,90000][item.n++];
+  item.timer=setTimeout(()=>{
+    item.timer=0;
+    if(myUsername!==user){_mlMediaRetry.delete(token);return;}
+    _mlOnAdd(key,rec).catch(e=>console.warn('ml media retry:',e));
+  },delay);
+}
+function _mlCancelMediaRetry(key){
+  const token=myUsername+':'+key,item=_mlMediaRetry.get(token);
+  if(item?.timer)clearTimeout(item.timer);_mlMediaRetry.delete(token);
+}
+
 async function _mlOnAdd(key,r){
   if(!r||!r.id||!r.chat||r.del||r.gone)return;
   const chat=r.chat,out=!!r.out;
@@ -318,9 +339,7 @@ async function _mlOnAdd(key,r){
   if(have){
     have._mk=key;
     const isStub=have._e2eWait||(typeof have.text==='string'&&/^(🔒 )?Зашифрованное сообщение/u.test(have.text));
-    if(!isStub||!r.e)return;
-    const i=hist.indexOf(have);if(i>=0)hist.splice(i,1);
-    document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();
+    if(!isStub||!r.e){_mlCancelMediaRetry(key);return;}
   }
   if(_mlPending.has(r.id))return;
   _mlPending.add(r.id);
@@ -334,7 +353,9 @@ async function _mlOnAdd(key,r){
     }
     let msg;
     try{msg=await _mlMaterialize(key,r);}
-    catch(e){console.warn('ml materialize:',r.id,e);return;}
+    catch(e){console.warn('ml materialize:',r.id,e);_mlRetryMedia(key,r);return;}
+    _mlCancelMediaRetry(key);
+    if(have){const i=hist.indexOf(have);if(i>=0)hist.splice(i,1);document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();}
     if(hist.some(m=>m.id===r.id))return;   // успело прийти другим путём
     hist.push(msg);
     const isLast=!hist.some(m=>m!==msg&&(m.ts||0)>(msg.ts||0));
@@ -364,6 +385,7 @@ async function _mlOnAdd(key,r){
 }
 function _mlOnChange(key,r){
   if(!r||!r.chat)return;
+  if(r.del||r.gone)_mlCancelMediaRetry(key);
   const chat=r.chat,hist=chatHist[chat];if(!hist)return;
   const m=hist.find(x=>x.id===r.id);if(!m)return;
   // зашифрованная правка: расшифровываем новую версию
