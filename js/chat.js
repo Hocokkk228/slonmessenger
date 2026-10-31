@@ -107,7 +107,7 @@ function sendMsg(){
     return;
   }
   inp.value='';resizeInp(inp);
-  if(activeChat.startsWith('g_')){sendGrpMsg(activeChat,txt);return;}
+  if(activeChat.startsWith('g_')){const reply=_replyTo?{..._replyTo}:null;cancelReply();sendGrpMsg(activeChat,txt,reply);return;}
   const mid='m'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ts=Date.now();
   const reply=_replyTo?{..._replyTo}:null;cancelReply();

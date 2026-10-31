@@ -53,23 +53,24 @@ function recvGrpInvite(data){
   data.members.forEach(pid=>{if(pid!==myUsername&&!conns[pid]?.open)silentConnect(pid);});saveAll();
 }
 
-function sendGrpMsg(gid,text){
+function sendGrpMsg(gid,text,reply){
   const g=groups[gid];if(!g)return;
   const mid='gm'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
   const ts=Date.now();
   const msg={id:mid,sender:'me',text,time:fmtTime(ts),ts};
-  if(!grpHist[gid])grpHist[gid]=[];grpHist[gid].push(msg);appendMsg(msg);scrollDown();
+  if(reply)msg.reply=reply;
+  if(!grpHist[gid])grpHist[gid]=[];grpHist[gid].push(msg);if(activeChat===gid){appendMsg(msg);scrollDown();}
   updatePreview(gid,'Вы: '+text.slice(0,25));saveAll();
   // Пишем в Firebase группы — надёжнее чем индивидуальные inbox
   if(window._fbDb&&_fbMode){
     window._fbSet(window._fbRef(window._fbDb,'grp_msgs/'+gid+'/'+mid),{
       id:mid,text,ts,sid:myUsername,nick:myNick||('@'+myUsername),
-      avatar:myAvatar||null,gname:g.name||'Группа'
+      avatar:myAvatar||null,gname:g.name||'Группа',...(reply?{reply}: {})
     }).catch(e=>console.warn('grpMsg write error:',e));
   }else{
     // Fallback: индивидуальные inbox
     const pkt={type:'group_msg',gid,gname:g.name||'Группа',text,nick:myNick||('@'+myUsername),
-      avatar:myAvatar||null,sid:myUsername,mid,time:fmtTime(ts),ts};
+      avatar:myAvatar||null,sid:myUsername,mid,time:fmtTime(ts),ts,...(reply?{reply}: {})};
     g.members.forEach(pid=>{if(pid!==myUsername&&(_fbMode||conns[pid]?.open))sendData(conns[pid]||pid,pkt);});
   }
 }
@@ -84,6 +85,7 @@ function recvGrpMsg(data){
   }
   if(!grpHist[data.gid])grpHist[data.gid]=[];
   const msg={id:data.mid,sender:'inc',senderId:data.sid,name:peerNames[data.sid]||data.nick||('@'+data.sid),avatar:data.avatar||peerAvatars[data.sid]||null,text:data.text,ts:data.ts||Date.now(),time:data.time||nowTime()};
+  if(data.reply&&data.reply.id)msg.reply={id:String(data.reply.id),name:String(data.reply.name||''),text:String(data.reply.text||'').slice(0,120)};
   grpHist[data.gid].push(msg);
   if(activeChat===data.gid){appendMsg(msg);scrollDown();}
   else{addUnread(data.gid);toast((groups[data.gid]?.name||'Группа')+': '+msg.name+': '+data.text.slice(0,35));}
@@ -371,6 +373,7 @@ function _fbListenGrpMsgs(gid){
       name:peerNames[d.sid]||d.nick||('@'+d.sid),
       avatar:d.avatar||peerAvatars[d.sid]||null,
       text:d.text,ts,time:fmtTime(ts)};
+    if(d.reply&&d.reply.id)msg.reply={id:String(d.reply.id),name:String(d.reply.name||''),text:String(d.reply.text||'').slice(0,120)};
     grpHist[gid].push(msg);
     if(activeChat===gid){appendMsg(msg);scrollDown();}
     else{addUnread(gid);if(!mutedChats[gid]&&_notifOn('groups')){playNotifSound();toast((groups[gid]?.name||'Группа')+': '+msg.name+': '+_notifText('groups',d.text).slice(0,35));}}
