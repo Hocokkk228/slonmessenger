@@ -87,5 +87,5 @@ async function _mp4Strip(file){
   try{inp.value='';}catch(e){}
   let clean=file;
   try{clean=await _stripMeta(file);}catch(e){}
-  return f.call(this,{files:[clean],value:''});
+  return f.call(this,{files:[clean],value:'',_caption:inp._caption,_chat:inp._chat});
 };}

@@ -77,13 +77,27 @@
     saveAll();closeShare();toast('Контакт отправлен');
   }
   const oldAppend=appendMsg;
+  function paintContactAvatar(card,user){
+    const holder=card.querySelector('.contact-card-avatar');if(!holder)return;
+    const src=user===myUsername?myAvatar:peerAvatars[user];
+    holder.replaceChildren();
+    if(src){const img=document.createElement('img');img.src=src;img.alt='';img.onerror=()=>{holder.innerHTML=icon;};holder.appendChild(img);}
+    else holder.innerHTML=icon;
+  }
+  const requestedProfiles=new Set();
+  if(typeof _applyFetchedProfile==='function'){
+    const oldApply=_applyFetchedProfile;
+    _applyFetchedProfile=function(pid){const result=oldApply.apply(this,arguments);document.querySelectorAll('.contact-card[data-contact-user]').forEach(card=>{if(card.dataset.contactUser===pid)paintContactAvatar(card,pid);});return result;};
+  }
   appendMsg=function(msg,container){
     const result=oldAppend.apply(this,arguments);
     const match=typeof msg.text==='string'&&msg.text.match(/^Контакт: ([^\n]{1,100})\n@([\w.\-]{1,64})\n⁣SLON_CONTACT$/);
     if(!match)return result;
     const root=container||$('msgs'),wrap=Array.from(root.querySelectorAll('.msg[data-msg-id]')).find(el=>el.dataset.msgId===String(msg.id));
     const bub=wrap?.querySelector('.msg-bub');if(!bub)return result;
-    const card=document.createElement('button');card.className='contact-card';card.innerHTML=icon;
+    const card=document.createElement('button');card.className='contact-card';card.dataset.contactUser=match[2];
+    const avatar=document.createElement('span');avatar.className='contact-card-avatar';card.appendChild(avatar);paintContactAvatar(card,match[2]);
+    if(match[2]!==myUsername&&!peerAvatars[match[2]]&&!requestedProfiles.has(match[2])&&typeof _fetchProfile==='function'){requestedProfiles.add(match[2]);_fetchProfile(match[2]);}
     const label=document.createElement('span'),name=document.createElement('b'),username=document.createElement('small');
     name.textContent=match[1];username.textContent='@'+match[2];label.append(name,username);card.appendChild(label);
     card.onclick=e=>{e.stopPropagation();if(typeof _fetchProfile==='function')_fetchProfile(match[2]);showPeerProfile(match[2]);};
@@ -117,4 +131,64 @@
     }
   }
   box.addEventListener('pointerup',e=>end(e,false));box.addEventListener('pointercancel',e=>end(e,true));
+})();
+
+// Вложения из буфера, выбора файла и перетаскивания отправляем после подтверждения.
+(function(){
+  const originalHandle=handleFile;
+  let preview=null,urls=[];
+  function close(){
+    preview?.remove();preview=null;
+    urls.forEach(u=>URL.revokeObjectURL(u));urls=[];
+  }
+  function prepare(input,chat){
+    const files=Array.from(input||[]);if(!files.length)return;
+    if(files.some(f=>f.size>500*1024*1024)){toast('Файл > 500 МБ');return;}
+    close();
+    const onlyPhoto=files.length===1&&files[0].type.startsWith('image/');
+    const title=onlyPhoto?'Отправить фото':files.length===1?'Отправить файл':'Отправить файлы ('+files.length+')';
+    const dialog=document.createElement('div');dialog.className='photo-compose-overlay';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label',title);
+    dialog.innerHTML='<div class="photo-compose"><div class="photo-compose-head"><b></b><button type="button" class="photo-compose-close" aria-label="Закрыть">×</button></div><div class="photo-compose-image"></div><textarea class="photo-compose-caption" maxlength="1024" placeholder="Добавить подпись…" aria-label="Подпись к файлам"></textarea><div class="photo-compose-actions"><button type="button" class="photo-compose-cancel">Отмена</button><button type="button" class="photo-compose-send">Отправить</button></div></div>';
+    dialog.querySelector('.photo-compose-head b').textContent=title;
+    const content=dialog.querySelector('.photo-compose-image');
+    if(onlyPhoto){const img=document.createElement('img');img.alt='Предпросмотр фото';img.src=URL.createObjectURL(files[0]);urls.push(img.src);content.appendChild(img);}
+    else{
+      const list=document.createElement('div');list.className='photo-compose-files';
+      files.forEach(f=>{const row=document.createElement('div');row.className='photo-compose-file';
+        const ico=document.createElement('span');ico.className='photo-compose-file-icon';ico.textContent=f.type.startsWith('image/')?'Фото':'Файл';
+        const desc=document.createElement('span'),name=document.createElement('b'),size=document.createElement('small');name.textContent=f.name||'Файл';size.textContent=typeof fmtSz==='function'?fmtSz(f.size):'';desc.append(name,size);row.append(ico,desc);list.appendChild(row);});content.appendChild(list);
+    }
+    const inp=$('msgInp'),draft=inp?.value||'';dialog.querySelector('textarea').value=draft.slice(0,1024);
+    const cancel=()=>close();
+    const send=()=>{
+      if(chat!==activeChat){toast('Чат изменился — выбери файлы ещё раз');close();return;}
+      const caption=dialog.querySelector('textarea').value;
+      if(inp&&inp.value===draft&&draft){inp.value=draft.slice(1024);if(typeof resizeInp==='function')resizeInp(inp);if(typeof _syncInpState==='function')_syncInpState();}
+      close();files.forEach((file,i)=>originalHandle({files:[file],value:'',_caption:i===0?caption:'',_chat:chat}));
+    };
+    dialog.querySelector('.photo-compose-close').onclick=cancel;
+    dialog.querySelector('.photo-compose-cancel').onclick=cancel;
+    dialog.querySelector('.photo-compose-send').onclick=send;
+    dialog.onclick=e=>{if(e.target===dialog)cancel();};
+    dialog.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();cancel();}else if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();send();}};
+    document.body.appendChild(dialog);preview=dialog;dialog.querySelector('textarea').focus();
+  }
+  handleFile=function(inp){
+    const files=Array.from(inp?.files||[]);if(!files.length)return;
+    const chat=activeChat;try{inp.value='';}catch(e){}prepare(files,chat);
+  };
+  document.addEventListener('paste',e=>{
+    if(preview||!activeChat||currentView!=='chat'||!e.clipboardData)return;
+    const target=e.target;if(target!==$('msgInp')&&!$('inpWrap')?.contains(target))return;
+    const files=Array.from(e.clipboardData.items||[]).filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile()).filter(Boolean);
+    if(!files.length)return;e.preventDefault();prepare(files,activeChat);
+  });
+  const hasFiles=e=>Array.from(e.dataTransfer?.types||[]).includes('Files');
+  const chatPane=$('chatPane');
+  if(chatPane){
+    chatPane.addEventListener('dragover',e=>{if(preview||!activeChat||currentView!=='chat'||!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';chatPane.classList.add('attachment-dragover');});
+    chatPane.addEventListener('dragleave',e=>{if(!chatPane.contains(e.relatedTarget))chatPane.classList.remove('attachment-dragover');});
+    chatPane.addEventListener('drop',e=>{chatPane.classList.remove('attachment-dragover');if(!hasFiles(e))return;e.preventDefault();if(preview||!activeChat||currentView!=='chat')return;prepare(e.dataTransfer.files,activeChat);});
+    document.addEventListener('dragend',()=>chatPane.classList.remove('attachment-dragover'));
+  }
 })();

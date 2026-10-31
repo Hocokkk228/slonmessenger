@@ -915,7 +915,7 @@ function onData(pid,data){
       }
       saveAll();break;}
     case 'file_start':
-      inFiles[data.id]={name:data.name,mime:data.mime,total:data.chunks,parts:[],isImg:data.isImg,ts:data.ts};
+      inFiles[data.id]={name:data.name,mime:data.mime,total:data.chunks,parts:[],isImg:data.isImg,ts:data.ts,caption:data.caption};
       // Показываем уведомление об отправке (для прогресса)
       _showIncomingFileProgress(pid,data.id,data.name,data.chunks);
       break;

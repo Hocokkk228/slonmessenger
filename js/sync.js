@@ -256,7 +256,7 @@ async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
     else if(typeof _apiToken==='function'&&_apiToken())m=await _srvUpload(dataUrl,{mime:meta.mime,name:meta.name},onProg);
     else await _msUpload(id,dataUrl,{kind,mime:meta.mime||'',name:meta.name||''},onProg);
     await _mlPost(chat,{id,k:kind,m,mk,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
-      dur:meta.dur,wave:meta.wave?meta.wave.join(','):undefined});
+      dur:meta.dur,wave:meta.wave?meta.wave.join(','):undefined,caption:meta.caption||undefined});
     return true;
   }catch(e){console.warn('ml media:',e);toast('Не удалось отправить медиа: '+e.message);return false;}
 }
@@ -284,7 +284,7 @@ async function _mlMaterialize(key,r0){
   const data=r.mk?await _e2eFetchMedia(r.m,r.mk,r.mime):r.m?await _srvDownload(r.m):await _msDownload(r.id);
   if(k==='photo'){
     const photoId=storePhoto(data);const thumb=await makeThumb(data);
-    return {...base,photoId,photoThumb:thumb||data,fileName:r.name||'photo'};
+    return {...base,photoId,photoThumb:thumb||data,fileName:r.name||'photo',...(r.caption?{caption:String(r.caption).slice(0,1024)}:{})};
   }
   if(k==='voice'){
     await _saveMediaToIdb(r.id,'voice',data);
@@ -304,7 +304,7 @@ async function _mlMaterialize(key,r0){
     for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
     fileStore[fdid]=URL.createObjectURL(new Blob([arr],{type:r.mime||'application/octet-stream'}));
   }catch(e){fileStore[fdid]=null;}
-  return {...base,fileInfo:{name:r.name||'файл',size:r.size||''},fileDataId:fdid};
+  return {...base,fileInfo:{name:r.name||'файл',size:r.size||''},fileDataId:fdid,...(r.caption?{caption:String(r.caption).slice(0,1024)}:{})};
 }
 const ML_PREVIEW={text:null,photo:'Фото',file:'Файл',voice:'Голосовое',slon:'Слонкружок',gift:'Подарок'};
 
@@ -343,7 +343,7 @@ async function _mlOnAdd(key,r){
       if(isLast){appendMsg(msg);scrollDown();}else renderChat(chat);
       if(!out)setTimeout(()=>_sendRead(chat),50);
     }
-    const k=msg.gift?'gift':msg.text!=null?'text':msg.photoId?'photo':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
+    const k=msg.gift?'gift':msg.photoId?'photo':msg.text!=null?'text':msg.voiceData?'voice':msg.slonData?'slon':msg.fileInfo?'file':'text';
     r={...r,text:msg.text};
     const pv=ML_PREVIEW[k]||(msg.text||'').slice(0,28);
     if(isLast)updatePreview(chat,(out?'Вы: ':'')+(k==='text'?(msg.text||'').slice(0,28):pv));

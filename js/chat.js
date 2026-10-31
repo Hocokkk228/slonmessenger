@@ -246,6 +246,7 @@ function appendMsg(msg,container){
     if(msg.photoThumb)img.src=msg.photoThumb;
     _resolvePhotoSrc(pid2).then(src=>{if(src)img.src=src;});
     bub.appendChild(img);
+    if(msg.caption){const caption=document.createElement('div');caption.className='photo-caption';caption.innerHTML=linkify(msg.caption);caption.onclick=e=>e.stopPropagation();bub.appendChild(caption);}
     // Прогресс отправки
     const prog=document.createElement('div');prog.className='upload-progress';
     if(msg.uploadProgress!=null&&msg.uploadProgress<100){_renderProgressRing(prog,msg.uploadProgress);}
@@ -282,6 +283,7 @@ function appendMsg(msg,container){
     }
     body.appendChild(bub);
   }
+  if(msg.caption&&!msg.photoId){const caption=document.createElement('div');caption.className='file-caption msg-bub';caption.innerHTML=linkify(msg.caption);body.appendChild(caption);}
   const t=document.createElement('div');t.className='msg-time';
   let statusIcon='';
   // старые записи о звонках — без статуса: ответил/отклонил → видел, иначе доставлено
@@ -753,20 +755,24 @@ function onTyping(el){
 
 function handleFile(inp){
   const file=inp.files[0];if(!file)return;
+  const target=inp._chat||activeChat,caption=String(inp._caption||'').trim().slice(0,1024);
+  if(target!==activeChat){toast('Чат изменился — выбери фото ещё раз');return;}
   if(file.size>500*1024*1024){toast('Файл > 500 МБ');inp.value='';return;}
   inp.value='';const isImg=file.type.startsWith('image/');
   const reader=new FileReader();
   reader.onload=async e=>{
-    const data=e.target.result,fid='f'+Date.now();
+    if(target!==activeChat){toast('Чат изменился — выбери фото ещё раз');return;}
+    const data=e.target.result,fid='f'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
     const ts=Date.now();
     if(isImg){
       const photoId=storePhoto(data),thumb=await makeThumb(data);
-      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),photoId,photoThumb:thumb||data,fileName:file.name,uploadProgress:0};
-      pushMsg(msg);sendFileTo(fid,file.name,file.type,true,data,ts);
+      if(target!==activeChat){toast('Чат изменился — выбери фото ещё раз');return;}
+      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),photoId,photoThumb:thumb||data,fileName:file.name,uploadProgress:0,...(caption?{caption}:{})};
+      pushMsg(msg);sendFileTo(fid,file.name,file.type,true,data,ts,caption);
     }else{
       const fdid='fd_'+fid;fileStore[fdid]=data;
-      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),fileInfo:{name:file.name,size:fmtSz(file.size)},fileDataId:fdid,uploadProgress:0};
-      pushMsg(msg);sendFileTo(fid,file.name,file.type,false,data,ts);
+      const msg={id:fid,sender:'me',ts,time:fmtTime(ts),fileInfo:{name:file.name,size:fmtSz(file.size)},fileDataId:fdid,uploadProgress:0,...(caption?{caption}:{})};
+      pushMsg(msg);sendFileTo(fid,file.name,file.type,false,data,ts,caption);
     }
   };
   reader.readAsDataURL(file);
@@ -779,7 +785,7 @@ function pushMsg(msg){
   updatePreview(activeChat,'Вы:'+(msg.fileName||'Файл').slice(0,20));saveAll();
 }
 
-async function sendFileTo(fid,name,mime,isImg,data,ts){
+async function sendFileTo(fid,name,mime,isImg,data,ts,caption){
   // В Firebase-режиме используем большие chunks (~100KB) чтобы меньше RTDB вызовов,
   // но ниже лимита 256KB на один RTDB child
   const chunkSize=_fbMode?100000:CHUNK;
@@ -788,7 +794,7 @@ async function sendFileTo(fid,name,mime,isImg,data,ts){
   const total=chunks.length;
 
   const doSend=async (conn,pid)=>{
-    sendData(conn,{type:'file_start',id:fid,name,mime,chunks:total,isImg,ts});
+    sendData(conn,{type:'file_start',id:fid,name,mime,chunks:total,isImg,ts,...(caption?{caption}:{})});
     for(let i=0;i<total;i++){
       sendData(conn,{type:'file_chunk',id:fid,i,d:chunks[i]});
       // Обновляем прогресс на каждые 5%, чтобы не перерисовывать слишком часто
@@ -822,7 +828,7 @@ async function sendFileTo(fid,name,mime,isImg,data,ts){
     // Через журнал: дойдёт, даже если собеседник офлайн, и появится на всех устройствах
     if(typeof _mlSendMedia==='function'&&_mlOn()){
       const m=(chatHist[chat]||[]).find(x=>x.id===fid);
-      const ok=await _mlSendMedia(chat,fid,isImg?'photo':'file',data,{name,mime,ts,size:m?.fileInfo?.size||''},
+      const ok=await _mlSendMedia(chat,fid,isImg?'photo':'file',data,{name,mime,ts,size:m?.fileInfo?.size||'',caption},
         pct=>_setMsgUploadProgress(fid,Math.min(99,pct)));
       _setMsgUploadProgress(fid,100);setTimeout(()=>_setMsgUploadProgress(fid,null),500);
       if(ok)return;
@@ -882,6 +888,7 @@ async function finishFile(fid,pid){
   if(isImg){
     const photoId=storePhoto(fullData),thumb=await makeThumb(fullData);
     msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,ts:msgTs,time:fmtTime(msgTs),photoId,photoThumb:thumb||fullData,fileName:f.name};
+    if(f.caption)msg.caption=String(f.caption).slice(0,1024);
   }else{
     const fdid='fd_'+fid;
     try{
@@ -891,6 +898,7 @@ async function finishFile(fid,pid){
       fileStore[fdid]=URL.createObjectURL(new Blob([arr],{type:f.mime||'application/octet-stream'}));
     }catch(e){fileStore[fdid]=null;}
     msg={id:fid,sender:'inc',name:peerNames[pid]||('@'+pid),avatar:peerAvatars[pid]||null,ts:msgTs,time:fmtTime(msgTs),fileInfo:{name:f.name,size:''},fileDataId:fdid};
+    if(f.caption)msg.caption=String(f.caption).slice(0,1024);
   }
   if(!chatHist[pid])chatHist[pid]=[];
   chatHist[pid].push(msg);
