@@ -141,9 +141,9 @@ function _lrcParse(s){
 let _kr=null;      // {tr, lines, synced, raf, idx}
 // ── поиск текста (LRCLIB) с кешем на устройстве: найденный текст больше не ищется ──
 let _lrcDbP=null;
-function _lrcDb(){return _lrcDbP||(_lrcDbP=new Promise((res,rej)=>{const r=indexedDB.open('slon_lrc',1);r.onupgradeneeded=()=>r.result.createObjectStore('l');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));}
+function _lrcDb(){return _lrcDbP||(_lrcDbP=new Promise((res,rej)=>{const r=indexedDB.open('slon_lrc',1);r.onupgradeneeded=()=>r.result.createObjectStore('l');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}).catch(e=>{_lrcDbP=null;throw e;}));}
 async function _lrcGet(k){try{const db=await _lrcDb();return await new Promise(res=>{const q=db.transaction('l').objectStore('l').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}}
-async function _lrcPut(k,v){try{const db=await _lrcDb();db.transaction('l','readwrite').objectStore('l').put(v,k);}catch(e){}}
+async function _lrcPut(k,v){try{const db=await _lrcDb();await new Promise((res,rej)=>{const tx=db.transaction('l','readwrite');tx.objectStore('l').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});}catch(e){}}
 const _lrcKey=tr=>(String(tr.artist||'')+'|'+String(tr.title||'')).toLowerCase();
 // чистка названия от мусора (номер трека, «_», скобки, feat/prod, сайты, mp3)
 function _lrcClean(s){
@@ -162,8 +162,17 @@ function _lrcSim(a,b){
 async function _lrcFind(tr){
   const k=_lrcKey(tr),c=await _lrcGet(k);
   if(c&&(c.syncedLyrics||c.plainLyrics))return c;
+  if(navigator.onLine===false)throw new Error('Нет сети для поиска текста');
+  let networkFailed=false;
   const get=async(params)=>{const u='https://lrclib.net/api/search?'+params;
-    for(let a=0;a<3;a++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);return await r.json();}catch(e){}}return [];};
+    for(let a=0;a<2;a++){
+      const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);
+      try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);const data=await r.json();if(!Array.isArray(data))throw new Error('Неверный ответ');return data;}
+      catch(e){if(a===1)networkFailed=true;}
+      finally{clearTimeout(t);}
+    }
+    return [];
+  };
   const E=encodeURIComponent;
   let ct=_lrcClean(tr.title);const ca=_lrcClean(String(tr.artist||'').split(/\s*(?:,|&|\/|\bfeat\.?|\bft\.?|\bx\b|(?<!\S)и(?!\S))\s*/i)[0]);
   if(ca&&ct.startsWith(ca+' ')&&ct.length>ca.length+1)ct=ct.slice(ca.length+1).trim();   // «9mice 2017» из имени файла
@@ -179,6 +188,7 @@ async function _lrcFind(tr){
   const whole=x=>{if(!x.syncedLyrics)return false;const L=_lrcParse(x.syncedLyrics);const last=L.length?L[L.length-1].t:0;const d=x.duration||tr.dur||0;return L.length>=8&&(!d||last>=d*0.55);};
   for(const t of tries){
     for(const x of (await get(t))||[])if(!seen.has(x.id))seen.set(x.id,{...x,_s:score(x)});
+    if(networkFailed&&!seen.size)throw new Error('Не удалось подключиться к поиску текста');
     const ok=[...seen.values()].filter(x=>x._s>=0.55&&(x.syncedLyrics||x.plainLyrics));
     if(ok.some(x=>whole(x)&&x._s>=0.8)){good=ok;break;}   // уверенное совпадение — дальше не ищем
     good=ok;
@@ -187,7 +197,8 @@ async function _lrcFind(tr){
   const rank=(l)=>l.slice().sort((x,y)=>(y._s-x._s)||(dd(x)-dd(y)));
   const L=good||[];
   const hit=rank(L.filter(whole))[0]||rank(L.filter(x=>x.syncedLyrics))[0]||rank(L.filter(x=>x.plainLyrics))[0]||null;
-  if(hit)_lrcPut(k,{syncedLyrics:hit.syncedLyrics||'',plainLyrics:hit.plainLyrics||'',duration:hit.duration||0});
+  if(!hit&&networkFailed)throw new Error('Не удалось подключиться к поиску текста');
+  if(hit)await _lrcPut(k,{syncedLyrics:hit.syncedLyrics||'',plainLyrics:hit.plainLyrics||'',duration:hit.duration||0});
   return hit;
 }
 async function _pxLyrics(tr){
@@ -226,7 +237,7 @@ async function _pxLyrics(tr){
     }else{
       body.innerHTML='<div class="px-kara-pad s"></div>'+String(hit.plainLyrics).split('\n').map(l=>`<div class="px-kl plain">${esc(l)||'&nbsp;'}</div>`).join('')+'<div class="px-kara-pad s"></div>';
     }
-  }catch(e){const b=$('pxKaraBody');if(b)b.innerHTML='<div class="px-kara-msg">Не удалось загрузить текст</div>';}
+  }catch(e){if(!_kr||_kr.tr!==tr)return;const b=$('pxKaraBody');if(b)b.innerHTML='<div class="px-kara-msg">Не удалось загрузить текст<br><button type="button" onclick="_pxLyrics(_kr.tr)">Повторить</button></div>';}
   _kr.raf=requestAnimationFrame(_pxKaraTick);
 }
 function _pxKaraAudioIs(){return _kr&&_pxAudio&&String(_pxAudioId)===String(_kr.tr.id);}

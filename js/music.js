@@ -42,32 +42,61 @@ const _mmDelRec=id=>_mmTx('readwrite',s=>s.delete(id));
 const _mmGetRec=id=>_mmTx('readonly',s=>s.get(id));
 
 // ── загрузка списка: локальные + облачные с других устройств ──
-let _mmUserLoaded=null;
-async function _mmLoad(force){
-  if(_mmUserLoaded!==myUsername){_mmDbP=null;_mm.list=[];_mm.loaded=false;_mmUserLoaded=myUsername;}
-  if(_mm.loaded&&!force)return _mm.list;
-  const local=await _mmGetAll().catch(()=>[]);
-  const byC=new Map(local.filter(r=>r.cid).map(r=>[r.cid,r]));
-  const list=local.map(r=>_mmItem(r));
-  if(typeof _apiToken==='function'&&_apiToken()){
-    try{
-      const d=await api('/mm/list');_mm.used=d.used||0;_mm.quota=d.quota||0;
-      const t0=(d.tracks||[])[0];if(t0&&t0.url)_mm.base=t0.url.slice(0,t0.url.length-t0.id.length);
-      for(const t of d.tracks||[]){
-        if(byC.has(t.id))continue;
-        list.push({id:t.id,cid:t.id,title:t.title,artist:t.artist,album:t.album,dur:t.dur,size:t.size,mime:t.mime,ts:t.ts,url:t.url,coverUrl:t.coverUrl,local:false});
-      }
-      // локальные треки, которых ещё нет в облаке — докачиваем
-      for(const it of list)if(it.local&&!it.cid&&!it.noCloud)_mmUpload(it.id);
-    }catch(e){}
+let _mmUserLoaded=null,_mmCloudPromise=null,_mmCloudUser=null,_mmCloudRevision=0;
+function _mmCloudKey(u){return 'sl_u_'+u+'_mm_cloud_catalog';}
+function _mmCloudRead(u){try{const rows=JSON.parse(localStorage.getItem(_mmCloudKey(u))||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
+function _mmCloudMerge(rows){
+  const byId=new Map();for(const it of _mm.list){if(it.id)byId.set(it.id,it);if(it.cid)byId.set(it.cid,it);}
+  for(const t of rows||[]){
+    if(!t||!t.id)continue;
+    const it=byId.get(t.id);
+    if(it){if(t.url)it.url=t.url;if(!it.coverUrl&&t.coverUrl)it.coverUrl=t.coverUrl;continue;}
+    const item={id:t.id,cid:t.id,title:t.title,artist:t.artist,album:t.album,dur:t.dur,size:t.size,mime:t.mime,ts:t.ts,url:t.url,coverUrl:t.coverUrl,local:false};
+    _mm.list.push(item);byId.set(t.id,item);
   }
-  list.sort((a,b)=>(b.ts||0)-(a.ts||0));
-  _mm.list=list;_mm.loaded=true;
+  _mm.list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+}
+function _mmCloudRefresh(u){
+  if(_mmCloudPromise&&_mmCloudUser===u)return _mmCloudPromise;
+  if(typeof _apiToken!=='function'||!_apiToken()||navigator.onLine===false)return Promise.resolve();
+  _mmCloudUser=u;const revision=_mmCloudRevision;
+  const request=(async()=>{
+    let timeout;
+    try{
+      const d=await Promise.race([api('/mm/list'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(new Error('Тайм-аут медиатеки')),8000);})]);
+      if(myUsername!==u||_mmUserLoaded!==u||revision!==_mmCloudRevision)return;
+      if(!Array.isArray(d.tracks))return;
+      const rows=d.tracks;
+      const available=new Set(rows.map(t=>t&&t.id));
+      _mm.list=_mm.list.filter(it=>it.local||!it.cid||available.has(it.cid));
+      _mm.used=d.used||0;_mm.quota=d.quota||0;
+      const t0=rows.find(t=>t&&t.url&&t.id&&t.url.endsWith(t.id));if(t0)_mm.base=t0.url.slice(0,-t0.id.length);
+      try{localStorage.setItem(_mmCloudKey(u),JSON.stringify(rows));}catch(e){console.warn('music catalog cache:',e);}
+      _mmCloudMerge(rows);
+      for(const it of _mm.list)if(it.local&&!it.cid&&!it.noCloud)_mmUpload(it.id);
+      try{_plRemap();}catch(e){}
+      if(typeof _mmPaint==='function')_mmPaint();
+      if(typeof _mxRefresh==='function')_mxRefresh();
+      setTimeout(()=>{if(myUsername===u)_mmSyncAll();},500);
+    }catch(e){}finally{clearTimeout(timeout);}
+  })();
+  _mmCloudPromise=request;request.finally(()=>{if(_mmCloudPromise===request){_mmCloudPromise=null;_mmCloudUser=null;}});
+  return request;
+}
+async function _mmLoad(force){
+  if(_mmUserLoaded!==myUsername){_mmDbP=null;_mm.list=[];_mm.loaded=false;_mmUserLoaded=myUsername;_mm.base='';}
+  if(_mm.loaded&&!force)return _mm.list;
+  const user=myUsername,local=await _mmGetAll().catch(()=>[]);
+  if(user!==myUsername||_mmUserLoaded!==user)return _mm.list;
+  _mm.list=local.map(r=>_mmItem(r));
+  _mmCloudMerge(_mmCloudRead(user));
+  _mm.loaded=true;
   setTimeout(_mmCovFill,500);
   setTimeout(_lrcPrefetchAll,1500);
   setTimeout(_mmSyncAll,2500);
   try{_plRemap();}catch(e){}
-  return list;
+  _mmCloudRefresh(user);
+  return _mm.list;
 }
 function _mmItem(r){
   if(r.cover&&!_mm.urls['c'+r.id])_mm.urls['c'+r.id]=URL.createObjectURL(r.cover);
@@ -418,6 +447,8 @@ async function _mmDelete(id){
   try{
     if(it.cid)await api('/mm/delete',{id:it.cid});
     await _mmDelRec(it.id).catch(()=>{});
+    _mmCloudRevision++;
+    if(it.cid){try{localStorage.setItem(_mmCloudKey(myUsername),JSON.stringify(_mmCloudRead(myUsername).filter(t=>t.id!==it.cid)));}catch(e){}}
     _mm.list=_mm.list.filter(x=>x!==it);if(it.cid)_mm.used=Math.max(0,_mm.used-(it.size||0));
     if(_mm.cur&&_mm.cur.mm===id)_mmStop();
     _mmPaint();
@@ -985,16 +1016,16 @@ async function _mmCovFill(){
 // тексты всех треков — скачиваем заранее в фоне (фонотека + плейлист профиля), по одному, уже найденные пропускаем
 let _lrcPfBusy=false;
 async function _lrcPrefetchAll(){
-  if(_lrcPfBusy||typeof _lrcFind!=='function')return;_lrcPfBusy=true;
+  if(_lrcPfBusy||typeof _lrcFind!=='function'||navigator.onLine===false)return;_lrcPfBusy=true;
   try{
     const list=[..._mm.list.map(x=>({title:x.title,artist:x.artist,dur:x.dur})),...(_pxMe().playlist||[]).map(x=>({title:x.title,artist:x.artist,dur:x.dur}))];
     const done=new Set();
     for(const t of list){
       const k=_lrcKey(t);if(!t.title||done.has(k))continue;done.add(k);
       const c=await _lrcGet(k);if(c&&(c.syncedLyrics||c.plainLyrics))continue;
-      if(_lrcMiss[k]&&Date.now()-_lrcMiss[k]<864e5)continue;           // не нашли недавно — не долбим каждый раз
-      const h=await _lrcFind(t).catch(()=>null);
-      if(!h){_lrcMiss[k]=Date.now();try{localStorage.setItem('sl_lrcmiss',JSON.stringify(_lrcMiss));}catch(e){}}
+      if(_lrcMiss[k]&&Date.now()-_lrcMiss[k]<300000)continue;           // недолго ждём перед повторным поиском
+      let h;try{h=await _lrcFind(t);}catch(e){break;} // сервис недоступен — не запускаем запросы для каждого трека
+      if(!h&&navigator.onLine!==false){_lrcMiss[k]=Date.now();try{localStorage.setItem('sl_lrcmiss',JSON.stringify(_lrcMiss));}catch(e){}}
       await new Promise(r=>setTimeout(r,300));
     }
   }catch(e){}
@@ -1173,9 +1204,11 @@ function _fpOff(){   // сдвиг: полный трек — 0, отрывок 
 async function _fpLyLoad(){
   const box=$('fpLy'),t=_islTr,key=_fpKey;if(!box||!t)return;
   box.innerHTML='<div class="fp-ly-msg">Ищем текст…</div>';
-  const hit=await _lrcFind(t).catch(()=>null);
+  let hit;
+  try{hit=await _lrcFind(t);}
+  catch(e){if(_fpKey===key&&$('fpLy')){box.innerHTML='<div class="fp-ly-msg">Не удалось загрузить текст<br><button type="button" onclick="_fpLyLoad()">Повторить</button></div>';_fpLines=null;}return;}
   if(_fpKey!==key||!$('fpLy'))return;
-  if(!hit){box.innerHTML='<div class="fp-ly-msg">Текст не найден</div>';_fpLines=[];return;}
+  if(!hit){box.innerHTML='<div class="fp-ly-msg">Текст не найден<br><button type="button" onclick="_fpLyLoad()">Повторить</button></div>';_fpLines=[];return;}
   if(hit.syncedLyrics){_fpLines=_lrcParse(hit.syncedLyrics);
     box.innerHTML='<div class="fp-ly-pad"></div>'+_fpLines.map((l,i)=>`<div class="fp-kl${l.text?'':' gap'}" data-i="${i}" onclick="_fpLine(${i})">${l.text?_fpWords(l.text):'♪'}</div>`).join('')+'<div class="fp-ly-pad"></div>';}
   else{_fpLines=[];box.innerHTML=String(hit.plainLyrics||'').split('\n').map(l=>`<div class="fp-kl plain">${esc(l)||'&nbsp;'}</div>`).join('');}
@@ -1380,7 +1413,7 @@ function _npSayProg(){const n=_mm._npTodo||0,d=_mm._npDone||0;_mmSay(n&&d<n?'С�
   let have=[];try{have=(await P.cached({urls})).urls||[];}catch(e){}
   const hs=new Set(have);for(const it of _mm.list)if(hs.has(_npUrl(it)))it.ncached=true;
   const todo=urls.filter(u=>!hs.has(u));_mm._npTodo=todo.length;_mm._npDone=0;
-  if(todo.length){toast('Скачиваем на устройство треков: '+todo.length);_npSayProg();P.cache({urls:todo}).catch(()=>{});}
+  if(todo.length&&navigator.onLine!==false){toast('Скачиваем на устройство треков: '+todo.length);_npSayProg();P.cache({urls:todo}).catch(()=>{});}
   _mmPaint();
 };}
 {const f=_mmStatus;_mmStatus=function(it){
@@ -1403,3 +1436,15 @@ setInterval(()=>{if(_mobPl()&&typeof _islTr!=='undefined'&&_islTr){const want=_m
 // после загрузки фонотеки — вычистить мусор из названий старых треков
 {const f=_mmLoad;let busy=false;_mmLoad=async function(){const r=await f.apply(this,arguments);
   if(!busy&&_mm.list.length){busy=true;try{await _mmCleanAll();}catch(e){}busy=false;}return r;};}
+
+// Когда сеть вернулась, обновляем каталог и повторяем только прерванные загрузки.
+window.addEventListener('online',()=>{
+  if(!myUsername)return;
+  setTimeout(()=>{
+    if(!myUsername)return;
+    _mmCloudRefresh(myUsername);
+    _mmSyncAll();
+    _lrcPrefetchAll();
+    if(typeof _fpLyOn!=='undefined'&&_fpLyOn&&_fpLines===null)_fpLyLoad();
+  },1200);
+});
