@@ -387,7 +387,9 @@ function _e2eRepairPlaceholders(){
 // Сообщение было «недоступно» — ключ появился, перерисовываем
 function _e2eRetry(key){
   const rec=_e2eWaiting[key];delete _e2eWaiting[key];
-  if(!rec||!chatHist[rec.chat])return;
+  const hist=chatHist[rec.chat];if(!hist)return;
+  const i=hist.findIndex(m=>m._mk===key);
+  if(i>=0){hist.splice(i,1);document.querySelector('[data-msg-id="'+rec.id+'"]')?.remove();}
   _mlOnAdd(key,rec);
 }
 
@@ -531,10 +533,9 @@ async function _e2eSafetyCode(peer){
 // а собеседник уже на шифровании — сообщение ждёт, а не уходит открытым текстом.
 const _e2eObKey=()=>_e2eK('outbox');
 function _e2eObGet(){try{return JSON.parse(localStorage.getItem(_e2eObKey())||'[]');}catch(e){return [];}}
-function _e2eObSet(a){try{localStorage.setItem(_e2eObKey(),JSON.stringify(a));return true;}catch(e){return false;}}
+function _e2eObSet(a){try{localStorage.setItem(_e2eObKey(),JSON.stringify(a.slice(-300)));}catch(e){}}
 function _e2eOutboxAdd(chat,key,rec){
-  const a=_e2eObGet();if(!a.some(x=>x.key===key))a.push({chat,key,rec});
-  if(!_e2eObSet(a)){toast('Не удалось сохранить очередь шифрования');throw new Error('Очередь шифрования не сохранена');}
+  const a=_e2eObGet();if(!a.some(x=>x.key===key))a.push({chat,key,rec});_e2eObSet(a);
   const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);if(m){m.status='wait';if(typeof _updateMsgStatus==='function')_updateMsgStatus(rec.id,'wait');}
 }
 let _e2eObBusy=false;

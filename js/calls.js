@@ -276,7 +276,7 @@ async function doStartCall(peerId,isVideo,stream){
   _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
   _setupCallTransceivers(_callPC,stream);
   _callPC.onicecandidate=e=>{
-    if(e.candidate)_callSend(peerId,{type:'call_ice',callId,candidate:e.candidate.toJSON()});
+    if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
   };
   _callPC.ontrack=e=>{
     if(activeCall)activeCall.answered=true;
@@ -329,7 +329,7 @@ function _resendAnswer(peerId){
   const pc=_callPC;let n=0;
   const t=setInterval(()=>{
     if(!pc||pc!==_callPC||!activeCall||pc.connectionState==='connected'||++n>4||!pc.localDescription||pc.localDescription.type!=='answer'){clearInterval(t);return;}
-    _callSend(peerId,{type:'call_answer',callId:activeCall?.callId,sdp:pc.localDescription.toJSON()});
+    _callSend(peerId,{type:'call_answer',sdp:pc.localDescription.toJSON()});
   },3000);
 }
 
@@ -339,7 +339,7 @@ async function answerCall(){
   if(!pendingCall)return;
   const{peerId,isVideo,callId}=pendingCall;
   let sdp=pendingCall.sdp;
-  if(!sdp&&_pendingRemoteOffer?.peerId===peerId&&(!callId||!_pendingRemoteOffer.callId||_pendingRemoteOffer.callId===callId))sdp=_pendingRemoteOffer.sdp;
+  if(!sdp&&_pendingRemoteOffer?.peerId===peerId)sdp=_pendingRemoteOffer.sdp;
   pendingCall=null;
 
   // Сообщаем другим нашим устройствам что ответили здесь
@@ -352,7 +352,7 @@ async function answerCall(){
     _callPC=new RTCPeerConnection({iceServers:ICE_SERVERS});
     _setupCallTransceivers(_callPC,stream);
     _callPC.onicecandidate=e=>{
-      if(e.candidate)_callSend(peerId,{type:'call_ice',callId,candidate:e.candidate.toJSON()});
+      if(e.candidate)_callSend(peerId,{type:'call_ice',candidate:e.candidate.toJSON()});
     };
     _callPC.ontrack=e=>{
       _handleRemoteTrack(e.track);
@@ -371,7 +371,7 @@ async function answerCall(){
         await _flushPendingIce();
         const answer=await _callPC.createAnswer();
         await _callPC.setLocalDescription(answer);
-        _callSend(peerId,{type:'call_answer',callId,sdp:_callPC.localDescription.toJSON()});
+        _callSend(peerId,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
         _resendAnswer(peerId);
         _pendingRemoteOffer=null;
       }catch(e){console.error('answer error',e);endCallCleanup();}

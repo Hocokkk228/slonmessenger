@@ -136,13 +136,10 @@ function sendMsg(){
       // при шифровании открытый текст не шлём: сообщение идёт зашифрованным в журнале
       if(!(typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp)&&!(typeof _e2eMust==='function'&&_e2eMust(activeChat)))
         sendData(c||activeChat,{type:'msg',id:mid,text:txt,ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null,reply:reply||undefined});
+      // Журнал: доставка офлайн-собеседнику и синк на все устройства (sync.js)
+      if(typeof _mlPost==='function')_mlPost(activeChat,{id:mid,k:'text',text:txt,ts,reply:reply||undefined});
     }
-    // Журнал нужен и при отсутствии прямого соединения: очередь дождётся сети.
-    try{
-      const posted=typeof _mlPost==='function'&&_mlPost(activeChat,{id:mid,k:'text',text:txt,ts,reply:reply||undefined});
-      if(!posted){msg.status='failed';_updateMsgStatus(mid,'failed');toast('Нет связи: сообщение осталось только на устройстве');saveAll();}
-      else Promise.resolve(posted).catch(()=>{msg.status='failed';_updateMsgStatus(mid,'failed');toast('Не удалось сохранить сообщение в очередь');saveAll();});
-    }catch(e){msg.status='failed';_updateMsgStatus(mid,'failed');toast('Не удалось сохранить сообщение в очередь');saveAll();}
+    else toast('Нет интернета — сообщение не отправлено');
   }
 }
 
@@ -293,8 +290,7 @@ function appendMsg(msg,container){
   if(isOut&&msg.type==='call'&&!msg.status)msg.status=(msg.callOutcome==='answered'||msg.callOutcome==='declined')?'read':'delivered';
   if(!isOut&&msg.unenc)statusIcon=' <span class="ticks unenc" title="Пришло без сквозного шифрования">⚠︎</span>';
   if(isOut){
-    if(msg.status==='failed') statusIcon=' <span class="ticks failed" title="Не отправлено">!</span>';
-    else if(msg.status==='wait') statusIcon=' <span class="ticks wait" title="Ждёт отправки">🕓︎</span>';
+    if(msg.status==='wait') statusIcon=' <span class="ticks wait" title="Ждёт шифрования — уйдёт, когда появится связь">🕓︎</span>';
     else if(msg.status==='read') statusIcon=' <span class="ticks read">✓✓</span>';
     else if(msg.status==='delivered') statusIcon=' <span class="ticks">✓✓</span>';
     else statusIcon=' <span class="ticks sent">✓</span>';
@@ -500,7 +496,6 @@ function _updateMsgStatus(mid,status){
     if(status==='read'){el.textContent='✓✓';el.className='ticks read';}
     else if(status==='delivered'){el.textContent='✓✓';el.className='ticks';}
     else if(status==='wait'){el.textContent='🕓︎';el.className='ticks wait';}
-    else if(status==='failed'){el.textContent='!';el.className='ticks failed';}
     else{el.textContent='✓';el.className='ticks sent';}
   }
 }
@@ -794,11 +789,11 @@ async function sendFileTo(fid,name,mime,isImg,data,ts,caption){
   // В Firebase-режиме используем большие chunks (~100KB) чтобы меньше RTDB вызовов,
   // но ниже лимита 256KB на один RTDB child
   const chunkSize=_fbMode?100000:CHUNK;
-  let chunks=null;
+  const chunks=[];
+  for(let i=0;i<data.length;i+=chunkSize)chunks.push(data.slice(i,i+chunkSize));
+  const total=chunks.length;
 
   const doSend=async (conn,pid)=>{
-    if(!chunks){chunks=[];for(let i=0;i<data.length;i+=chunkSize)chunks.push(data.slice(i,i+chunkSize));}
-    const total=chunks.length;
     sendData(conn,{type:'file_start',id:fid,name,mime,chunks:total,isImg,ts,...(caption?{caption}:{})});
     for(let i=0;i<total;i++){
       sendData(conn,{type:'file_chunk',id:fid,i,d:chunks[i]});
@@ -828,17 +823,15 @@ async function sendFileTo(fid,name,mime,isImg,data,ts,caption){
         avatar:myAvatar||null,fileName:name,fileMime:mime,fileIsImg:isImg,ts:ts||Date.now()
       }).catch(()=>{});
     }
-  }else if(activeChat!=='ai'&&!_isChannelId(activeChat)){
+  }else if(activeChat!=='ai'&&(activeChat==='saved'||_fbMode||conns[activeChat]?.open)){
     const chat=activeChat;
     // Через журнал: дойдёт, даже если собеседник офлайн, и появится на всех устройствах
-    if(typeof _mlSendMedia==='function'){
+    if(typeof _mlSendMedia==='function'&&_mlOn()){
       const m=(chatHist[chat]||[]).find(x=>x.id===fid);
       const ok=await _mlSendMedia(chat,fid,isImg?'photo':'file',data,{name,mime,ts,size:m?.fileInfo?.size||'',caption},
         pct=>_setMsgUploadProgress(fid,Math.min(99,pct)));
-      if(ok){_setMsgUploadProgress(fid,100);setTimeout(()=>_setMsgUploadProgress(fid,null),500);return;}
-      if(m){m.status=ok===null?'failed':'wait';_updateMsgStatus(fid,m.status);saveAll();}
-      // Повторную отправку ведёт очередь медиа: не шлём файл в обход журнала.
-      return;
+      _setMsgUploadProgress(fid,100);setTimeout(()=>_setMsgUploadProgress(fid,null),500);
+      if(ok)return;
     }
     if(chat!=='saved')await doSend(conns[chat]||chat,chat);
   }
