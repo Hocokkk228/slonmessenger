@@ -1590,7 +1590,7 @@ function saveAll(){
     // Фото: сохраняем thumb (маленький) вместо полного photoId
     if(clean.photoThumb&&clean.photoThumb.length>50000){
       // thumb слишком большой — сжимаем до маркера
-      clean.photoThumb=clean.photoThumb.slice(0,50000);
+      delete clean.photoThumb; // обрезанный data URL не является изображением
     }
     // Полноразмерное фото живёт только в памяти (photoStore) — пока сессия жива,
     // дублируем его в IndexedDB, чтобы оно не пропадало после перезагрузки страницы

@@ -5,6 +5,7 @@
 // путём (нет токена / нет соединения) и мостом для старых версий приложения.
 // ════════════════════════════════════════
 let _hubWs=null,_hubUp=false,_hubUser=null,_hubRetry=0,_hubTimer=null,_hubPing=null,_hubAwaitVault=false;
+let _hubRepairRequested=false;
 const _hubPres={};   // pid -> {online,ts,ls} с нашего сервера
 
 function _hubMlKey(){return _getAccountPrefix(myUsername)+'hubMlUpd';}
@@ -65,6 +66,13 @@ function _hubConnect(){
     // при шифровании сначала забираем сейф истории — чтобы журнал сразу расшифровался
     if(typeof _e2eOn!=='undefined'&&_e2eOn){_hubAwaitVault=true;_hubSend({t:'vault_sync',since:+(localStorage.getItem(_e2eK('vsince'))||0)});}
     else _hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});
+    // Один раз перепроверяем недавние записи, которые старый клиент мог пропустить при ошибке загрузки.
+    setTimeout(()=>{
+      if(_hubWs!==ws||!_hubUp)return;
+      const key=_getAccountPrefix(myUsername)+'mediaRepairV1';
+      try{if(localStorage.getItem(key))return;}catch(e){}
+      _hubRepairRequested=_hubSend({t:'ml_sync',since:0});
+    },10000);
     // у Яндекса каждое сообщение — вызов функции: пингуем раз в 8 минут (шлюз рвёт после 10 минут тишины)
     _hubLastRx=Date.now();
     clearInterval(_hubPing);_hubPing=setInterval(_hubProbe,SRV_KIND==='yc'?480000:25000);
@@ -129,6 +137,10 @@ async function _hubDispatch(m){
           _hubMlUpd(it.upd);
         }
       });
+      if(m.full&&_hubRepairRequested){
+        _hubRepairRequested=false;
+        try{localStorage.setItem(_getAccountPrefix(myUsername)+'mediaRepairV1','1');}catch(e){}
+      }
       // сервер отдаёт до 1000 записей — если упёрлись, догоняем дальше
       if(m.more||(!m.full&&(m.items||[]).length>=1000)){_hubSend({t:'ml_sync',since:+(localStorage.getItem(_hubMlKey())||0)});break;}
       _updShow(false);
@@ -142,7 +154,7 @@ async function _hubDispatch(m){
     case 'ml_ack':{
       for(const [chat,hist] of Object.entries(chatHist)){
         const msg=(hist||[]).find(x=>x&&(x._mk===m.key||(_mlKey(x.ts,x.id)===m.key)));
-        if(msg){msg._mk=m.key;if(msg.status==='sent'||!msg.status){msg.status='delivered';_updateMsgStatus(msg.id,'delivered');saveAll();}break;}
+        if(msg){msg._mk=m.key;if(msg.status==='sent'||msg.status==='wait'||!msg.status){msg.status='delivered';_updateMsgStatus(msg.id,'delivered');saveAll();}break;}
       }
       break;}
   }

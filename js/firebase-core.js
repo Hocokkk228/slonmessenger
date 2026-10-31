@@ -590,6 +590,13 @@ function onData(pid,data){
       // Скрываем входящий звонок — проверяем и по callId и по pid
       // (сообщение могло прийти до call_incoming при оффлайн-доставке)
       {
+        const sameCall=c=>c?.peerId===pid&&(!data.callId||!c.callId||data.callId===c.callId);
+        if(!sameCall(pendingCall)&&!sameCall(activeCall)){
+          if(data.type==='call_cancel'&&data.callId&&!pendingCall&&!activeCall&&_cancelledCallIds.size<256){
+            _cancelledCallIds.add(data.callId);setTimeout(()=>_cancelledCallIds.delete(data.callId),60000);
+          }
+          break;
+        }
         const isForUs=pendingCall?.peerId===pid||
           (data.callId&&_lastIncomingCallId===data.callId);
         stopRingSound();
@@ -618,6 +625,7 @@ function onData(pid,data){
       if(activeCall?.peerId===pid)_showPeerMute(!!data.muted);
       break;
     case 'call_end':
+      if(![pendingCall,activeCall].some(c=>c?.peerId===pid&&(!data.callId||!c.callId||data.callId===c.callId)))break;
       stopRingSound();
       if(typeof _closeCallNotif==='function')_closeCallNotif();
       $('incoming').classList.remove('show');
@@ -639,13 +647,14 @@ function onData(pid,data){
       if(activeCall)break; // уже в звонке
       // повтор того же вызова (звонящий шлёт каждые 3 с, пока мы не отзовёмся) — только подтверждаем
       if(data.callId&&pendingCall?.peerId===pid&&pendingCall.callId===data.callId){_callSend(pid,{type:'call_ring',callId:data.callId});break;}
+      if(pendingCall)break;
       // Проверяем что это не старый звонок (callId должен отличаться от последнего отменённого)
       if(data.callId&&_cancelledCallIds?.has(data.callId))break;
       if(data.callId&&typeof _callKey==='function'&&_cancelledCallIds?.has(_callKey(data.callId)))break;
       _pendingIceCandidates=[];
       _lastIncomingCallId=data.callId||null;
       pendingCall={peerId:pid,isVideo:!!data.isVideo,sdp:null,callId:data.callId};
-      if(_pendingRemoteOffer?.peerId===pid){
+      if(_pendingRemoteOffer?.peerId===pid&&(!data.callId||!_pendingRemoteOffer.callId||data.callId===_pendingRemoteOffer.callId)){
         pendingCall.sdp=_pendingRemoteOffer.sdp;
       }
       {const av=peerAvatars[pid],el=$('icAv');el.innerHTML='';
@@ -665,10 +674,12 @@ function onData(pid,data){
     case 'call_offer':
       // SDP offer от звонящего
       _sigRun(async()=>{
+        const current=activeCall||pendingCall;
+        if(current&&(current.peerId!==pid||(data.callId&&current.callId&&data.callId!==current.callId)))return;
         // Сохраняем SDP в pendingCall если он есть (UI входящего звонка показан)
-        if(pendingCall?.peerId===pid){pendingCall.sdp=data.sdp;}
+        if(pendingCall?.peerId===pid&&(!data.callId||!pendingCall.callId||data.callId===pendingCall.callId)){pendingCall.sdp=data.sdp;}
         // На случай если offer пришёл РАНЬШЕ call_incoming — кэшируем
-        _pendingRemoteOffer={peerId:pid,sdp:data.sdp,isVideo:data.isVideo};
+        _pendingRemoteOffer={peerId:pid,sdp:data.sdp,isVideo:data.isVideo,callId:data.callId};
         // Если уже нажали "принять" до прихода offer — отвечаем сразу.
         // Защита от повторной/устаревшей доставки: применяем оффер этого звонка
         // только один раз (иначе задвоенный call_offer ломает согласование —
@@ -681,15 +692,16 @@ function onData(pid,data){
             await _flushPendingIce();
             const answer=await _callPC.createAnswer();
             await _callPC.setLocalDescription(answer);
-            _callSend(pid,{type:'call_answer',sdp:_callPC.localDescription.toJSON()});
+            _callSend(pid,{type:'call_answer',callId:activeCall.callId,sdp:_callPC.localDescription.toJSON()});
             if(typeof _resendAnswer==='function')_resendAnswer(pid);
-          }catch(e){console.warn('late offer handle:',e);}
+          }catch(e){if(activeCall?.peerId===pid)activeCall._offerHandled=false;console.warn('late offer handle:',e);}
         }
       });
       break;
     case 'call_answer':
       _sigRun(async()=>{
         if(!activeCall||activeCall.peerId!==pid||!_callPC)return;
+        if(data.callId&&activeCall.callId&&data.callId!==activeCall.callId)return;
         if(_callPC.signalingState!=='have-local-offer')return;   // повтор answer — уже применён
         try{
           await _callPC.setRemoteDescription(_boostDesc(data.sdp));
@@ -700,6 +712,7 @@ function onData(pid,data){
     case 'call_ice':
       _sigRun(async()=>{
         if(!data.candidate)return;
+        const c=activeCall||pendingCall;if(c&&(c.peerId!==pid||(data.callId&&c.callId&&data.callId!==c.callId)))return;
         // Если PC ещё не создан или remoteDescription не установлен — буферизуем
         if(!_callPC||!_callPC.remoteDescription||!_callPC.remoteDescription.type){
           _pendingIceCandidates.push(data.candidate);

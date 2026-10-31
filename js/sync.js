@@ -175,7 +175,7 @@ const _mlPending=new Set();
 const _mlSessionStart=Date.now();
 function _mlKey(ts,id){return String(ts||0).padStart(13,'0')+'_'+String(id).replace(/[^A-Za-z0-9_-]/g,'_');}
 function _mlRef(owner,key){return window._fbRef(window._fbDb,'ml/'+owner+(key?'/'+key:''));}
-function _mlOn(){return !!(_fbMode&&window._fbDb&&myUsername&&_mlUser===myUsername);}
+function _mlOn(){return !!(myUsername&&((_fbMode&&window._fbDb&&_mlUser===myUsername)||(typeof _apiToken==='function'&&_apiToken()&&typeof _hubUp!=='undefined'&&_hubUp)));}
 function _mlSeenKey(){return _getAccountPrefix(myUsername)+'mlSeen';}
 
 // Записать сообщение себе и собеседнику (для «Избранного» — только себе)
@@ -188,13 +188,12 @@ function _mlPost(chat,rec){
   // у кого шифрования никогда не было (старая версия).
   const must=typeof _e2eMust==='function'&&_e2eMust(chat==='saved'?myUsername:chat);
   const ready=typeof _e2eOn!=='undefined'&&_e2eOn&&typeof _hubUp!=='undefined'&&_hubUp;
-  if((ready||must)&&!clean._plain){
+  if((ready||must||clean.mk)&&!clean._plain){
     return (async()=>{
-      if(ready&&await _e2ePost(chat,key,clean))return;
-      if(must||_e2eMust(chat==='saved'?myUsername:chat)){_e2eOutboxAdd(chat,key,clean);return;}
-      if((clean.k||'text')==='text'&&chat!=='saved')
-        sendData(conns[chat]||chat,{type:'msg',id:clean.id,text:clean.text,ts:clean.ts,nick:myNick||('@'+myUsername),avatar:myAvatar||null});
-      return _mlPost(chat,{...clean,_plain:1,mk:undefined});
+      if(ready&&await _e2ePost(chat,key,clean).catch(e=>{console.warn('ml encryption:',e);return false;}))return;
+      // При сбое подготовки шифрования не подменяем запись открытым текстом
+      // и не выбрасываем ключ уже зашифрованного файла.
+      _e2eOutboxAdd(chat,key,clean);return;
     })();
   }
   delete clean._plain;
@@ -203,6 +202,7 @@ function _mlPost(chat,rec){
     if(chat!=='saved'&&typeof _pushMsg==='function')_pushMsg(chat,(rec.k||'text')==='text'?rec.text:(ML_PREVIEW[rec.k]||'Медиа'));
     return Promise.resolve();
   }
+  if(!window._fbDb||!_fbMode)throw new Error('Журнал пока недоступен');
   window._fbSet(_mlRef(myUsername,key),{...clean,chat,out:true,from:myUsername,dev:_myDeviceId}).catch(e=>console.warn('ml self:',e));
   let p=Promise.resolve();
   if(chat!=='saved'){
@@ -255,11 +255,60 @@ async function _mlSendMedia(chat,id,kind,dataUrl,meta,onProg){
     }
     else if(typeof _apiToken==='function'&&_apiToken())m=await _srvUpload(dataUrl,{mime:meta.mime,name:meta.name},onProg);
     else await _msUpload(id,dataUrl,{kind,mime:meta.mime||'',name:meta.name||''},onProg);
-    await _mlPost(chat,{id,k:kind,m,mk,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
+    const post=_mlPost(chat,{id,k:kind,m,mk,ts:meta.ts||Date.now(),name:meta.name,mime:meta.mime,size:meta.size,
       dur:meta.dur,wave:meta.wave?meta.wave.join(','):undefined,caption:meta.caption||undefined});
+    if(!post)throw new Error('Журнал пока недоступен');
+    await post;
     return true;
-  }catch(e){console.warn('ml media:',e);toast('Не удалось отправить медиа: '+e.message);return false;}
+  }catch(e){console.warn('ml media:',e);if(!meta._backgroundRetry)toast('Не удалось отправить медиа: '+e.message);return false;}
 }
+
+// Незаписанные файлы переживают перезагрузку и повторяются после восстановления связи.
+const _mediaSendNow=_mlSendMedia;
+const _mediaQueueBusy=new Set();
+function _mediaQueueKey(u){return 'sl_u_'+u+'_media_outbox';}
+function _mediaQueueList(u){try{const a=JSON.parse(localStorage.getItem(_mediaQueueKey(u))||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function _mediaQueueSet(u,a){try{localStorage.setItem(_mediaQueueKey(u),JSON.stringify(a));return true;}catch(e){return false;}}
+function _mediaQueueDataKey(u,id){return 'media_outbox:'+u+':'+id;}
+async function _mediaQueueRemove(u,id){
+  if(_mediaQueueSet(u,_mediaQueueList(u).filter(x=>x.id!==id)))await _idb.del(_mediaQueueDataKey(u,id));
+}
+async function _mediaQueueAttempt(u,item,onProg,background){
+  const k=u+':'+item.id;if(_mediaQueueBusy.has(k)||myUsername!==u||!_mlOn())return false;
+  _mediaQueueBusy.add(k);
+  try{
+    const data=await _idb.get(_mediaQueueDataKey(u,item.id));if(!data)return false;
+    const ok=await _mediaSendNow(item.chat,item.id,item.kind,data,{...item.meta,_backgroundRetry:!!background},onProg);
+    if(ok){
+      await _mediaQueueRemove(u,item.id);
+      const m=(chatHist[item.chat]||[]).find(x=>x.id===item.id);
+      const waitingCrypto=typeof _e2eObGet==='function'&&_e2eObGet().some(x=>x.rec?.id===item.id);
+      if(m&&m.status==='wait'&&!waitingCrypto){m.status='sent';if(typeof _updateMsgStatus==='function')_updateMsgStatus(item.id,'sent');saveAll();}
+      if(typeof _setMsgUploadProgress==='function')_setMsgUploadProgress(item.id,null);
+    }
+    return ok;
+  }finally{_mediaQueueBusy.delete(k);}
+}
+_mlSendMedia=async function(chat,id,kind,dataUrl,meta,onProg){
+  const u=myUsername;if(!u)return false;
+  const item={chat,id,kind,meta,at:Date.now()};
+  if(!await _idb.put(_mediaQueueDataKey(u,id),dataUrl)){toast('Не удалось сохранить файл для отправки');return null;}
+  const pending=_mediaQueueList(u).filter(x=>x.id!==id);pending.push(item);
+  if(!_mediaQueueSet(u,pending)){toast('Не удалось сохранить очередь файлов');return null;}
+  if(!_mlOn()){toast('Файл ждёт подключения');return false;}
+  const ok=await _mediaQueueAttempt(u,item,onProg);
+  if(!ok)toast('Файл ждёт повторной отправки');
+  return ok;
+};
+let _mediaDrainBusy=false;
+async function _mediaQueueDrain(){
+  const u=myUsername;if(_mediaDrainBusy||!u||!_mlOn())return;
+  _mediaDrainBusy=true;
+  try{for(const item of _mediaQueueList(u)){if(myUsername!==u||!_mlOn())break;await _mediaQueueAttempt(u,item,null,true);}}
+  finally{_mediaDrainBusy=false;}
+}
+window.addEventListener('online',()=>setTimeout(()=>_mediaQueueDrain().catch(()=>{}),1000));
+setInterval(()=>_mediaQueueDrain().catch(()=>{}),15000);
 
 // Запись журнала → локальное сообщение
 async function _mlMaterialize(key,r0){
@@ -308,9 +357,40 @@ async function _mlMaterialize(key,r0){
 }
 const ML_PREVIEW={text:null,photo:'Фото',file:'Файл',voice:'Голосовое',slon:'Слонкружок',gift:'Подарок'};
 
+// Если медиа не скачалось, сохраняем запись отдельно от курсора журнала.
+const _mlRetryBusy=new Set();
+const _mlRetryDeleted=new Set();
+function _mlRetryKey(u){return 'sl_u_'+u+'_ml_retry';}
+function _mlRetryList(u){try{const a=JSON.parse(localStorage.getItem(_mlRetryKey(u))||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function _mlRetrySet(u,a){try{localStorage.setItem(_mlRetryKey(u),JSON.stringify(a));return true;}catch(e){return false;}}
+function _mlRetryDataKey(u,key){return 'ml_retry:'+u+':'+key;}
+async function _mlRetryAdd(u,key,rec){
+  if(!await _idb.put(_mlRetryDataKey(u,key),rec))return false;
+  if(_mlRetryDeleted.has(u+':'+key)){await _idb.del(_mlRetryDataKey(u,key));return true;}
+  const a=_mlRetryList(u);if(!a.includes(key))a.push(key);
+  return _mlRetrySet(u,a);
+}
+async function _mlRetryRemove(u,key){
+  const a=_mlRetryList(u);if(!a.includes(key))return;
+  if(_mlRetrySet(u,a.filter(k=>k!==key)))await _idb.del(_mlRetryDataKey(u,key));
+}
+async function _mlRetryDrain(){
+  const u=myUsername;if(!u||!navigator.onLine)return;
+  for(const key of _mlRetryList(u)){
+    const token=u+':'+key;if(myUsername!==u)break;if(_mlRetryBusy.has(token))continue;
+    _mlRetryBusy.add(token);
+    try{const rec=await _idb.get(_mlRetryDataKey(u,key));if(rec&&myUsername===u)await _mlOnAdd(key,rec);}
+    catch(e){console.warn('ml retry:',e);}
+    finally{_mlRetryBusy.delete(token);}
+  }
+}
+window.addEventListener('online',()=>setTimeout(()=>_mlRetryDrain().catch(()=>{}),1000));
+setInterval(()=>_mlRetryDrain().catch(()=>{}),15000);
+
 async function _mlOnAdd(key,r){
   if(!r||!r.id||!r.chat||r.del||r.gone)return;
-  const chat=r.chat,out=!!r.out;
+  const chat=r.chat,out=!!r.out,user=myUsername;
+  if(_mlRetryDeleted.has(user+':'+key))return;
   if(!out&&blockedUsers[chat])return;
   if(!out&&chat!=='saved'&&typeof _privacyGate==='function'&&!_privacyGate(chat,{type:r.k==='text'||!r.k?'msg':'file_start'}))return;
   const hist=chatHist[chat]||(chatHist[chat]=[]);
@@ -318,9 +398,12 @@ async function _mlOnAdd(key,r){
   if(have){
     have._mk=key;
     const isStub=have._e2eWait||(typeof have.text==='string'&&/^(🔒 )?Зашифрованное сообщение/u.test(have.text));
-    if(!isStub||!r.e)return;
-    const i=hist.indexOf(have);if(i>=0)hist.splice(i,1);
-    document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();
+    const ref=have.photoId||have.fileDataId;
+    let missingMedia=false;
+    if(typeof ref==='string'&&ref.startsWith('idb:')){
+      const parts=ref.split(':');missingMedia=!await _idb.get(parts[1]+':'+(parts[2]||'photo'));
+    }else if(typeof ref==='string'&&have.photoId)missingMedia=!photoStore[ref];
+    if(!(isStub&&r.e)&&!(missingMedia&&(r.e||r.k==='photo'||r.k==='file'))){await _mlRetryRemove(user,key);return;}
   }
   if(_mlPending.has(r.id))return;
   _mlPending.add(r.id);
@@ -334,8 +417,10 @@ async function _mlOnAdd(key,r){
     }
     let msg;
     try{msg=await _mlMaterialize(key,r);}
-    catch(e){console.warn('ml materialize:',r.id,e);return;}
-    if(hist.some(m=>m.id===r.id))return;   // успело прийти другим путём
+    catch(e){console.warn('ml materialize:',r.id,e);if(!await _mlRetryAdd(user,key,r))console.warn('ml retry: не удалось сохранить очередь');return;}
+    if(myUsername!==user||_mlRetryDeleted.has(user+':'+key))return;
+    if(have){const i=hist.indexOf(have);if(i>=0)hist.splice(i,1);document.querySelector('[data-msg-id="'+r.id+'"]')?.remove();}
+    if(hist.some(m=>m.id===r.id)){await _mlRetryRemove(user,key);return;}   // успело прийти другим путём
     hist.push(msg);
     const isLast=!hist.some(m=>m!==msg&&(m.ts||0)>(msg.ts||0));
     if(!isLast)hist.sort((a,b)=>(a.ts||0)-(b.ts||0));
@@ -359,11 +444,12 @@ async function _mlOnAdd(key,r){
       }
     }
     if((r.ts||0)>seen)try{localStorage.setItem(_mlSeenKey(),String(r.ts));}catch(e){}
-    saveAll();
+    saveAll();await _mlRetryRemove(user,key);
   }finally{_mlPending.delete(r.id);}
 }
 function _mlOnChange(key,r){
   if(!r||!r.chat)return;
+  if(r.del||r.gone){_mlRetryDeleted.add(myUsername+':'+key);_mlRetryRemove(myUsername,key).catch(()=>{});}
   const chat=r.chat,hist=chatHist[chat];if(!hist)return;
   const m=hist.find(x=>x.id===r.id);if(!m)return;
   // зашифрованная правка: расшифровываем новую версию
@@ -416,11 +502,11 @@ saveAll=function(){
 // Досылается при переподключении к серверу; сервер идемпотентен по ключу.
 const _obKey=()=>'sl_u_'+myUsername+'_outbox';
 function _obLoad(){try{const a=JSON.parse(localStorage.getItem(_obKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
-function _obSave(a){try{localStorage.setItem(_obKey(),JSON.stringify(a.slice(-500)));}catch(e){}}
+function _obSave(a){try{localStorage.setItem(_obKey(),JSON.stringify(a));return true;}catch(e){return false;}}
 function _obAdd(chat,rec){
   const a=_obLoad();
   if(a.some(x=>x.rec&&x.rec.id===rec.id))return;      // уже в очереди
-  a.push({chat,rec,at:Date.now()});_obSave(a);
+  a.push({chat,rec,at:Date.now()});if(!_obSave(a)){toast('Не удалось сохранить очередь сообщений');throw new Error('Очередь сообщений не сохранена');}
   _obBadge();
 }
 // «В сети» ли мы для журнала: есть токен и живое соединение с хабом
@@ -431,17 +517,23 @@ async function _obDrain(){
   _obDraining=true;
   try{
     let a=_obLoad();if(!a.length){_obBadge();return;}
-    const rest=[];
+    const done=new Set();
     for(const it of a){
       if(!it||!it.rec||!it.chat){continue;}
       // сообщение удалили из истории — не досылаем
       const exists=(chatHist[it.chat]||[]).some(m=>m.id===it.rec.id)||it.chat==='saved';
-      if(!exists)continue;
-      if(!_hubUp){rest.push(it);continue;}            // связь снова пропала — оставляем на потом
-      try{await _mlPost0(it.chat,{...it.rec,_fromOutbox:1});}
-      catch(e){rest.push(it);}
+      if(!exists){done.add(it.rec.id);continue;}
+      if(!_hubUp)continue;            // связь снова пропала — оставляем на потом
+      try{
+        const post=_mlPost0(it.chat,{...it.rec,_fromOutbox:1});if(!post)continue;await post;done.add(it.rec.id);
+        const msg=(chatHist[it.chat]||[]).find(x=>x.id===it.rec.id);
+        const cryptoPending=typeof _e2eObGet==='function'&&_e2eObGet().some(x=>x.rec?.id===it.rec.id);
+        if(msg&&msg.status==='wait'&&!cryptoPending){msg.status='sent';if(typeof _updateMsgStatus==='function')_updateMsgStatus(msg.id,'sent');saveAll();}
+      }
+      catch(e){}
     }
-    _obSave(rest);_obBadge();
+    // За время отправки могли добавиться новые записи: перечитываем очередь.
+    _obSave(_obLoad().filter(it=>!done.has(it?.rec?.id)));_obBadge();
   }finally{_obDraining=false;}
 }
 // маленький счётчик «ждут отправки» в статусе списка чатов
@@ -461,6 +553,7 @@ _mlPost=function(chat,rec){
   const queueable=rec&&(rec.k==='text'||!rec.k)&&chat&&chat!=='ai'&&!String(chat).startsWith('g_')&&!(typeof _isChannelId==='function'&&_isChannelId(chat));
   if(queueable&&_obHubMode()&&!_hubUp&&!rec._fromOutbox){
     _obAdd(chat,rec);
+    const m=(chatHist[chat]||[]).find(x=>x.id===rec.id);if(m){m.status='wait';if(typeof _updateMsgStatus==='function')_updateMsgStatus(rec.id,'wait');}
     return Promise.resolve();     // сообщение уже в истории (одна галочка) — досыл при связи
   }
   const r=_mlPost0(chat,rec);
