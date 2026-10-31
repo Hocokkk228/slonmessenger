@@ -2,7 +2,7 @@
 (function(){
   const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 7c0-3.3 3.1-5 7-5s7 1.7 7 5v1H5z"/></svg>';
   const sendIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3 22 12 3 21l2-7 10-2-10-2z"/></svg>';
-  let selected=new Set(),contact='';
+  let selected=new Set(),contact='',closeTimer=0;
   const oldRender=_ppRender;
   _ppRender=function(pid){
     const result=oldRender.apply(this,arguments),more=$('peerProfMoreBtn'),original=more&&more.onclick;
@@ -17,15 +17,25 @@
     return result;
   };
   function openShare(pid){
+    clearTimeout(closeTimer);closeTimer=0;
+    $('sidebar')?.classList.remove('contact-share-closing');
     contact=pid;selected=new Set();closePeerProfile();
     if(innerWidth<=640&&!$('sidebar').classList.contains('open'))toggleSidebar();
     let panel=$('contactSharePanel');
     if(!panel){panel=document.createElement('section');panel.id='contactSharePanel';panel.className='contact-share';$('sidebar').appendChild(panel);}
+    panel.classList.remove('closing');
     panel.innerHTML='<header><button class="contact-share-back" aria-label="Назад">‹</button><b>Поделиться контактом</b></header><input class="contact-share-search" placeholder="Поиск по чатам" aria-label="Поиск по чатам"><div class="contact-share-list"></div><button class="contact-share-send" aria-label="Отправить" disabled>'+sendIcon+'</button>';
-    panel.querySelector('.contact-share-back').onclick=()=>panel.remove();
+    panel.querySelector('.contact-share-back').onclick=closeShare;
     panel.querySelector('.contact-share-search').oninput=paint;
     panel.querySelector('.contact-share-send').onclick=send;
+    $('sidebar').classList.add('contact-share-open');
     panel.classList.add('show');paint();
+  }
+  function closeShare(){
+    const panel=$('contactSharePanel');if(!panel||closeTimer)return;
+    panel.classList.add('closing');
+    $('sidebar')?.classList.add('contact-share-closing');
+    closeTimer=setTimeout(()=>{panel.remove();$('sidebar')?.classList.remove('contact-share-open','contact-share-closing');closeTimer=0;},220);
   }
   function paint(){
     const panel=$('contactSharePanel');if(!panel)return;
@@ -64,7 +74,7 @@
       }
       if(typeof _mlPost==='function')_mlPost(id,{id:mid,k:'text',text,ts});
     }
-    saveAll();$('contactSharePanel')?.remove();toast('Контакт отправлен');
+    saveAll();closeShare();toast('Контакт отправлен');
   }
   const oldAppend=appendMsg;
   appendMsg=function(msg,container){

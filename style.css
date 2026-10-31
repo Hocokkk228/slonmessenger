@@ -5016,8 +5016,14 @@ body.fx-pulse #fpCover,body.fx-pulse .px-kara-art,body.fx-pulse #mmMini{animatio
 }
 
 /* Выбор чатов для отправки контакта */
-.contact-share{position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;background:var(--g-sheen),color-mix(in srgb,var(--bg2) 82%,transparent);-webkit-backdrop-filter:blur(var(--g-blur,16px)) saturate(var(--g-sat,140%));backdrop-filter:blur(var(--g-blur,16px)) saturate(var(--g-sat,140%));color:var(--text1);animation:contact-share-in .22s ease both}
+.sidebar.contact-share-open:not(.contact-share-closing)> :not(.contact-share){visibility:hidden!important;pointer-events:none!important}
+.sidebar.contact-share-closing> :not(.contact-share){animation:contact-share-return .22s ease both;pointer-events:none!important}
+.contact-share{position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;background:transparent;color:var(--text1);animation:contact-share-in .22s ease both}
 @keyframes contact-share-in{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+.contact-share.closing{animation:contact-share-out .22s ease both;pointer-events:none}
+@keyframes contact-share-out{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-18px)}}
+@keyframes contact-share-return{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.contact-share,.contact-share.closing{animation-duration:.01ms}}
 .contact-share header{display:flex;align-items:center;gap:16px;padding:16px;font-size:17px}.contact-share-back{border:0;background:none;color:inherit;font-size:32px;cursor:pointer;line-height:1}
 .contact-share-search{margin:0 14px 10px;padding:11px 14px;border:0;border-radius:12px;background:var(--bg2);color:inherit;outline:none;font:inherit}.contact-share-list{overflow:auto;flex:1;padding-bottom:80px}
 .contact-share-row{width:100%;display:flex;align-items:center;gap:12px;padding:9px 16px;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}.contact-share-row:hover{background:var(--bg2)}
