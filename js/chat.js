@@ -824,7 +824,7 @@ async function sendFileTo(fid,name,mime,isImg,data,ts,caption){
         avatar:myAvatar||null,fileName:name,fileMime:mime,fileIsImg:isImg,ts:ts||Date.now()
       }).catch(()=>{});
     }
-  }else if(activeChat!=='ai'&&(activeChat==='saved'||_fbMode||conns[activeChat]?.open)){
+  }else if(activeChat!=='ai'&&(activeChat==='saved'||_fbMode||conns[activeChat]?.open||(typeof _mlHubReady==='function'&&_mlHubReady()))){
     const chat=activeChat;
     // Через журнал: дойдёт, даже если собеседник офлайн, и появится на всех устройствах
     if(typeof _mlSendMedia==='function'&&(_mlOn()||(typeof _mlHubReady==='function'&&_mlHubReady()))){
