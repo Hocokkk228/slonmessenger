@@ -1,0 +1,19 @@
+.slon-island-panel { padding: 0 4px; }
+.slon-island-pill { spacing: 8px; padding: 3px 13px 3px 4px; border-radius: 99px; background-color: rgba(20,24,33,0.86); border: 1px solid rgba(255,255,255,0.15); }
+.slon-island-mini-cover { border-radius: 10px; color: #dce8ff; }
+.slon-island-mini-title { color: #f8f9fc; font-size: 11px; font-weight: 700; }
+.slon-island-menu { padding: 0; }
+.slon-island-card { width: 370px; padding: 21px; spacing: 18px; border-radius: 26px; background-color: rgba(23,27,37,0.96); border: 1px solid rgba(255,255,255,0.13); }
+.slon-island-head { spacing: 16px; }
+.slon-island-cover { border-radius: 16px; background-color: rgba(255,255,255,0.08); color: #d1ddf5; }
+.slon-island-title { color: #fff; font-size: 17px; font-weight: 800; }
+.slon-island-artist { color: rgba(232,237,249,0.57); font-size: 12px; padding-top: 5px; }
+.slon-island-lyrics { padding: 5px 1px; spacing: 11px; }
+.slon-island-neighbour { color: rgba(238,243,255,0.32); font-size: 13px; font-weight: 650; min-height: 20px; }
+.slon-island-line { min-height: 28px; }
+.slon-island-lyric-base { color: rgba(220,230,248,0.35); font-size: 18px; font-weight: 800; }
+.slon-island-lyric-fill { color: #eef5ff; font-size: 18px; font-weight: 800; }
+.slon-island-controls { spacing: 18px; }
+.slon-island-control { border-radius: 99px; padding: 10px; background-color: rgba(255,255,255,0.07); color: white; }
+.slon-island-control:hover { background-color: rgba(255,255,255,0.16); }
+.slon-island-play { background-color: rgba(155,188,255,0.32); }

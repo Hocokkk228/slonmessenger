@@ -1,0 +1,7 @@
+{
+  "uuid": "slon-island@slon.local",
+  "name": "SLON Island",
+  "description": "Стеклянный музыкальный островок с обложкой и синхронным текстом",
+  "shell-version": ["51"],
+  "version": 1
+}
