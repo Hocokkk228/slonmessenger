@@ -105,7 +105,9 @@ export default class SlonIsland extends Extension {
                 const art=String(d.cover||'');if(art&&(art!==this._artUri||!this._artReady)&&!this._artBusy)this._setArt(art,this._requestId);
                 if(typeof d.synced==='string'){this._lines=parseLrc(d.synced.slice(0,120000));if(!this._lines.length){this._prev.text='';this._next.text='';this._lyricBase.text=String(d.plain||'Текст ещё не загружен в Слоне').split('\n')[0];this._lyricFill.text=this._lyricBase.text;this._lyricFill.remove_clip();}}
                 if(typeof d.color==='string'&&/^(#[a-f0-9]{3,8}|hsla?\([\d.,%\s]+\)|rgba?\([\d.,%\s]+\))$/i.test(d.color))this._setAccent(d.color);
-                this._tick();msg.set_status(204,null);
+                this._tick();
+                this._commands=(this._commands||[]).filter(c=>c.id>Number(d.ack||0)&&c.until>seconds());
+                msg.set_status(200,null);msg.set_response('application/json',Soup.MemoryUse.COPY,JSON.stringify({commands:this._commands}));
             }catch(e){msg.set_status(400,null);}
         });
         try{this._bridge.listen_local(38479,Soup.ServerListenOptions.IPV4_ONLY);}catch(e){console.error('SLON Island local bridge:',e);}
@@ -120,7 +122,12 @@ export default class SlonIsland extends Extension {
     }
     _control(icon,accessible,action) {
         const b=new St.Button({style_class:'slon-island-control',can_focus:true,accessible_name:accessible,child:new St.Icon({icon_name:icon,icon_size:20})});
-        b.connect('clicked',()=>{if(this._track?.instance)command(['playerctl','-p',this._track.instance,action],this._cancel,()=>this._poll());});
+        b.connect('clicked',()=>{
+            if(seconds()-(this._bridgeAt||0)<4){
+                this._commandSeq=(this._commandSeq||Date.now())+1;
+                this._commands=(this._commands||[]).slice(-19);this._commands.push({id:this._commandSeq,action,key:this._lyricsKey,until:seconds()+5});return;
+            }
+            if(this._track?.instance)command(['playerctl','-p',this._track.instance,action],this._cancel,()=>this._poll());});
         return b;
     }
     _poll() {

@@ -13,5 +13,10 @@ const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/st
  await tick();assert.equal(sent[2].synced,undefined);assert.equal(sent[2].cover,undefined);
  now+=6000;await tick();assert.equal(sent[3].synced,'[00:12]From Slon');assert.ok(sent[3].cover,'replay cover after widget restart');
  c._islTr={title:'Other'};await tick();assert.equal(sent[4].key,'Other');assert.equal(sent[4].synced,'');assert.equal(sent[4].cover,undefined);
+ let actions=[];c._islToggle=()=>actions.push('pause');c._mmStep=d=>actions.push(d);
+ let reply=[{id:1,key:'Other',action:'play-pause'},{id:2,key:'Other',action:'next'}];
+ c.fetch=async()=>({ok:true,status:200,json:async()=>({commands:reply})});
+ await tick();await tick();assert.deepEqual(actions,['pause',1],'commands execute exactly once');
+ reply=[{id:3,key:'old song',action:'previous'}];await tick();assert.deepEqual(actions,['pause',1],'stale track command ignored');
  console.log('OK: Slon lyrics, position, blob cover conversion, replay after widget restart, track isolation');
 })().catch(e=>{console.error(e);process.exitCode=1;});
